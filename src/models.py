@@ -1,6 +1,5 @@
-from typing import List, Annotated
-
-from fastapi import Query
+from enum import Enum
+from typing import List
 from pydantic import BaseModel
 
 
@@ -53,11 +52,20 @@ class EventResponse(BaseModel):
     hash: str
     externalHash: str
 
+class VersionEnum(str, Enum):
+    latest = "latest"
+    deprecated = "deprecated"
+
+class PermissionEnum(str, Enum):
+    write = "write"
+    delegate = "delegate"
+    creator = "creator"
+
 class AccessItem(BaseModel):
     subject: str
     documentId: str
     grantedBy: str
-    permission: Annotated[str, Query(regex="(^write$)|(^delegate$)|(^creator$)")]
+    permission: PermissionEnum
 
 class AccessListResponse(BaseModel):
     self: str
@@ -65,3 +73,23 @@ class AccessListResponse(BaseModel):
     total: int
     pageSize: int
     links: PageLinks
+
+class MethodEnum(str, Enum):
+    authoriseDid = "authoriseDid"
+    createDocument = "createDocument"
+    removeDocument = "removeDocument"
+    grantAccess = "grantAccess"
+    revokeAccess = "revokeAccess"
+    writeEvent = "writeEvent"
+    sendSignedTransaction = "sendSignedTransaction"
+
+class JsonRPCModel(BaseModel):
+    jsonrpc: str
+    id: int
+    method: MethodEnum
+    params: list[dict]
+
+class JsonRPCResponse(BaseModel):
+    jsonrpc: str
+    id: int
+    result: dict | str

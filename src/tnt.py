@@ -6,11 +6,21 @@ from starlette.status import HTTP_200_OK, HTTP_204_NO_CONTENT, HTTP_400_BAD_REQU
     HTTP_500_INTERNAL_SERVER_ERROR
 
 from src.models import DocumentListResponse, DocumentItem, PageLinks, DocumentResponse, Timestamp, \
-    EventListResponse, EventItem, EventResponse, AccessListResponse, AccessItem
+    EventListResponse, EventItem, EventResponse, AccessListResponse, AccessItem, JsonRPCModel, PermissionEnum, VersionEnum, \
+    JsonRPCResponse
 
 app = FastAPI()
 
-@app.get("/accesses", responses={
+@app.post("/jsonrpc", response_model=JsonRPCResponse)
+async def rpc(payload: JsonRPCModel):
+    return JsonRPCResponse(
+        jsonrpc="2.0",
+        id=payload.id,
+        result={"status": "success", "message": "Operation completed successfully"}
+    )
+
+
+@app.head("/accesses", responses={
         HTTP_204_NO_CONTENT: {"description": "Success"},
         HTTP_400_BAD_REQUEST: {"description": "Bad Request Error"},
         HTTP_404_NOT_FOUND: {"description": "DID not found in the allowlist"},
@@ -18,6 +28,28 @@ app = FastAPI()
     })
 async def check_access(creator: Annotated[str, Query()], ):
     return Response(status_code=HTTP_204_NO_CONTENT)
+
+@app.get("/accesses", response_model=AccessListResponse)
+async def read_doc_events(subject: str, page_after: Annotated[str, Query(alias="page[after]")] = None,
+                    page_size: Annotated[str, Query(alias="page[size]")] = None):
+    items = [
+        AccessItem(subject=subject, documentId="doc1", grantedBy="admin", permission="write"),
+        AccessItem(subject=subject, documentId="doc2", grantedBy="system", permission="creator"),
+        AccessItem(subject=subject, documentId="doc3", grantedBy="admin", permission="delegate")
+    ]
+
+    links = PageLinks(first=f"/accesses?page[size]=10",
+                      prev=f"/accesses?page[size]=10&page[after]=0",
+                      next=f"/accesses?page[size]=10&page[after]=10",
+                      last=f"/accesses?page[size]=10&page[after]=20")
+
+    return AccessListResponse(
+        self="/accesses",
+        items=items,
+        total=len(items),
+        pageSize=10,
+        links=links
+    )
 
 
 @app.get("/documents", response_model=DocumentListResponse)
@@ -46,7 +78,7 @@ async def read_docs(page_after: Annotated[str, Query(alias="page[after]")] = Non
 
 
 @app.get("/documents/{documentId}", response_model=DocumentResponse)
-async def read_doc(documentId: str, version: Annotated[str, Query(regex="(^latest$)|(^deprecated$)")] = "latest"):
+async def read_doc(documentId: str, version: VersionEnum = VersionEnum.latest):
     timestamp = Timestamp(
         datetime="2025-11-25T12:00:00Z",
         source="system",
@@ -102,9 +134,9 @@ async def read_doc_events(documentId: str, eventId: str):
 async def read_doc_events(documentId: str, page_after: Annotated[str, Query(alias="page[after]")] = None,
                     page_size: Annotated[str, Query(alias="page[size]")] = None):
     items = [
-        AccessItem(subject="user1", documentId=documentId, grantedBy="admin", permission="write"),
-        AccessItem(subject="user2", documentId=documentId, grantedBy="admin", permission="delegate"),
-        AccessItem(subject="user3", documentId=documentId, grantedBy="system", permission="creator")
+        AccessItem(subject="user1", documentId=documentId, grantedBy="admin", permission=PermissionEnum.write),
+        AccessItem(subject="user2", documentId=documentId, grantedBy="admin", permission=PermissionEnum.delegate),
+        AccessItem(subject="user3", documentId=documentId, grantedBy="system", permission=PermissionEnum.creator)
     ]
 
     links = PageLinks(first=f"/documents/{documentId}/accesses?page[size]=10",
@@ -119,3 +151,8 @@ async def read_doc_events(documentId: str, page_after: Annotated[str, Query(alia
         pageSize=10,
         links=links
     )
+
+
+@app.get("/abi")
+async def abi():
+    pass
