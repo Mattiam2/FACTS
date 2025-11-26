@@ -1,17 +1,17 @@
-from fastapi import Response
+from fastapi import Response, APIRouter
 from typing import Annotated
 
 from fastapi import FastAPI, Query
-from starlette.status import HTTP_200_OK, HTTP_204_NO_CONTENT, HTTP_400_BAD_REQUEST, HTTP_404_NOT_FOUND, \
+from starlette.status import HTTP_204_NO_CONTENT, HTTP_400_BAD_REQUEST, HTTP_404_NOT_FOUND, \
     HTTP_500_INTERNAL_SERVER_ERROR
 
-from src.models import DocumentListResponse, DocumentItem, PageLinks, DocumentResponse, Timestamp, \
+from app.models import DocumentListResponse, DocumentItem, PageLinks, DocumentResponse, Timestamp, \
     EventListResponse, EventItem, EventResponse, AccessListResponse, AccessItem, JsonRPCModel, PermissionEnum, VersionEnum, \
     JsonRPCResponse
 
-app = FastAPI()
+router = APIRouter(prefix="/track-and-trace", tags=["track-and-trace"])
 
-@app.post("/jsonrpc", response_model=JsonRPCResponse)
+@router.post("/jsonrpc", response_model=JsonRPCResponse)
 async def rpc(payload: JsonRPCModel):
     return JsonRPCResponse(
         jsonrpc="2.0",
@@ -20,7 +20,7 @@ async def rpc(payload: JsonRPCModel):
     )
 
 
-@app.head("/accesses", responses={
+@router.head("/accesses", responses={
         HTTP_204_NO_CONTENT: {"description": "Success"},
         HTTP_400_BAD_REQUEST: {"description": "Bad Request Error"},
         HTTP_404_NOT_FOUND: {"description": "DID not found in the allowlist"},
@@ -29,7 +29,7 @@ async def rpc(payload: JsonRPCModel):
 async def check_access(creator: Annotated[str, Query()], ):
     return Response(status_code=HTTP_204_NO_CONTENT)
 
-@app.get("/accesses", response_model=AccessListResponse)
+@router.get("/accesses", response_model=AccessListResponse)
 async def read_doc_events(subject: str, page_after: Annotated[str, Query(alias="page[after]")] = None,
                     page_size: Annotated[str, Query(alias="page[size]")] = None):
     items = [
@@ -52,7 +52,7 @@ async def read_doc_events(subject: str, page_after: Annotated[str, Query(alias="
     )
 
 
-@app.get("/documents", response_model=DocumentListResponse)
+@router.get("/documents", response_model=DocumentListResponse)
 async def read_docs(page_after: Annotated[str, Query(alias="page[after]")] = None,
                     page_size: Annotated[str, Query(alias="page[size]")] = None):
     items = [
@@ -77,7 +77,7 @@ async def read_docs(page_after: Annotated[str, Query(alias="page[after]")] = Non
     )
 
 
-@app.get("/documents/{documentId}", response_model=DocumentResponse)
+@router.get("/documents/{documentId}", response_model=DocumentResponse)
 async def read_doc(documentId: str, version: VersionEnum = VersionEnum.latest):
     timestamp = Timestamp(
         datetime="2025-11-25T12:00:00Z",
@@ -91,7 +91,7 @@ async def read_doc(documentId: str, version: VersionEnum = VersionEnum.latest):
         creator="admin"
     )
 
-@app.get("/documents/{documentId}/events", response_model=EventListResponse)
+@router.get("/documents/{documentId}/events", response_model=EventListResponse)
 async def read_doc_events(documentId: str, page_after: Annotated[str, Query(alias="page[after]")] = None,
                     page_size: Annotated[str, Query(alias="page[size]")] = None):
     items = [
@@ -113,7 +113,7 @@ async def read_doc_events(documentId: str, page_after: Annotated[str, Query(alia
         links=links
     )
 
-@app.get("/documents/{documentId}/events/{eventId}", response_model=EventResponse)
+@router.get("/documents/{documentId}/events/{eventId}", response_model=EventResponse)
 async def read_doc_events(documentId: str, eventId: str):
     timestamp = Timestamp(
         datetime="2025-11-25T12:00:00Z",
@@ -130,7 +130,7 @@ async def read_doc_events(documentId: str, eventId: str):
         externalHash="xyz789"
     )
 
-@app.get("/documents/{documentId}/accesses", response_model=AccessListResponse)
+@router.get("/documents/{documentId}/accesses", response_model=AccessListResponse)
 async def read_doc_events(documentId: str, page_after: Annotated[str, Query(alias="page[after]")] = None,
                     page_size: Annotated[str, Query(alias="page[size]")] = None):
     items = [
@@ -153,6 +153,6 @@ async def read_doc_events(documentId: str, page_after: Annotated[str, Query(alia
     )
 
 
-@app.get("/abi")
+@router.get("/abi")
 async def abi():
     pass
