@@ -35,38 +35,44 @@ class BaseRepository(Repository[T]):
         if order_by:
             stmt = stmt.order_by(getattr(self.model, order_by))
         stmt = stmt.offset(offset).limit(limit)
-        return list(db.session.execute(stmt).all())
+        return list(db.session.scalars(stmt))
 
-    def create(self, **data: Any) -> T:
+    def create(self, *, commit=True, **data: Any) -> T:
         obj = self.model(**data)  # type: ignore
         db.session.add(obj)
-        db.session.commit()
+        if commit:
+            db.session.commit()
+        else:
+            db.session.flush()
         db.session.refresh(obj)
         return obj
 
-    def update(self, id: Any, **data: Any) -> T:
+    def update(self, *, commit=True, id: Any, **data: Any) -> T:
         obj = self.get(id)
         if obj is None:
             raise ValueError(f"{self.model.__name__} {id} not found")
         for field, value in data.items():
             setattr(obj, field, value)
         db.session.add(obj)
-        db.session.commit()
+        if commit:
+            db.session.commit()
+        else:
+            db.session.flush()
         db.session.refresh(obj)
         return obj
 
-    def delete(self, id: Any) -> None:
+    def delete(self, *, commit=True, id: Any) -> None:
         obj = self.get(id)
         if obj is None:
             return
         db.session.delete(obj)
-        db.session.commit()
+        if commit:
+            db.session.commit()
+        else:
+            db.session.flush()
 
-    def count(self, *, offset=0, limit=100, order_by=None, **filters: Any) -> int:
-        stmt = select(func.count(self.model))
+    def count(self, **filters: Any) -> int:
+        stmt = select(func.count()).select_from(self.model)
         for field, value in filters.items():
             stmt = stmt.where(getattr(self.model, field) == value)
-        if order_by:
-            stmt = stmt.order_by(getattr(self.model, order_by))
-        stmt = stmt.offset(offset).limit(limit)
         return db.session.scalar(stmt)

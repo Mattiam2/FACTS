@@ -17,6 +17,6 @@ class DocumentListPublic(SQLModel):
 
 
 class DocumentPublic(SQLModel):
-    metadata_json: str = Field(schema_extra={'serialization_alias': 'metadata'})
+    metadata_text: str = Field(schema_extra={'serialization_alias': 'metadata'})
     timestamp: TimestampPublic
     creator: str

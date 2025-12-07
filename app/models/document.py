@@ -8,7 +8,7 @@ class Document(SQLModel, table=True):
     __table_args__ = {'schema': 'public'}
 
     id: str = Field(default=None, primary_key=True)
-    metadata_json: str = Field(schema_extra={'serialization_alias': 'metadata'})
+    metadata_text: str = Field(schema_extra={'serialization_alias': 'metadata'})
     timestamp_datetime: datetime
     timestamp_source: str
     timestamp_proof: str

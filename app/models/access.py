@@ -8,4 +8,4 @@ class Access(AccessBase, table=True):
     __table_args__ = {'schema': 'public'}
 
     id: str = Field(default=None, primary_key=True)
-    document_id: str = Field(foreign_key="documents.id")
+    document_id: str = Field(foreign_key="documents.id", schema_extra={'serialization_alias': 'documentId'})

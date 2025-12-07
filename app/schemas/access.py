@@ -1,16 +1,16 @@
-from sqlmodel import SQLModel
+from sqlmodel import SQLModel, Field
 
 from app.schemas.shared import PermissionEnum, PageLinksPublic
 
 
 class AccessBase(SQLModel):
     subject: str
-    grantedBy: str
+    granted_by: str = Field(schema_extra={'serialization_alias': 'grantedBy'})
     permission: PermissionEnum
 
 
 class AccessItemPublic(AccessBase):
-    documentId: str
+    document_id: str = Field(schema_extra={'serialization_alias': 'documentId'})
 
 
 class AccessListPublic(SQLModel):

@@ -4,11 +4,11 @@ from app.schemas.shared import PageLinksPublic, TimestampPublic
 
 
 class EventBase(SQLModel):
-    metadata_json: str = Field(schema_extra={'serialization_alias': 'metadata'})
+    metadata_text: str = Field(schema_extra={'serialization_alias': 'metadata'})
     sender: str
     origin: str
     hash: str
-    external_hash: str
+    external_hash: str = Field(None, schema_extra={'serialization_alias': 'externalHash'})
 
 
 class EventItemPublic(SQLModel):

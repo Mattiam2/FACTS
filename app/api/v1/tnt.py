@@ -1,13 +1,16 @@
 import math
 
-from fastapi import Response, APIRouter, Depends
+from fastapi import Response, APIRouter, Depends, HTTPException
 from typing import Annotated
 
 from fastapi import Query
 from starlette.status import HTTP_204_NO_CONTENT, HTTP_400_BAD_REQUEST, HTTP_404_NOT_FOUND, \
     HTTP_500_INTERNAL_SERVER_ERROR
 
+from app.core.db import db
+from app.repositories.access import AccessRepository
 from app.repositories.document import DocumentRepository
+from app.repositories.event import EventRepository
 from app.schemas.access import AccessItemPublic, AccessListPublic
 from app.schemas.document import DocumentItemPublic, DocumentListPublic, DocumentPublic
 from app.schemas.event import EventItemPublic, EventListPublic, EventPublic
@@ -16,8 +19,73 @@ from app.schemas.shared import PageLinksPublic, TimestampPublic, VersionEnum
 
 router = APIRouter(prefix="/track-and-trace", tags=["track-and-trace"])
 
+
 @router.post("/jsonrpc")
 async def rpc(payload: JsonRpcCreate) -> JsonRpcPublic:
+    match payload.method:
+        case "authoriseDid":
+            pass
+        case "createDocument":
+            doc_repo = DocumentRepository()
+            docs_params = payload.params
+            for doc in docs_params:
+                doc_id = doc['documentHash']
+                doc_metadata = doc['documentMetadata']
+                doc_creator = doc['didEbsiCreator']
+                doc_timestamp_datetime = doc['timestamp'] if 'timestamp' in doc else None
+                doc_timestamp_proof = doc['timestampProof'] if 'timestampProof' in doc else None
+                doc_repo.create(commit=False, id=doc_id, creator=doc_creator, metadata_text=doc_metadata,
+                                timestamp_datetime=doc_timestamp_datetime, timestamp_proof=doc_timestamp_proof,
+                                timestamp_source=00000000)
+            db.session.commit()
+        case "removeDocument":
+            doc_repo = DocumentRepository()
+            docs_params = payload.params
+            for doc in docs_params:
+                doc_id = doc['documentHash']
+                #eth_from = doc['from']
+                doc_repo.delete(commit=False, id=doc_id)
+            db.session.commit()
+        case "grantAccess":
+            access_repo = AccessRepository()
+            access_params = payload.params
+            for access in access_params:
+                doc_id = access['documentHash']
+                # eth_from = access['from']
+                granted_by = access['grantedByAccount']
+                subject = access['subjectAccount']
+                #granted_by_type = access['grantedByAccType']
+                #subject_type = access['subjectAccType']
+                permission = access['permission']
+                access_repo.create(commit=False, subject=subject, document_id=doc_id, granted_by=granted_by, permission=permission)
+            db.session.commit()
+        case "revokeAccess":
+            access_repo = AccessRepository()
+            access_params = payload.params
+            for access in access_params:
+                doc_id = access['documentHash']
+                revoked_by = access['revokedByAccount']
+                subject = access['subjectAccount']
+                permission = access['permission']
+                revoked_access = access_repo.list(subject=subject, document_id=doc_id, permission=permission)[0]
+                access_repo.delete(commit=False, id=revoked_access.id)
+            db.session.commit()
+        case "writeEvent":
+            event_repo = EventRepository()
+            event_params = payload.params
+            for event in event_params:
+                doc_id = event['documentHash']
+                external_hash = event['externalHash']
+                sender = event['sender']
+                origin = event['origin']
+                metadata = event['metadata']
+                event_repo.create(commit=False, document_id=doc_id, metadata_text=metadata, sender=sender, origin=origin, hash=00000, external_hash=external_hash)
+            db.session.commit()
+        case "sendSignedTransaction":
+            pass
+        case _:
+            raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="Invalid method")
+
     return JsonRpcPublic(
         jsonrpc="2.0",
         id=payload.id,
@@ -26,57 +94,66 @@ async def rpc(payload: JsonRpcCreate) -> JsonRpcPublic:
 
 
 @router.head("/accesses", responses={
-        HTTP_204_NO_CONTENT: {"description": "Success"},
-        HTTP_400_BAD_REQUEST: {"description": "Bad Request Error"},
-        HTTP_404_NOT_FOUND: {"description": "DID not found in the allowlist"},
-        HTTP_500_INTERNAL_SERVER_ERROR: {"description": "Internal Server Error"}
-    })
+    HTTP_204_NO_CONTENT: {"description": "Success"},
+    HTTP_400_BAD_REQUEST: {"description": "Bad Request Error"},
+    HTTP_404_NOT_FOUND: {"description": "DID not found in the allowlist"},
+    HTTP_500_INTERNAL_SERVER_ERROR: {"description": "Internal Server Error"}
+})
 async def check_access(creator: Annotated[str, Query()]):
+    access_repo = AccessRepository()
+    creator_access = access_repo.list(subject=creator)
+
+    if not creator_access:
+        raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="DID not found in the allowlist")
+
     return Response(status_code=HTTP_204_NO_CONTENT)
 
-@router.get("/accesses")
-async def read_doc_events(subject: str, page_after: Annotated[str, Query(alias="page[after]")] = None,
-                    page_size: Annotated[str, Query(alias="page[size]")] = None) -> AccessListPublic:
-    items = [
-        AccessItemPublic(subject=subject, documentId="doc1", grantedBy="admin", permission="write"),
-        AccessItemPublic(subject=subject, documentId="doc2", grantedBy="system", permission="creator"),
-        AccessItemPublic(subject=subject, documentId="doc3", grantedBy="admin", permission="delegate")
-    ]
 
-    links = PageLinksPublic(first=f"/accesses?page[size]=10",
-                            prev=f"/accesses?page[size]=10&page[after]=0",
-                            next=f"/accesses?page[size]=10&page[after]=10",
-                            last=f"/accesses?page[size]=10&page[after]=20")
+@router.get("/accesses")
+async def read_subject_accesses(subject: str, page_after: Annotated[int, Query(alias="page[after]")] = 1,
+                                page_size: Annotated[int, Query(alias="page[size]")] = 10) -> AccessListPublic:
+    access_repo = AccessRepository()
+
+    accesses_count = access_repo.count(subject=subject)
+    n_pages = math.ceil(accesses_count / page_size)
+
+    links = PageLinksPublic(first=f"/accesses?page[after]=1&page[size]={page_size}&subject={subject}",
+                            prev=f"/accesses?page[after]={max(1, page_after - 1)}&page[size]={page_size}&subject={subject}",
+                            next=f"/accesses?page[after]={min(page_after + 1, max(n_pages, 1))}&page[size]={page_size}&subject={subject}",
+                            last=f"/accesses?page[after]={max(n_pages, 1)}&page[size]={page_size}&subject={subject}")
+
+    accesses = access_repo.list(offset=(page_after - 1) * page_size, limit=page_size, subject=subject)
 
     return AccessListPublic(
-        self="/accesses",
-        items=items,
-        total=len(items),
-        pageSize=10,
+        self=f"/accesses?page[after]={page_after}&page[size]={page_size}&subject={subject}",
+        items=accesses,
+        total=accesses_count,
+        pageSize=page_size,
         links=links
     )
 
 
 @router.get("/documents")
-async def read_docs(doc_repo: DocumentRepository = Depends(), page_after: Annotated[int, Query(alias="page[after]")] = 1,
+async def read_docs(page_after: Annotated[int, Query(alias="page[after]")] = 1,
                     page_size: Annotated[int, Query(alias="page[size]")] = 10) -> DocumentListPublic:
-    items = []
+    doc_repo = DocumentRepository()
     docs_count = doc_repo.count()
-    n_pages = math.ceil(docs_count/page_size)
+    n_pages = math.ceil(docs_count / page_size)
 
     links = PageLinksPublic(first=f"/documents?page[after]=1&page[size]={page_size}",
                             prev=f"/documents?page[after]={max(1, page_after - 1)}&page[size]={page_size}",
-                            next=f"/documents?page[after]={max(1, page_after + 1, math.ceil(docs_count/page_size))}&page[size]={page_size}",
-                            last="/documents?page[size]=10&page[after]=20")
+                            next=f"/documents?page[after]={min(page_after + 1, max(n_pages, 1))}&page[size]={page_size}",
+                            last=f"/documents?page[after]={max(n_pages, 1)}&page[size]={page_size}")
 
     docs = doc_repo.list(offset=(page_after - 1) * page_size, limit=page_size)
+    items = []
     for doc in docs:
         items.append(DocumentItemPublic(documentId=doc.id, href=f"/documents/{doc.id}"))
 
     return DocumentListPublic(
-        self="/documents",
+        self=f"/documents?page[after]={page_after}&page[size]={page_size}",
         items=items,
-        total=len(items),
+        total=docs_count,
         pageSize=page_size,
         links=links
     )
@@ -84,76 +161,88 @@ async def read_docs(doc_repo: DocumentRepository = Depends(), page_after: Annota
 
 @router.get("/documents/{documentId}")
 async def read_doc(documentId: str, version: VersionEnum = VersionEnum.latest) -> DocumentPublic:
+    doc_repo = DocumentRepository()
+
+    doc = doc_repo.get(documentId)
+
     timestamp = TimestampPublic(
-        datetime="2025-11-25T12:00:00Z",
-        source="system",
-        proof="hash123456"
+        datetime=doc.timestamp_datetime.isoformat(),
+        source=doc.timestamp_source,
+        proof=doc.timestamp_proof
     )
 
     return DocumentPublic(
-        metadata_json="Sample document metadata",
+        metadata_text=doc.metadata_text,
         timestamp=timestamp,
-        creator="admin"
+        creator=doc.creator
     )
 
-@router.get("/documents/{documentId}/events")
-async def read_doc_events(documentId: str, page_after: Annotated[str, Query(alias="page[after]")] = None,
-                    page_size: Annotated[str, Query(alias="page[size]")] = None) -> EventListPublic:
-    items = [
-        EventItemPublic(eventId="event1", href="/documents/doc1/events/event1"),
-        EventItemPublic(eventId="event2", href="/documents/doc1/events/event2"),
-        EventItemPublic(eventId="event3", href="/documents/doc1/events/event3")
-    ]
 
-    links = PageLinksPublic(first=f"/documents/{documentId}/events?page[size]=10",
-                            prev=f"/documents/{documentId}/events?page[size]=10&page[after]=0",
-                            next=f"/documents/{documentId}/events?page[size]=10&page[after]=10",
-                            last=f"/documents/{documentId}/events?page[size]=10&page[after]=20")
+@router.get("/documents/{documentId}/events")
+async def read_doc_events(documentId: str, page_after: Annotated[int, Query(alias="page[after]")] = 1,
+                          page_size: Annotated[int, Query(alias="page[size]")] = 10) -> EventListPublic:
+    event_repo = EventRepository()
+    events_count = event_repo.count(document_id=documentId)
+    n_pages = math.ceil(events_count / page_size)
+
+    links = PageLinksPublic(first=f"/documents/{documentId}/events?page[after]=1&page[size]={page_size}",
+                            prev=f"/documents/{documentId}/events?page[after]={max(1, page_after - 1)}&page[size]={page_size}",
+                            next=f"/documents/{documentId}/events?page[after]={min(page_after + 1, max(n_pages, 1))}&page[size]={page_size}",
+                            last=f"/documents/{documentId}/events?page[after]={max(n_pages, 1)}&page[size]={page_size}")
+
+    events = event_repo.list(offset=(page_after - 1) * page_size, limit=page_size, document_id=documentId)
+
+    items = []
+    for event in events:
+        items.append(EventItemPublic(eventId=event.id, href=f"/documents/{documentId}/events/{event.id}"))
 
     return EventListPublic(
-        self=f"/documents/{documentId}/events",
+        self=f"/documents/{documentId}/events?page[after]={page_after}&page[size]={page_size}",
         items=items,
-        total=len(items),
-        pageSize=10,
+        total=events_count,
+        pageSize=page_size,
         links=links
     )
 
+
 @router.get("/documents/{documentId}/events/{eventId}")
 async def read_doc_event(documentId: str, eventId: str) -> EventPublic:
+    event_repo = EventRepository()
+
+    events = event_repo.list(id=eventId, document_id=documentId)
+    event = events[0] if events else None
+
     timestamp = TimestampPublic(
-        datetime="2025-11-25T12:00:00Z",
-        source="system",
-        proof="hash123456"
+        datetime=event.timestamp_datetime.isoformat(),
+        source=event.timestamp_source,
+        proof=event.timestamp_proof
     )
 
-    return EventPublic(
-        metadata_json="Sample event metadata",
-        timestamp=timestamp,
-        sender="system",
-        origin="internal",
-        hash="abc123def456",
-        externalHash="xyz789"
-    )
+    event_public = EventPublic(**event.dict(), timestamp=timestamp)
+
+    return event_public
+
 
 @router.get("/documents/{documentId}/accesses")
-async def read_doc_accesses(documentId: str, page_after: Annotated[str, Query(alias="page[after]")] = None,
-                    page_size: Annotated[str, Query(alias="page[size]")] = None) -> AccessListPublic:
-    items = [
-        AccessItemPublic(subject="user1", documentId=documentId, grantedBy="admin", permission=PermissionEnum.write),
-        AccessItemPublic(subject="user2", documentId=documentId, grantedBy="admin", permission=PermissionEnum.delegate),
-        AccessItemPublic(subject="user3", documentId=documentId, grantedBy="system", permission=PermissionEnum.creator)
-    ]
+async def read_doc_accesses(documentId: str, page_after: Annotated[int, Query(alias="page[after]")] = 1,
+                            page_size: Annotated[int, Query(alias="page[size]")] = 10) -> AccessListPublic:
+    access_repo = AccessRepository()
 
-    links = PageLinksPublic(first=f"/documents/{documentId}/accesses?page[size]=10",
-                            prev=f"/documents/{documentId}/accesses?page[size]=10&page[after]=0",
-                            next=f"/documents/{documentId}/accesses?page[size]=10&page[after]=10",
-                            last=f"/documents/{documentId}/accesses?page[size]=10&page[after]=20")
+    accesses_count = access_repo.count(document_id=documentId)
+    n_pages = math.ceil(accesses_count / page_size)
+
+    links = PageLinksPublic(first=f"/documents/{documentId}/accesses?page[after]=1&page[size]={page_size}",
+                            prev=f"/documents/{documentId}/accesses?page[after]={max(1, page_after - 1)}&page[size]={page_size}",
+                            next=f"/documents/{documentId}/accesses?page[after]={min(page_after + 1, max(n_pages, 1))}&page[size]={page_size}",
+                            last=f"/documents/{documentId}/accesses?page[after]={max(n_pages, 1)}&page[size]={page_size}")
+
+    accesses = access_repo.list(document_id=documentId, offset=(page_after - 1) * page_size, limit=page_size)
 
     return AccessListPublic(
-        self=f"/documents/{documentId}/accesses",
-        items=items,
-        total=len(items),
-        pageSize=10,
+        self=f"/documents/{documentId}/accesses?page[after]={page_after}&page[size]={page_size}&documentId={documentId}",
+        items=accesses,
+        total=accesses_count,
+        pageSize=page_size,
         links=links
     )
 
