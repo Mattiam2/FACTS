@@ -1,4 +1,5 @@
 import math
+from datetime import datetime
 
 from fastapi import Response, APIRouter, Depends, HTTPException
 from typing import Annotated
@@ -30,13 +31,15 @@ async def rpc(payload: JsonRpcCreate) -> JsonRpcPublic:
             docs_params = payload.params
             for doc in docs_params:
                 doc_id = doc['documentHash']
-                doc_metadata = doc['documentMetadata']
+                doc_metadata_hex = doc['documentMetadata'][2:]
+                doc_metadata = bytes.fromhex(doc_metadata_hex).decode('utf-8')
                 doc_creator = doc['didEbsiCreator']
-                doc_timestamp_datetime = doc['timestamp'] if 'timestamp' in doc else None
+                doc_timestamp_datetime_hex = doc['timestamp'] if 'timestamp' in doc else None
+                doc_timestamp_datetime = datetime.fromtimestamp(int(doc_timestamp_datetime_hex, 0)) if doc_timestamp_datetime_hex else None
                 doc_timestamp_proof = doc['timestampProof'] if 'timestampProof' in doc else None
                 doc_repo.create(commit=False, id=doc_id, creator=doc_creator, metadata_text=doc_metadata,
                                 timestamp_datetime=doc_timestamp_datetime, timestamp_proof=doc_timestamp_proof,
-                                timestamp_source=00000000)
+                                timestamp_source="block")
             db.session.commit()
         case "removeDocument":
             doc_repo = DocumentRepository()
@@ -52,8 +55,10 @@ async def rpc(payload: JsonRpcCreate) -> JsonRpcPublic:
             for access in access_params:
                 doc_id = access['documentHash']
                 # eth_from = access['from']
-                granted_by = access['grantedByAccount']
-                subject = access['subjectAccount']
+                granted_by_hex = access['grantedByAccount'][2:]
+                granted_by = bytes.fromhex(granted_by_hex).decode('utf-8')
+                subject_hex = access['subjectAccount'][2:]
+                subject = bytes.fromhex(subject_hex).decode('utf-8')
                 #granted_by_type = access['grantedByAccType']
                 #subject_type = access['subjectAccType']
                 permission = access['permission']
@@ -64,8 +69,10 @@ async def rpc(payload: JsonRpcCreate) -> JsonRpcPublic:
             access_params = payload.params
             for access in access_params:
                 doc_id = access['documentHash']
-                revoked_by = access['revokedByAccount']
-                subject = access['subjectAccount']
+                revoked_by_hex = access['revokedByAccount'][2:]
+                revoked_by = bytes.fromhex(revoked_by_hex).decode('utf-8')
+                subject_hex = access['subjectAccount'][2:]
+                subject = bytes.fromhex(subject_hex).decode('utf-8')
                 permission = access['permission']
                 revoked_access = access_repo.list(subject=subject, document_id=doc_id, permission=permission)[0]
                 access_repo.delete(commit=False, id=revoked_access.id)
@@ -74,12 +81,17 @@ async def rpc(payload: JsonRpcCreate) -> JsonRpcPublic:
             event_repo = EventRepository()
             event_params = payload.params
             for event in event_params:
-                doc_id = event['documentHash']
-                external_hash = event['externalHash']
-                sender = event['sender']
-                origin = event['origin']
-                metadata = event['metadata']
-                event_repo.create(commit=False, document_id=doc_id, metadata_text=metadata, sender=sender, origin=origin, hash=00000, external_hash=external_hash)
+                doc_id = event['eventParams'][0]['documentHash']
+                external_hash = event['eventParams'][0]['externalHash']
+                sender_hex = event['eventParams'][0]['sender'][2:]
+                sender = bytes.fromhex(sender_hex).decode('utf-8')
+                origin = event['eventParams'][0]['origin']
+                metadata = event['eventParams'][0]['metadata']
+                event_timestamp_datetime_hex = event['timestamp'] if 'timestamp' in event else None
+                event_timestamp_datetime = datetime.fromtimestamp(
+                    int(event_timestamp_datetime_hex, 0)) if event_timestamp_datetime_hex else None
+                event_timestamp_proof = event['timestampProof'] if 'timestampProof' in event else None
+                event_repo.create(commit=False, document_id=doc_id, metadata_text=metadata, sender=sender, origin=origin, hash=00000, external_hash=external_hash, timestamp_datetime=event_timestamp_datetime, timestamp_proof=event_timestamp_proof, timestamp_source="block")
             db.session.commit()
         case "sendSignedTransaction":
             pass
