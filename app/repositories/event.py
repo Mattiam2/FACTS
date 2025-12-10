@@ -1,4 +1,4 @@
-from app.models.event import Event
+from app.models import Event
 from app.repositories.base import BaseRepository
 
 

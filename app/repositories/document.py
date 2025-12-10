@@ -1,4 +1,4 @@
-from app.models.document import Document
+from app.models import Document
 from app.repositories.base import BaseRepository
 
 

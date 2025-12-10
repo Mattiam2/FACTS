@@ -12,7 +12,7 @@ from app.core.db import db
 from app.repositories.access import AccessRepository
 from app.repositories.document import DocumentRepository
 from app.repositories.event import EventRepository
-from app.schemas.access import AccessItemPublic, AccessListPublic
+from app.schemas.access import AccessListPublic
 from app.schemas.document import DocumentItemPublic, DocumentListPublic, DocumentPublic
 from app.schemas.event import EventItemPublic, EventListPublic, EventPublic
 from app.schemas.jsonrpc import JsonRpcCreate, JsonRpcPublic
@@ -61,7 +61,7 @@ async def rpc(payload: JsonRpcCreate) -> JsonRpcPublic:
                 subject = bytes.fromhex(subject_hex).decode('utf-8')
                 #granted_by_type = access['grantedByAccType']
                 #subject_type = access['subjectAccType']
-                permission = access['permission']
+                permission = "write" if int(access['permission'], 0) else "delegate"
                 access_repo.create(commit=False, subject=subject, document_id=doc_id, granted_by=granted_by, permission=permission)
             db.session.commit()
         case "revokeAccess":
@@ -73,7 +73,7 @@ async def rpc(payload: JsonRpcCreate) -> JsonRpcPublic:
                 revoked_by = bytes.fromhex(revoked_by_hex).decode('utf-8')
                 subject_hex = access['subjectAccount'][2:]
                 subject = bytes.fromhex(subject_hex).decode('utf-8')
-                permission = access['permission']
+                permission = "write" if int(access['permission'], 0) else "delegate"
                 revoked_access = access_repo.list(subject=subject, document_id=doc_id, permission=permission)[0]
                 access_repo.delete(commit=False, id=revoked_access.id)
             db.session.commit()

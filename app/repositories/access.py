@@ -1,4 +1,4 @@
-from app.models.access import Access
+from app.models import Access
 from app.repositories.base import BaseRepository
 
 
