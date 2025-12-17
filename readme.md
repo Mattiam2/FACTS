@@ -15,7 +15,7 @@ The project is developed in Python using the [FastAPI](https://fastapi.tiangolo.
 JavaScript using the [VueJS](https://vuejs.org/) for the frontend.
 The EBSI Blockchain is simulated using FastAPI and a PostgreSQL database, including all the CRUD actions.
 
-EBSI FactChecker is composed of 4 fastapi applications:
+EBSI FactChecker is composed of 4 FastAPI applications:
 
 - **EBSI**: this application simulates the EBSI Blockchain, in particular Authorisation API and Track'n'Trace API.
 - **FACTS-Publish**: this application allows publishers (i.e. news agencies) to register their digital content (e.g.
