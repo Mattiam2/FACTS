@@ -2,7 +2,7 @@ from datetime import datetime
 
 from sqlmodel import Field
 
-from app.schemas.event import EventBase
+from ebsi_sim.schemas.event import EventBase
 
 
 class Event(EventBase, table=True):

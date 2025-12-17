@@ -1,5 +1,5 @@
-from app.models import Document
-from app.repositories.base import BaseRepository
+from ebsi_sim.models import Document
+from ebsi_sim.repositories.base import BaseRepository
 
 
 class DocumentRepository(BaseRepository[Document]):

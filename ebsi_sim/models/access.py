@@ -1,7 +1,7 @@
 from sqlalchemy import Identity
 from sqlmodel import Field
 
-from app.schemas.access import AccessBase
+from ebsi_sim.schemas.access import AccessBase
 
 class Access(AccessBase, table=True):
     __tablename__ = "accesses"

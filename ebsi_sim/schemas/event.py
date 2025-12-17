@@ -1,6 +1,6 @@
 from sqlmodel import SQLModel, Field
 
-from app.schemas.shared import PageLinksPublic, TimestampPublic
+from ebsi_sim.schemas.shared import PageLinksPublic, TimestampPublic
 
 
 class EventBase(SQLModel):

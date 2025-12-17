@@ -8,15 +8,15 @@ from fastapi import Query
 from starlette.status import HTTP_204_NO_CONTENT, HTTP_400_BAD_REQUEST, HTTP_404_NOT_FOUND, \
     HTTP_500_INTERNAL_SERVER_ERROR
 
-from app.core.db import db
-from app.repositories.access import AccessRepository
-from app.repositories.document import DocumentRepository
-from app.repositories.event import EventRepository
-from app.schemas.access import AccessListPublic
-from app.schemas.document import DocumentItemPublic, DocumentListPublic, DocumentPublic
-from app.schemas.event import EventItemPublic, EventListPublic, EventPublic
-from app.schemas.jsonrpc import JsonRpcCreate, JsonRpcPublic
-from app.schemas.shared import PageLinksPublic, TimestampPublic, VersionEnum
+from ebsi_sim.core.db import db
+from ebsi_sim.repositories.access import AccessRepository
+from ebsi_sim.repositories.document import DocumentRepository
+from ebsi_sim.repositories.event import EventRepository
+from ebsi_sim.schemas.access import AccessListPublic
+from ebsi_sim.schemas.document import DocumentItemPublic, DocumentListPublic, DocumentPublic
+from ebsi_sim.schemas.event import EventItemPublic, EventListPublic, EventPublic
+from ebsi_sim.schemas.jsonrpc import JsonRpcCreate, JsonRpcPublic
+from ebsi_sim.schemas.shared import PageLinksPublic, TimestampPublic, VersionEnum
 
 router = APIRouter(prefix="/track-and-trace", tags=["track-and-trace"])
 

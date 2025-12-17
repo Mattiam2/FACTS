@@ -2,7 +2,7 @@ from typing import Any, Generic, Iterable, Type, TypeVar
 from abc import ABC, abstractmethod
 from sqlmodel import SQLModel, select, func
 
-from app.core.db import db
+from ebsi_sim.core.db import db
 
 T = TypeVar("T", bound=SQLModel)
 

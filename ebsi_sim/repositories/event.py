@@ -1,5 +1,5 @@
-from app.models import Event
-from app.repositories.base import BaseRepository
+from ebsi_sim.models import Event
+from ebsi_sim.repositories.base import BaseRepository
 
 
 class EventRepository(BaseRepository[Event]):
