@@ -21,7 +21,8 @@ from ebsi_sim.schemas.shared import PageLinksPublic, TimestampPublic, VersionEnu
 router = APIRouter(prefix="/track-and-trace", tags=["track-and-trace"])
 
 
-@router.post("/jsonrpc")
+@router.post("/jsonrpc",
+             description="The JSON-RPC API provides methods assisting the construction of blockchain transactions and interaction with the ledger, i.e. write operation on ledger.")
 async def rpc(payload: JsonRpcCreate) -> JsonRpcPublic:
     match payload.method:
         case "authoriseDid":
@@ -35,7 +36,8 @@ async def rpc(payload: JsonRpcCreate) -> JsonRpcPublic:
                 doc_metadata = bytes.fromhex(doc_metadata_hex).decode('utf-8')
                 doc_creator = doc['didEbsiCreator']
                 doc_timestamp_datetime_hex = doc['timestamp'] if 'timestamp' in doc else None
-                doc_timestamp_datetime = datetime.fromtimestamp(int(doc_timestamp_datetime_hex, 0)) if doc_timestamp_datetime_hex else None
+                doc_timestamp_datetime = datetime.fromtimestamp(
+                    int(doc_timestamp_datetime_hex, 0)) if doc_timestamp_datetime_hex else None
                 doc_timestamp_proof = doc['timestampProof'] if 'timestampProof' in doc else None
                 doc_repo.create(commit=False, id=doc_id, creator=doc_creator, metadata_text=doc_metadata,
                                 timestamp_datetime=doc_timestamp_datetime, timestamp_proof=doc_timestamp_proof,
@@ -46,7 +48,7 @@ async def rpc(payload: JsonRpcCreate) -> JsonRpcPublic:
             docs_params = payload.params
             for doc in docs_params:
                 doc_id = doc['documentHash']
-                #eth_from = doc['from']
+                # eth_from = doc['from']
                 doc_repo.delete(commit=False, id=doc_id)
             db.session.commit()
         case "grantAccess":
@@ -59,10 +61,11 @@ async def rpc(payload: JsonRpcCreate) -> JsonRpcPublic:
                 granted_by = bytes.fromhex(granted_by_hex).decode('utf-8')
                 subject_hex = access['subjectAccount'][2:]
                 subject = bytes.fromhex(subject_hex).decode('utf-8')
-                #granted_by_type = access['grantedByAccType']
-                #subject_type = access['subjectAccType']
+                # granted_by_type = access['grantedByAccType']
+                # subject_type = access['subjectAccType']
                 permission = "write" if int(access['permission'], 0) else "delegate"
-                access_repo.create(commit=False, subject=subject, document_id=doc_id, granted_by=granted_by, permission=permission)
+                access_repo.create(commit=False, subject=subject, document_id=doc_id, granted_by=granted_by,
+                                   permission=permission)
             db.session.commit()
         case "revokeAccess":
             access_repo = AccessRepository()
@@ -91,7 +94,10 @@ async def rpc(payload: JsonRpcCreate) -> JsonRpcPublic:
                 event_timestamp_datetime = datetime.fromtimestamp(
                     int(event_timestamp_datetime_hex, 0)) if event_timestamp_datetime_hex else None
                 event_timestamp_proof = event['timestampProof'] if 'timestampProof' in event else None
-                event_repo.create(commit=False, document_id=doc_id, metadata_text=metadata, sender=sender, origin=origin, hash=00000, external_hash=external_hash, timestamp_datetime=event_timestamp_datetime, timestamp_proof=event_timestamp_proof, timestamp_source="block")
+                event_repo.create(commit=False, document_id=doc_id, metadata_text=metadata, sender=sender,
+                                  origin=origin, hash=00000, external_hash=external_hash,
+                                  timestamp_datetime=event_timestamp_datetime, timestamp_proof=event_timestamp_proof,
+                                  timestamp_source="block")
             db.session.commit()
         case "sendSignedTransaction":
             pass
@@ -105,12 +111,13 @@ async def rpc(payload: JsonRpcCreate) -> JsonRpcPublic:
     )
 
 
-@router.head("/accesses", responses={
-    HTTP_204_NO_CONTENT: {"description": "Success"},
-    HTTP_400_BAD_REQUEST: {"description": "Bad Request Error"},
-    HTTP_404_NOT_FOUND: {"description": "DID not found in the allowlist"},
-    HTTP_500_INTERNAL_SERVER_ERROR: {"description": "Internal Server Error"}
-})
+@router.head("/accesses", description="Checks if the DID is included in the allowlist of TnT Document creators or not.",
+             responses={
+                 HTTP_204_NO_CONTENT: {"description": "Success"},
+                 HTTP_400_BAD_REQUEST: {"description": "Bad Request Error"},
+                 HTTP_404_NOT_FOUND: {"description": "DID not found in the allowlist"},
+                 HTTP_500_INTERNAL_SERVER_ERROR: {"description": "Internal Server Error"},
+             })
 async def check_access(creator: Annotated[str, Query()]):
     access_repo = AccessRepository()
     creator_access = access_repo.list(subject=creator)
@@ -121,7 +128,7 @@ async def check_access(creator: Annotated[str, Query()]):
     return Response(status_code=HTTP_204_NO_CONTENT)
 
 
-@router.get("/accesses")
+@router.get("/accesses", description="Get accesses filtered by subject.")
 async def read_subject_accesses(subject: str, page_after: Annotated[int, Query(alias="page[after]")] = 1,
                                 page_size: Annotated[int, Query(alias="page[size]")] = 10) -> AccessListPublic:
     access_repo = AccessRepository()
@@ -145,7 +152,7 @@ async def read_subject_accesses(subject: str, page_after: Annotated[int, Query(a
     )
 
 
-@router.get("/documents")
+@router.get("/documents", description="Returns a list of documents.")
 async def read_docs(page_after: Annotated[int, Query(alias="page[after]")] = 1,
                     page_size: Annotated[int, Query(alias="page[size]")] = 10) -> DocumentListPublic:
     doc_repo = DocumentRepository()
@@ -171,7 +178,7 @@ async def read_docs(page_after: Annotated[int, Query(alias="page[after]")] = 1,
     )
 
 
-@router.get("/documents/{documentId}")
+@router.get("/documents/{documentId}", description="Gets the document corresponding to the ID.")
 async def read_doc(documentId: str, version: VersionEnum = VersionEnum.latest) -> DocumentPublic:
     doc_repo = DocumentRepository()
 
@@ -190,7 +197,7 @@ async def read_doc(documentId: str, version: VersionEnum = VersionEnum.latest) -
     )
 
 
-@router.get("/documents/{documentId}/events")
+@router.get("/documents/{documentId}/events", description="Returns a list of events.")
 async def read_doc_events(documentId: str, page_after: Annotated[int, Query(alias="page[after]")] = 1,
                           page_size: Annotated[int, Query(alias="page[size]")] = 10) -> EventListPublic:
     event_repo = EventRepository()
@@ -217,7 +224,7 @@ async def read_doc_events(documentId: str, page_after: Annotated[int, Query(alia
     )
 
 
-@router.get("/documents/{documentId}/events/{eventId}")
+@router.get("/documents/{documentId}/events/{eventId}", description="Gets the event corresponding to the document ID and event ID.")
 async def read_doc_event(documentId: str, eventId: str) -> EventPublic:
     event_repo = EventRepository()
 
@@ -235,7 +242,7 @@ async def read_doc_event(documentId: str, eventId: str) -> EventPublic:
     return event_public
 
 
-@router.get("/documents/{documentId}/accesses")
+@router.get("/documents/{documentId}/accesses", description="Returns a list of accesses related to the document.")
 async def read_doc_accesses(documentId: str, page_after: Annotated[int, Query(alias="page[after]")] = 1,
                             page_size: Annotated[int, Query(alias="page[size]")] = 10) -> AccessListPublic:
     access_repo = AccessRepository()

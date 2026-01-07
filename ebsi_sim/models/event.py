@@ -7,11 +7,7 @@ from ebsi_sim.schemas.event import EventBase
 
 class Event(EventBase, table=True):
     """
-    Represents an EBSI event model for storing and managing events.
-
-    This class defines the structure and attributes of an event entity in the database.
-    It includes details such as event identifiers, associated document information,
-    timestamps, and additional metadata about the event.
+    Represents an EBSI Event model for storing and managing events.
 
     :ivar id: Unique identifier for the event.
     :ivar document_id: Identifier for the associated document.

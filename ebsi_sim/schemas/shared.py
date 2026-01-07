@@ -5,7 +5,7 @@ from sqlmodel import SQLModel
 
 class TimestampPublic(SQLModel):
     """
-    Represents a public timestamp record.
+    Represents a public timestamp model.
 
     This class models a timestamp object containing the datetime of creation,
     the source of the timestamp, and a proof of its existence.

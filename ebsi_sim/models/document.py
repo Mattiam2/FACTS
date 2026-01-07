@@ -5,10 +5,7 @@ from sqlmodel import SQLModel, Field
 
 class Document(SQLModel, table=True):
     """
-    Represents an EBSI document model for storing and managing documents.
-
-    It includes information such as unique identifier, metadata, timestamps,
-    and creator details.
+    Represents an EBSI Document model for storing and managing documents.
 
     :ivar id: The unique identifier for the document.
     :type id: str

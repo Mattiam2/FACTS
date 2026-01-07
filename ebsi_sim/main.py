@@ -14,11 +14,6 @@ async def db_session_handler(request: Request, call_next: Callable[[Request], Aw
     """
     Middleware for managing a database session in the context of HTTP requests.
 
-    This middleware ensures that a database session is created and associated
-    with the request context, allowing for database operations during the
-    lifecycle of the request. The session is cleaned up and closed once the
-    request is processed.
-
     :param request: The incoming HTTP request.
     :type request: Request
     :param call_next: A callable allowing the request to proceed to the next
