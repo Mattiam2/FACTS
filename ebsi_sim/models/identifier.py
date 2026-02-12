@@ -26,27 +26,6 @@ class IdentifierController(SQLModel, table=True):
     __table_args__ = {'schema': 'public'}
 
     id: int = Field(primary_key=True, default=None)
-    identifier_id: str = Field(primary_key=True, foreign_key="public.identifiers.did")
+    identifier_did: str = Field(primary_key=True, foreign_key="public.identifiers.did")
     did_controller: str = Field(primary_key=True, foreign_key="public.identifiers.did")
-
-class VerificationMethod(SQLModel, table=True):
-    __tablename__ = "verification_methods"
-    __table_args__ = {'schema': 'public'}
-
-    id: str = Field(primary_key=True)
-    type: str
-    did_controller: str = Field(foreign_key="public.identifiers.did")
-    public_key: str
-    issecp256k1: bool
-
-class VerificationRelationship(SQLModel, table=True):
-    __tablename__ = "verification_relationships"
-    __table_args__ = {'schema': 'public'}
-
-    id: int = Field(primary_key=True, default=None)
-    identifier_did: str = Field(foreign_key="public.identifiers.did")
-    name: str
-    vmethodid: str = Field(foreign_key="public.verification_methods.id")
-    notbefore: datetime
-    notafter: datetime
 

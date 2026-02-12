@@ -1,7 +1,7 @@
 from sqlmodel import SQLModel, Field
 
-from ebsi_sim.models import VerificationMethod
-from ebsi_sim.schemas.shared import PermissionEnum, PageLinksPublic
+from ebsi_sim.schemas.shared import PageLinksPublic
+from ebsi_sim.schemas.verification_method import VerificationMethodBase
 
 
 class IdentifierBase(SQLModel):
@@ -16,8 +16,8 @@ class IdentifierBase(SQLModel):
 class IdentifierPublic(IdentifierBase):
 
     did: str = Field(schema_extra={'serialization_alias': 'id'})
-    controller: list[str]
-    verificationMethod: list[VerificationMethod]
+    controller: list[str] | None = None
+    verificationMethod: list[VerificationMethodBase] | None = None
     authentication: list[str] | None = None
     assertionMethod: list[str] | None = None
     capabilityInvocation: list[str] | None = None

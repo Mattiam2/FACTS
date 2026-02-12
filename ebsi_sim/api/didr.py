@@ -17,7 +17,7 @@ from ebsi_sim.repositories.identifier import IdentifierRepository, VerificationR
 from ebsi_sim.schemas.access import AccessListPublic
 from ebsi_sim.schemas.document import DocumentItemPublic, DocumentListPublic, DocumentPublic
 from ebsi_sim.schemas.event import EventItemPublic, EventListPublic, EventPublic
-from ebsi_sim.schemas.identifier import IdentifierListPublic, IdentifierPublic
+from ebsi_sim.schemas.identifier import IdentifierListPublic, IdentifierPublic, IdentifierItemPublic
 from ebsi_sim.schemas.jsonrpc import JsonRpcCreate, JsonRpcPublic
 from ebsi_sim.schemas.shared import PageLinksPublic, TimestampPublic, VersionEnum
 
@@ -34,16 +34,19 @@ async def rpc(payload: JsonRpcCreate) -> JsonRpcPublic:
                 doc_from = doc['from']
                 doc_did = doc['did']
                 doc_base_document = doc['baseDocument']
-                doc_vmethod = doc['vMethodId']
+                doc_vmethod_id = doc['vMethodId']
                 doc_pkey = doc['publicKey']
                 doc_is_secp256k1 = doc['isSecp256k1']
-                doc_not_before = doc['notBefore']
-                doc_not_after = doc['notAfter']
+                doc_not_before = datetime.fromtimestamp(doc['notBefore'])
+                doc_not_after = datetime.fromtimestamp(doc['notAfter'])
 
                 did_repo = IdentifierRepository()
-                did_repo.create(commit=False, id=doc_did, context=doc_base_document)
+                did_repo.create(commit=False, did=doc_did, context=doc_base_document)
 
-                full_vmethod_id = f"{doc_did}#{doc_vmethod}"
+                did_controller_repo = IdentifierControllerRepository()
+                did_controller_repo.create(commit=False, identifier_did=doc_did, did_controller=doc_did)
+
+                full_vmethod_id = f"{doc_did}#{doc_vmethod_id}"
 
                 vmethod_repo = VerificationMethodRepository()
                 vmethod_repo.create(commit=False, id=full_vmethod_id, did_controller=doc_did, type="JsonWebKey2020",
@@ -155,8 +158,8 @@ async def rpc(payload: JsonRpcCreate) -> JsonRpcPublic:
 async def read_identifiers(page_after: Annotated[int, Query(alias="page[after]")] = 1,
                            page_size: Annotated[int, Query(alias="page[size]")] = 10,
                            controller: str | None = None) -> IdentifierListPublic:
-    did_repo = IdentifierRepository()
-    dids_count = did_repo.count(controller=controller)
+    did_repo = IdentifierControllerRepository()
+    dids_count = did_repo.count(did_controller=controller)
     n_pages = math.ceil(dids_count / page_size)
 
     links = PageLinksPublic(first=f"/identifiers?page[after]=1&page[size]={page_size}",
@@ -164,10 +167,10 @@ async def read_identifiers(page_after: Annotated[int, Query(alias="page[after]")
                             next=f"/identifiers?page[after]={min(page_after + 1, max(n_pages, 1))}&page[size]={page_size}",
                             last=f"/identifiers?page[after]={max(n_pages, 1)}&page[size]={page_size}")
 
-    dids = did_repo.list(controller=controller, offset=(page_after - 1) * page_size, limit=page_size)
+    dids = did_repo.list(did_controller=controller, offset=(page_after - 1) * page_size, limit=page_size)
     items = []
     for d in dids:
-        items.append(DocumentItemPublic(documentId=d.id, href=f"/identifiers/{d.id}"))
+        items.append(IdentifierItemPublic(did=d.identifier_did, href=f"/identifiers/{d.identifier_did}"))
 
     return IdentifierListPublic(
         self=f"/identifiers?page[after]={page_after}&page[size]={page_size}",
@@ -181,22 +184,25 @@ async def read_identifiers(page_after: Annotated[int, Query(alias="page[after]")
 @router.get("/identifiers/{did}", description="Gets the document corresponding to the ID.")
 async def read_identifier(did: str, valid_at=None) -> IdentifierPublic:
     did_repo = IdentifierRepository()
+    did_controller_repo = IdentifierControllerRepository()
     vmethod_repo = VerificationMethodRepository()
     vrelationship_repo = VerificationRelationshipRepository()
 
     identifier = did_repo.get(did)
+    did_controllers = did_controller_repo.list(identifier_did=did)
     vmethods = vmethod_repo.list(did_controller=did)
     vrelationships = vrelationship_repo.list(identifier_did=did)
 
     return IdentifierPublic(
         did=identifier.did,
+        controller=[did_controller.did_controller for did_controller in did_controllers],
         context=identifier.context,
-        vmethods=vmethods,
-        authentication=[vrel for vrel in vrelationships if vrel.name == "authentication"],
-        assertionMethod=[vrel for vrel in vrelationships if vrel.name == "assertionMethod"],
-        keyAgreement=[vrel for vrel in vrelationships if vrel.name == "keyAgreement"],
-        capabilityInvocation=[vrel for vrel in vrelationships if vrel.name == "capabilityInvocation"],
-        capabilityDelegation=[vrel for vrel in vrelationships if vrel.name == "capabilityDelegation"]
+        verificationMethod=vmethods,
+        authentication=[vrel.vmethodid for vrel in vrelationships if vrel.name == "authentication"],
+        assertionMethod=[vrel.vmethodid for vrel in vrelationships if vrel.name == "assertionMethod"],
+        keyAgreement=[vrel.vmethodid for vrel in vrelationships if vrel.name == "keyAgreement"],
+        capabilityInvocation=[vrel.vmethodid for vrel in vrelationships if vrel.name == "capabilityInvocation"],
+        capabilityDelegation=[vrel.vmethodid for vrel in vrelationships if vrel.name == "capabilityDelegation"]
     )
 
 

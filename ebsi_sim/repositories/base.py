@@ -78,7 +78,8 @@ class BaseRepository(Repository[T]):
         """
         stmt = select(self.model)
         for field, value in filters.items():
-            stmt = stmt.where(getattr(self.model, field) == value)
+            if value is not None:
+                stmt = stmt.where(getattr(self.model, field) == value)
         if order_by:
             stmt = stmt.order_by(getattr(self.model, order_by))
         stmt = stmt.offset(offset).limit(limit)
@@ -182,5 +183,6 @@ class BaseRepository(Repository[T]):
         """
         stmt = select(func.count()).select_from(self.model)
         for field, value in filters.items():
-            stmt = stmt.where(getattr(self.model, field) == value)
+            if value is not None:
+                stmt = stmt.where(getattr(self.model, field) == value)
         return db.session.scalar(stmt)

@@ -21,6 +21,18 @@ class MethodEnum(str, Enum):
     revokeAccess = "revokeAccess"
     writeEvent = "writeEvent"
     sendSignedTransaction = "sendSignedTransaction"
+
+    insertDidDocument = "insertDidDocument"
+    updateBaseDocument = "updateBaseDocument"
+    addService = "addService"
+    revokeService = "revokeService"
+    addController = "addController"
+    revokeController = "revokeController"
+    addVerificationMethod = "addVerificationMethod"
+    revokeVerificationMethod = "revokeVerificationMethod"
+    expireVerificationMethod = "expireVerificationMethod"
+    addVerificationRelationship = "addVerificationRelationship"
+    rollVerificationMethod = "rollVerificationMethod"
     checkController = "checkController"
 
 
