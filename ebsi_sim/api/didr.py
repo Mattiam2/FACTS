@@ -67,11 +67,7 @@ async def rpc(payload: JsonRpcCreate) -> JsonRpcPublic:
                 did_repo.update(commit=False, id=doc_did, context=doc_base_document)
             db.session.commit()
         case "addService":
-            service_params = payload.params
-            for service in service_params:
-                service_from = service['from']
-                service_did = service['did']
-                service_content = service['type']
+            pass
         case "revokeService":
             pass
         case "addController":
@@ -117,8 +113,8 @@ async def rpc(payload: JsonRpcCreate) -> JsonRpcPublic:
                 doc_did = doc['did']
                 doc_name = doc['name']
                 doc_vmethod_id = doc['vMethodId']
-                doc_not_before = doc['notBefore']
-                doc_not_after = doc['notAfter']
+                doc_not_before = datetime.fromtimestamp(doc['notBefore'])
+                doc_not_after = datetime.fromtimestamp(doc['notAfter'])
 
                 full_vmethod_id = f"{doc_did}#{doc_vmethod_id}"
                 vrelationship_repo = VerificationRelationshipRepository()
@@ -131,14 +127,12 @@ async def rpc(payload: JsonRpcCreate) -> JsonRpcPublic:
                 doc_from = doc['from']
                 doc_did = doc['did']
                 doc_vmethod_id = doc['vMethodId']
-                doc_not_after = doc['notAfter']
-                if payload.method == "revokeVerificationMethod":
-                    doc_not_after = None
+                doc_not_after = datetime.fromtimestamp(doc['notAfter'])
 
                 full_vmethod_id = f"{doc_did}#{doc_vmethod_id}"
-                vrelationship_repo = VerificationRelationshipRepository()
-                vrel = vrelationship_repo.get(id=full_vmethod_id)
-                vrelationship_repo.update(commit=False, id=vrel.id, notafter=doc_not_after)
+                vmethod_repo = VerificationMethodRepository()
+                vmethod = vmethod_repo.get(id=full_vmethod_id)
+                vmethod_repo.update(commit=False, id=vmethod.id, notafter=doc_not_after)
             db.session.commit()
         case "rollVerificationMethod":
             pass

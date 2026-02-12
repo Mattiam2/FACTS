@@ -11,6 +11,7 @@ class VerificationMethod(VerificationMethodBase, table=True):
     id: str = Field(primary_key=True)
     did_controller: str = Field(foreign_key="public.identifiers.did", schema_extra={'serialization_alias': 'controller'})
     issecp256k1: bool
+    notafter: datetime
 
 class VerificationRelationship(VerificationRelationshipBase, table=True):
     __tablename__ = "verification_relationships"
