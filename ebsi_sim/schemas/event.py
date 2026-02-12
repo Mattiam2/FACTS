@@ -23,7 +23,7 @@ class EventBase(SQLModel):
     sender: str
     origin: str
     hash: str
-    external_hash: str = Field(None, schema_extra={'serialization_alias': 'externalHash'})
+    external_hash: str | None = Field(None, schema_extra={'serialization_alias': 'externalHash'})
 
 
 class EventItemPublic(SQLModel):

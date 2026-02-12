@@ -21,6 +21,7 @@ class MethodEnum(str, Enum):
     revokeAccess = "revokeAccess"
     writeEvent = "writeEvent"
     sendSignedTransaction = "sendSignedTransaction"
+    checkController = "checkController"
 
 
 class JsonRpcCreate(SQLModel):

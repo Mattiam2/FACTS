@@ -3,10 +3,10 @@ from typing import Callable, Awaitable
 from fastapi import FastAPI, Request, Response
 from sqlmodel import Session
 
-from ebsi_sim.api.v1.tnt import router as tntapp
+from ebsi_sim.api.tnt import router as tntapp
 from ebsi_sim.core.db import engine, session_ctx
 
-app = FastAPI(root_path="/v1")
+app = FastAPI()
 app.include_router(tntapp)
 
 @app.middleware("http")
