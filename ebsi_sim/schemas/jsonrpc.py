@@ -1,5 +1,6 @@
 from enum import Enum
 
+from pydantic import conlist
 from sqlmodel import SQLModel
 
 
@@ -57,7 +58,7 @@ class JsonRpcCreate(SQLModel):
     jsonrpc: str
     id: int
     method: MethodEnum
-    params: list[dict]
+    params: conlist(dict, min_length=1)
 
 
 class JsonRpcPublic(SQLModel):

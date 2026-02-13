@@ -1,27 +1,255 @@
 import math
 from datetime import datetime
 
-from fastapi import Response, APIRouter, Depends, HTTPException
-from typing import Annotated, Optional
+from web3 import Web3
+from fastapi import APIRouter, HTTPException
+from typing import Annotated
 
 from fastapi import Query
-from starlette.status import HTTP_204_NO_CONTENT, HTTP_400_BAD_REQUEST, HTTP_404_NOT_FOUND, \
-    HTTP_500_INTERNAL_SERVER_ERROR
+from starlette.status import HTTP_400_BAD_REQUEST
 
 from ebsi_sim.core.db import db
-from ebsi_sim.repositories.access import AccessRepository
-from ebsi_sim.repositories.document import DocumentRepository
-from ebsi_sim.repositories.event import EventRepository
 from ebsi_sim.repositories.identifier import IdentifierRepository, VerificationRelationshipRepository, \
     VerificationMethodRepository, IdentifierControllerRepository
-from ebsi_sim.schemas.access import AccessListPublic
-from ebsi_sim.schemas.document import DocumentItemPublic, DocumentListPublic, DocumentPublic
-from ebsi_sim.schemas.event import EventItemPublic, EventListPublic, EventPublic
 from ebsi_sim.schemas.identifier import IdentifierListPublic, IdentifierPublic, IdentifierItemPublic
 from ebsi_sim.schemas.jsonrpc import JsonRpcCreate, JsonRpcPublic
-from ebsi_sim.schemas.shared import PageLinksPublic, TimestampPublic, VersionEnum
+from ebsi_sim.schemas.shared import PageLinksPublic
 
+from ebsi_sim.services import didr
+
+w3 = Web3()
 router = APIRouter(prefix="/did-registry", tags=["did-registry"])
+
+register_address = "0x823BBc0ceE3dE3B61AcfA0CEedb951AB9a013F05"
+
+ABI = [
+    {"inputs": [{"internalType": "address", "name": "_tprAddress", "type": "address"}], "stateMutability": "nonpayable",
+     "type": "constructor"}, {"anonymous": False,
+                              "inputs": [{"indexed": False, "internalType": "string", "name": "did", "type": "string"},
+                                         {"indexed": False, "internalType": "string", "name": "baseDocument",
+                                          "type": "string"}], "name": "BaseDocumentUpdated", "type": "event"},
+    {"anonymous": False, "inputs": [{"indexed": False, "internalType": "string", "name": "did", "type": "string"},
+                                    {"indexed": False, "internalType": "string", "name": "controller",
+                                     "type": "string"}], "name": "ControllerAdded", "type": "event"},
+    {"anonymous": False, "inputs": [{"indexed": False, "internalType": "string", "name": "did", "type": "string"},
+                                    {"indexed": False, "internalType": "string", "name": "controller",
+                                     "type": "string"}], "name": "ControllerRevoked", "type": "event"},
+    {"anonymous": False, "inputs": [{"indexed": False, "internalType": "string", "name": "did", "type": "string"},
+                                    {"indexed": False, "internalType": "string", "name": "baseDocument",
+                                     "type": "string"},
+                                    {"indexed": False, "internalType": "string", "name": "vMethodId", "type": "string"},
+                                    {"indexed": False, "internalType": "bytes", "name": "publicKey", "type": "bytes"},
+                                    {"indexed": False, "internalType": "bool", "name": "isSecp256k1", "type": "bool"},
+                                    {"indexed": False, "internalType": "uint256", "name": "notBefore",
+                                     "type": "uint256"},
+                                    {"indexed": False, "internalType": "uint256", "name": "notAfter",
+                                     "type": "uint256"}], "name": "DidDocumentInserted", "type": "event"},
+    {"anonymous": False, "inputs": [{"indexed": False, "internalType": "uint8", "name": "version", "type": "uint8"}],
+     "name": "Initialized", "type": "event"},
+    {"anonymous": False, "inputs": [{"indexed": False, "internalType": "uint256", "name": "", "type": "uint256"}],
+     "name": "NewVersion", "type": "event"}, {"anonymous": False, "inputs": [
+        {"indexed": False, "internalType": "string", "name": "did", "type": "string"},
+        {"indexed": False, "internalType": "string", "name": "vMethodId", "type": "string"},
+        {"indexed": False, "internalType": "bytes", "name": "publicKey", "type": "bytes"},
+        {"indexed": False, "internalType": "bool", "name": "isSecp256k1", "type": "bool"}],
+                                              "name": "VerificationMethodAdded", "type": "event"}, {"anonymous": False,
+                                                                                                    "inputs": [{
+                                                                                                                   "indexed": False,
+                                                                                                                   "internalType": "string",
+                                                                                                                   "name": "did",
+                                                                                                                   "type": "string"},
+                                                                                                               {
+                                                                                                                   "indexed": False,
+                                                                                                                   "internalType": "string",
+                                                                                                                   "name": "vMethodId",
+                                                                                                                   "type": "string"},
+                                                                                                               {
+                                                                                                                   "indexed": False,
+                                                                                                                   "internalType": "uint256",
+                                                                                                                   "name": "notAfter",
+                                                                                                                   "type": "uint256"}],
+                                                                                                    "name": "VerificationMethodExpired",
+                                                                                                    "type": "event"},
+    {"anonymous": False, "inputs": [{"indexed": False, "internalType": "string", "name": "did", "type": "string"},
+                                    {"indexed": False, "internalType": "string", "name": "vMethodId", "type": "string"},
+                                    {"indexed": False, "internalType": "uint256", "name": "notAfter",
+                                     "type": "uint256"}], "name": "VerificationMethodRevoked", "type": "event"},
+    {"anonymous": False, "inputs": [{"indexed": False, "internalType": "string", "name": "did", "type": "string"},
+                                    {"indexed": False, "internalType": "string", "name": "vMethodId", "type": "string"},
+                                    {"indexed": False, "internalType": "bytes", "name": "publicKey", "type": "bytes"},
+                                    {"indexed": False, "internalType": "bool", "name": "isSecp256k1", "type": "bool"},
+                                    {"indexed": False, "internalType": "uint256", "name": "notBefore",
+                                     "type": "uint256"},
+                                    {"indexed": False, "internalType": "uint256", "name": "notAfter",
+                                     "type": "uint256"},
+                                    {"indexed": False, "internalType": "string", "name": "oldVMethodId",
+                                     "type": "string"},
+                                    {"indexed": False, "internalType": "uint256", "name": "duration",
+                                     "type": "uint256"}], "name": "VerificationMethodRolled", "type": "event"},
+    {"anonymous": False, "inputs": [{"indexed": False, "internalType": "string", "name": "did", "type": "string"},
+                                    {"indexed": False, "internalType": "string", "name": "name", "type": "string"},
+                                    {"indexed": False, "internalType": "string", "name": "vMethodId", "type": "string"},
+                                    {"indexed": False, "internalType": "uint256", "name": "notBefore",
+                                     "type": "uint256"},
+                                    {"indexed": False, "internalType": "uint256", "name": "notAfter",
+                                     "type": "uint256"}], "name": "VerificationRelationshipAdded", "type": "event"},
+    {"inputs": [], "name": "CONTROLLERS_DIAMOND_STORAGE_POSITION",
+     "outputs": [{"internalType": "bytes32", "name": "", "type": "bytes32"}], "stateMutability": "view",
+     "type": "function"}, {"inputs": [], "name": "DID_DOCUMENT_DIAMOND_STORAGE_POSITION",
+                           "outputs": [{"internalType": "bytes32", "name": "", "type": "bytes32"}],
+                           "stateMutability": "view", "type": "function"},
+    {"inputs": [], "name": "TSC_DIAMOND_STORAGE_POSITION",
+     "outputs": [{"internalType": "bytes32", "name": "", "type": "bytes32"}], "stateMutability": "view",
+     "type": "function"}, {"inputs": [], "name": "VRELATIONSHIPS_DIAMOND_STORAGE_POSITION",
+                           "outputs": [{"internalType": "bytes32", "name": "", "type": "bytes32"}],
+                           "stateMutability": "view", "type": "function"}, {
+        "inputs": [{"internalType": "string", "name": "did", "type": "string"},
+                   {"internalType": "string", "name": "controller", "type": "string"}], "name": "addController",
+        "outputs": [{"internalType": "bool", "name": "", "type": "bool"}], "stateMutability": "nonpayable",
+        "type": "function"}, {"inputs": [{"internalType": "string", "name": "did", "type": "string"},
+                                         {"internalType": "string", "name": "vMethodId", "type": "string"},
+                                         {"internalType": "bytes", "name": "publicKey", "type": "bytes"},
+                                         {"internalType": "bool", "name": "isSecp256k1", "type": "bool"}],
+                              "name": "addVerificationMethod",
+                              "outputs": [{"internalType": "bool", "name": "", "type": "bool"}],
+                              "stateMutability": "nonpayable", "type": "function"}, {
+        "inputs": [{"internalType": "string", "name": "did", "type": "string"},
+                   {"internalType": "string", "name": "name", "type": "string"},
+                   {"internalType": "string", "name": "vMethodId", "type": "string"},
+                   {"internalType": "uint256", "name": "notBefore", "type": "uint256"},
+                   {"internalType": "uint256", "name": "notAfter", "type": "uint256"}],
+        "name": "addVerificationRelationship", "outputs": [{"internalType": "bool", "name": "", "type": "bool"}],
+        "stateMutability": "nonpayable", "type": "function"}, {
+        "inputs": [{"internalType": "bytes", "name": "did", "type": "bytes"},
+                   {"internalType": "address", "name": "controller", "type": "address"}], "name": "checkController",
+        "outputs": [{"internalType": "bool", "name": "", "type": "bool"}], "stateMutability": "view",
+        "type": "function"}, {"inputs": [{"internalType": "string", "name": "did", "type": "string"},
+                                         {"internalType": "address", "name": "controller", "type": "address"}],
+                              "name": "checkController",
+                              "outputs": [{"internalType": "bool", "name": "", "type": "bool"}],
+                              "stateMutability": "view", "type": "function"}, {
+        "inputs": [{"internalType": "string", "name": "did", "type": "string"},
+                   {"internalType": "string", "name": "vMethodId", "type": "string"},
+                   {"internalType": "uint256", "name": "notAfter", "type": "uint256"}],
+        "name": "expireVerificationMethod", "outputs": [{"internalType": "bool", "name": "", "type": "bool"}],
+        "stateMutability": "nonpayable", "type": "function"},
+    {"inputs": [{"internalType": "string", "name": "did", "type": "string"}], "name": "getDidDocument",
+     "outputs": [{"internalType": "string", "name": "baseDocument", "type": "string"},
+                 {"internalType": "string[]", "name": "controllers", "type": "string[]"},
+                 {"internalType": "string[]", "name": "vMethodIds", "type": "string[]"}, {
+                     "components": [{"internalType": "bytes", "name": "publicKey", "type": "bytes"},
+                                    {"internalType": "bool", "name": "isSecp256k1", "type": "bool"},
+                                    {"internalType": "bool", "name": "revoked", "type": "bool"}],
+                     "internalType": "struct DidDocumentStorage.VMethod[]", "name": "vMethods", "type": "tuple[]"}, {
+                     "components": [{"internalType": "string", "name": "name", "type": "string"},
+                                    {"internalType": "string", "name": "vMethodId", "type": "string"},
+                                    {"internalType": "uint256", "name": "notBefore", "type": "uint256"},
+                                    {"internalType": "uint256", "name": "notAfter", "type": "uint256"},
+                                    {"internalType": "uint256", "name": "indexDid", "type": "uint256"}],
+                     "internalType": "struct DidDocumentStorage.VRelationship[]", "name": "vRelationships",
+                     "type": "tuple[]"}], "stateMutability": "view", "type": "function"}, {
+        "inputs": [{"internalType": "string", "name": "did", "type": "string"},
+                   {"internalType": "uint256", "name": "timestamp", "type": "uint256"}],
+        "name": "getDidDocumentByTimestamp",
+        "outputs": [{"internalType": "string", "name": "baseDocument", "type": "string"},
+                    {"internalType": "string[]", "name": "controllers", "type": "string[]"},
+                    {"internalType": "string[]", "name": "vMethodIds", "type": "string[]"}, {
+                        "components": [{"internalType": "bytes", "name": "publicKey", "type": "bytes"},
+                                       {"internalType": "bool", "name": "isSecp256k1", "type": "bool"},
+                                       {"internalType": "bool", "name": "revoked", "type": "bool"}],
+                        "internalType": "struct DidDocumentStorage.VMethod[]", "name": "vMethods", "type": "tuple[]"}, {
+                        "components": [{"internalType": "string", "name": "name", "type": "string"},
+                                       {"internalType": "string", "name": "vMethodId", "type": "string"},
+                                       {"internalType": "uint256", "name": "notBefore", "type": "uint256"},
+                                       {"internalType": "uint256", "name": "notAfter", "type": "uint256"},
+                                       {"internalType": "uint256", "name": "indexDid", "type": "uint256"}],
+                        "internalType": "struct DidDocumentStorage.VRelationship[]", "name": "vRelationships",
+                        "type": "tuple[]"}], "stateMutability": "view", "type": "function"}, {
+        "inputs": [{"internalType": "uint256", "name": "page", "type": "uint256"},
+                   {"internalType": "uint256", "name": "pageSize", "type": "uint256"}], "name": "getDids",
+        "outputs": [{"internalType": "string[]", "name": "items", "type": "string[]"},
+                    {"internalType": "uint256", "name": "total", "type": "uint256"},
+                    {"internalType": "uint256", "name": "howMany", "type": "uint256"},
+                    {"internalType": "uint256", "name": "prev", "type": "uint256"},
+                    {"internalType": "uint256", "name": "next", "type": "uint256"}], "stateMutability": "view",
+        "type": "function"}, {"inputs": [{"internalType": "string", "name": "controller", "type": "string"},
+                                         {"internalType": "uint256", "name": "page", "type": "uint256"},
+                                         {"internalType": "uint256", "name": "pageSize", "type": "uint256"}],
+                              "name": "getDidsByController",
+                              "outputs": [{"internalType": "string[]", "name": "items", "type": "string[]"},
+                                          {"internalType": "uint256", "name": "total", "type": "uint256"},
+                                          {"internalType": "uint256", "name": "howMany", "type": "uint256"},
+                                          {"internalType": "uint256", "name": "prev", "type": "uint256"},
+                                          {"internalType": "uint256", "name": "next", "type": "uint256"}],
+                              "stateMutability": "view", "type": "function"}, {
+        "inputs": [{"internalType": "string", "name": "vMethodId", "type": "string"},
+                   {"internalType": "string", "name": "name", "type": "string"},
+                   {"internalType": "uint256", "name": "page", "type": "uint256"},
+                   {"internalType": "uint256", "name": "pageSize", "type": "uint256"}],
+        "name": "getDidsByVerificationRelationship", "outputs": [{"components": [
+            {"internalType": "string", "name": "did", "type": "string"},
+            {"internalType": "uint256", "name": "notBefore", "type": "uint256"},
+            {"internalType": "uint256", "name": "notAfter", "type": "uint256"}],
+                                                                  "internalType": "struct VRelationshipsStorage.DidWithPeriod[]",
+                                                                  "name": "items", "type": "tuple[]"},
+                                                                 {"internalType": "uint256", "name": "total",
+                                                                  "type": "uint256"},
+                                                                 {"internalType": "uint256", "name": "howMany",
+                                                                  "type": "uint256"},
+                                                                 {"internalType": "uint256", "name": "prev",
+                                                                  "type": "uint256"},
+                                                                 {"internalType": "uint256", "name": "next",
+                                                                  "type": "uint256"}], "stateMutability": "view",
+        "type": "function"},
+    {"inputs": [{"internalType": "uint256", "name": "v", "type": "uint256"}], "name": "initialize", "outputs": [],
+     "stateMutability": "nonpayable", "type": "function"}, {
+        "inputs": [{"internalType": "string", "name": "did", "type": "string"},
+                   {"internalType": "string", "name": "baseDocument", "type": "string"},
+                   {"internalType": "string", "name": "vMethodId", "type": "string"},
+                   {"internalType": "bytes", "name": "publicKey", "type": "bytes"},
+                   {"internalType": "bool", "name": "isSecp256k1", "type": "bool"},
+                   {"internalType": "uint256", "name": "notBefore", "type": "uint256"},
+                   {"internalType": "uint256", "name": "notAfter", "type": "uint256"}], "name": "insertDidDocument",
+        "outputs": [{"internalType": "bool", "name": "", "type": "bool"}], "stateMutability": "nonpayable",
+        "type": "function"}, {"inputs": [], "name": "policyRegistryContract",
+                              "outputs": [{"internalType": "contract IPolicyRegistry", "name": "", "type": "address"}],
+                              "stateMutability": "view", "type": "function"}, {
+        "inputs": [{"internalType": "string", "name": "did", "type": "string"},
+                   {"internalType": "string", "name": "controller", "type": "string"}], "name": "revokeController",
+        "outputs": [{"internalType": "bool", "name": "", "type": "bool"}], "stateMutability": "nonpayable",
+        "type": "function"}, {"inputs": [{"internalType": "string", "name": "did", "type": "string"},
+                                         {"internalType": "string", "name": "vMethodId", "type": "string"},
+                                         {"internalType": "uint256", "name": "notAfter", "type": "uint256"}],
+                              "name": "revokeVerificationMethod",
+                              "outputs": [{"internalType": "bool", "name": "", "type": "bool"}],
+                              "stateMutability": "nonpayable", "type": "function"}, {"inputs": [{"components": [
+        {"internalType": "string", "name": "did", "type": "string"},
+        {"internalType": "string", "name": "vMethodId", "type": "string"},
+        {"internalType": "bytes", "name": "publicKey", "type": "bytes"},
+        {"internalType": "bool", "name": "isSecp256k1", "type": "bool"},
+        {"internalType": "uint256", "name": "notBefore", "type": "uint256"},
+        {"internalType": "uint256", "name": "notAfter", "type": "uint256"},
+        {"internalType": "string", "name": "oldVMethodId", "type": "string"},
+        {"internalType": "uint256", "name": "duration", "type": "uint256"}],
+                                                                                                 "internalType": "struct DidDocumentStorage.RollArgs",
+                                                                                                 "name": "args",
+                                                                                                 "type": "tuple"}],
+                                                                                     "name": "rollVerificationMethod",
+                                                                                     "outputs": [
+                                                                                         {"internalType": "bool",
+                                                                                          "name": "", "type": "bool"}],
+                                                                                     "stateMutability": "nonpayable",
+                                                                                     "type": "function"}, {
+        "inputs": [{"internalType": "string", "name": "did", "type": "string"},
+                   {"internalType": "string", "name": "baseDocument", "type": "string"}], "name": "updateBaseDocument",
+        "outputs": [{"internalType": "bool", "name": "", "type": "bool"}], "stateMutability": "nonpayable",
+        "type": "function"},
+    {"inputs": [], "name": "version", "outputs": [{"internalType": "uint256", "name": "", "type": "uint256"}],
+     "stateMutability": "view", "type": "function"}]
+
+eth_contract = w3.eth.contract(
+    abi=ABI
+)
 
 
 @router.post("/jsonrpc",
@@ -29,33 +257,31 @@ router = APIRouter(prefix="/did-registry", tags=["did-registry"])
 async def rpc(payload: JsonRpcCreate) -> JsonRpcPublic:
     match payload.method:
         case "insertDidDocument":
-            doc_params = payload.params
-            for doc in doc_params:
-                doc_from = doc['from']
-                doc_did = doc['did']
-                doc_base_document = doc['baseDocument']
-                doc_vmethod_id = doc['vMethodId']
-                doc_pkey = doc['publicKey']
-                doc_is_secp256k1 = doc['isSecp256k1']
-                doc_not_before = datetime.fromtimestamp(doc['notBefore'])
-                doc_not_after = datetime.fromtimestamp(doc['notAfter'])
+            doc = payload.params[0]
+            doc_from = doc['from']
+            doc_did = doc['did']
+            doc_base_document = doc['baseDocument']
+            doc_vmethod_id = doc['vMethodId']
+            doc_pkey = doc['publicKey']
+            doc_is_secp256k1 = doc['isSecp256k1']
+            doc_not_before = doc['notBefore']
+            doc_not_after = doc['notAfter']
 
-                did_repo = IdentifierRepository()
-                did_repo.create(commit=False, did=doc_did, context=doc_base_document)
+            unsigned_transaction = eth_contract.functions.insertDidDocument(
+                did=doc_did, baseDocument=doc_base_document, vMethodId=doc_vmethod_id, publicKey=doc_pkey,
+                isSecp256k1=doc_is_secp256k1, notBefore=doc_not_before, notAfter=doc_not_after
+            ).build_transaction({"from": doc_from, "to": register_address,
+                    "nonce": 0xb1d3,
+                    "chainId": 1234,
+                    "gas": 0,
+                    "gasLimit": 1000000,
+                    "gasPrice": 0})
 
-                did_controller_repo = IdentifierControllerRepository()
-                did_controller_repo.create(commit=False, identifier_did=doc_did, did_controller=doc_did)
-
-                full_vmethod_id = f"{doc_did}#{doc_vmethod_id}"
-
-                vmethod_repo = VerificationMethodRepository()
-                vmethod_repo.create(commit=False, id=full_vmethod_id, did_controller=doc_did, type="JsonWebKey2020",
-                                    public_key=doc_pkey, issecp256k1=doc_is_secp256k1)
-
-                vrelationship_repo = VerificationRelationshipRepository()
-                vrelationship_repo.create(commit=False, identifier_did=doc_did, name="capabilityInvocation",
-                                          vmethodid=full_vmethod_id, notbefore=doc_not_before, notafter=doc_not_after)
-            db.session.commit()
+            return JsonRpcPublic(
+                jsonrpc="2.0",
+                id=payload.id,
+                result=unsigned_transaction
+            )
         case "updateBaseDocument":
             doc_params = payload.params
             for doc in doc_params:
@@ -118,7 +344,8 @@ async def rpc(payload: JsonRpcCreate) -> JsonRpcPublic:
 
                 full_vmethod_id = f"{doc_did}#{doc_vmethod_id}"
                 vrelationship_repo = VerificationRelationshipRepository()
-                vrelationship_repo.create(commit=False, identifier_did=doc_did, name=doc_name, vmethodid=full_vmethod_id,
+                vrelationship_repo.create(commit=False, identifier_did=doc_did, name=doc_name,
+                                          vmethodid=full_vmethod_id,
                                           notbefore=doc_not_before, notafter=doc_not_after)
             db.session.commit()
         case "revokeVerificationMethod" | "expireVerificationMethod":
@@ -137,7 +364,19 @@ async def rpc(payload: JsonRpcCreate) -> JsonRpcPublic:
         case "rollVerificationMethod":
             pass
         case "sendSignedTransaction":
-            pass
+            trans = payload.params[0]
+            trans_protocol = trans['protocol']
+            trans_unsigned_transaction = trans['unsignedTransaction']
+            trans_signed_transaction = trans['signedRawTransaction']
+
+            data = trans_unsigned_transaction['data']
+
+            func_obj, params = eth_contract.decode_function_input(data=data)
+            func_name = func_obj.fn_name
+
+            func = getattr(didr, func_name)
+
+            func_result = func(**params)
         case _:
             raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="Invalid method")
 

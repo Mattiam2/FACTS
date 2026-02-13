@@ -110,7 +110,6 @@ class BaseRepository(Repository[T]):
             db.session.commit()
         else:
             db.session.flush()
-        db.session.refresh(obj)
         return obj
 
     def update(self, *, commit=True, id: Any, **data: Any) -> T:
@@ -136,12 +135,10 @@ class BaseRepository(Repository[T]):
             raise ValueError(f"{self.model.__name__} {id} not found")
         for field, value in data.items():
             setattr(obj, field, value)
-        db.session.add(obj)
         if commit:
             db.session.commit()
         else:
             db.session.flush()
-        db.session.refresh(obj)
         return obj
 
     def delete(self, *, commit=True, id: Any) -> None:
