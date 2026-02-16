@@ -1,12 +1,17 @@
+import json
 import math
+import os
 from datetime import datetime
 
+import web3
 from fastapi import Response, APIRouter, Depends, HTTPException
 from typing import Annotated
 
 from fastapi import Query
 from starlette.status import HTTP_204_NO_CONTENT, HTTP_400_BAD_REQUEST, HTTP_404_NOT_FOUND, \
     HTTP_500_INTERNAL_SERVER_ERROR
+from web3 import Web3
+from web3.contract.base_contract import BaseContractFunction
 
 from ebsi_sim.core.db import db
 from ebsi_sim.repositories.access import AccessRepository
@@ -17,97 +22,62 @@ from ebsi_sim.schemas.document import DocumentItemPublic, DocumentListPublic, Do
 from ebsi_sim.schemas.event import EventItemPublic, EventListPublic, EventPublic
 from ebsi_sim.schemas.jsonrpc import JsonRpcCreate, JsonRpcPublic
 from ebsi_sim.schemas.shared import PageLinksPublic, TimestampPublic, VersionEnum
+from ebsi_sim.services import tnt
 
+w3 = Web3()
 router = APIRouter(prefix="/track-and-trace", tags=["track-and-trace"])
+
+
+tnt_abi = json.load(open("ebsi_sim/core/tnt_abi.json", "r"))
+
+register_address = "0x823BBc0ceE3dE3B61AcfA0CEedb951AB9a013F05"
+
+eth_contract = w3.eth.contract(
+    abi=tnt_abi
+)
 
 
 @router.post("/jsonrpc",
              description="The JSON-RPC API provides methods assisting the construction of blockchain transactions and interaction with the ledger, i.e. write operation on ledger.")
 async def rpc(payload: JsonRpcCreate) -> JsonRpcPublic:
-    match payload.method:
-        case "authoriseDid":
-            pass
-        case "createDocument":
-            doc_repo = DocumentRepository()
-            docs_params = payload.params
-            for doc in docs_params:
-                doc_id = doc['documentHash']
-                doc_metadata_hex = doc['documentMetadata'][2:]
-                doc_metadata = bytes.fromhex(doc_metadata_hex).decode('utf-8')
-                doc_creator = doc['didEbsiCreator']
-                doc_timestamp_datetime_hex = doc['timestamp'] if 'timestamp' in doc else None
-                doc_timestamp_datetime = datetime.fromtimestamp(
-                    int(doc_timestamp_datetime_hex, 0)) if doc_timestamp_datetime_hex else None
-                doc_timestamp_proof = doc['timestampProof'] if 'timestampProof' in doc else None
-                doc_repo.create(commit=False, id=doc_id, creator=doc_creator, metadata_text=doc_metadata,
-                                timestamp_datetime=doc_timestamp_datetime, timestamp_proof=doc_timestamp_proof,
-                                timestamp_source="block")
-            db.session.commit()
-        case "removeDocument":
-            doc_repo = DocumentRepository()
-            docs_params = payload.params
-            for doc in docs_params:
-                doc_id = doc['documentHash']
-                # eth_from = doc['from']
-                doc_repo.delete(commit=False, id=doc_id)
-            db.session.commit()
-        case "grantAccess":
-            access_repo = AccessRepository()
-            access_params = payload.params
-            for access in access_params:
-                doc_id = access['documentHash']
-                # eth_from = access['from']
-                granted_by_hex = access['grantedByAccount'][2:]
-                granted_by = bytes.fromhex(granted_by_hex).decode('utf-8')
-                subject_hex = access['subjectAccount'][2:]
-                subject = bytes.fromhex(subject_hex).decode('utf-8')
-                # granted_by_type = access['grantedByAccType']
-                # subject_type = access['subjectAccType']
-                permission = "write" if int(access['permission'], 0) else "delegate"
-                access_repo.create(commit=False, subject=subject, document_id=doc_id, granted_by=granted_by,
-                                   permission=permission)
-            db.session.commit()
-        case "revokeAccess":
-            access_repo = AccessRepository()
-            access_params = payload.params
-            for access in access_params:
-                doc_id = access['documentHash']
-                revoked_by_hex = access['revokedByAccount'][2:]
-                revoked_by = bytes.fromhex(revoked_by_hex).decode('utf-8')
-                subject_hex = access['subjectAccount'][2:]
-                subject = bytes.fromhex(subject_hex).decode('utf-8')
-                permission = "write" if int(access['permission'], 0) else "delegate"
-                revoked_access = access_repo.list(subject=subject, document_id=doc_id, permission=permission)[0]
-                access_repo.delete(commit=False, id=revoked_access.id)
-            db.session.commit()
-        case "writeEvent":
-            event_repo = EventRepository()
-            event_params = payload.params
-            for event in event_params:
-                doc_id = event['eventParams'][0]['documentHash']
-                external_hash = event['eventParams'][0]['externalHash']
-                sender_hex = event['eventParams'][0]['sender'][2:]
-                sender = bytes.fromhex(sender_hex).decode('utf-8')
-                origin = event['eventParams'][0]['origin']
-                metadata = event['eventParams'][0]['metadata']
-                event_timestamp_datetime_hex = event['timestamp'] if 'timestamp' in event else None
-                event_timestamp_datetime = datetime.fromtimestamp(
-                    int(event_timestamp_datetime_hex, 0)) if event_timestamp_datetime_hex else None
-                event_timestamp_proof = event['timestampProof'] if 'timestampProof' in event else None
-                event_repo.create(commit=False, document_id=doc_id, metadata_text=metadata, sender=sender,
-                                  origin=origin, hash=00000, external_hash=external_hash,
-                                  timestamp_datetime=event_timestamp_datetime, timestamp_proof=event_timestamp_proof,
-                                  timestamp_source="block")
-            db.session.commit()
-        case "sendSignedTransaction":
-            pass
-        case _:
-            raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="Invalid method")
+    params = payload.params[0]
+    if payload.method in ("authoriseDid", "createDocument", "removeDocument", "grantAccess", "revokeAccess", "writeEvent"):
+        abi_functions: list[BaseContractFunction] = eth_contract.find_functions_by_name(payload.method)
+        abi_fn = None
+        for tmp_fn in sorted(abi_functions, key=lambda x: len(x.argument_names), reverse=True):
+            if set(tmp_fn.argument_names).issubset(params.keys()):
+                abi_fn = tmp_fn
+        if abi_fn is None:
+            raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="Invalid arguments")
+        abi_args = {k: params[k] for k in abi_fn.argument_names if k in params}
+        unsigned_transaction = abi_fn(
+            **abi_args).build_transaction({"from": params['from'], "to": register_address,
+                                           "nonce": 0xb1d3,
+                                           "chainId": 1234,
+                                           "gas": 0,
+                                           "gasLimit": 1000000,
+                                           "gasPrice": 0})
+        json_rpc_result = unsigned_transaction
+    elif payload.method == "sendSignedTransaction":
+        trans_protocol = params['protocol']
+        trans_unsigned_transaction = params['unsignedTransaction']
+        trans_signed_transaction = params['signedRawTransaction']
+
+        data = trans_unsigned_transaction['data']
+
+        func_obj, params = eth_contract.decode_function_input(data=data)
+
+        function = getattr(tnt, func_obj.fn_name)
+
+        func_result = function(**params)
+        json_rpc_result = "0xe670ec64341771606e55d6b4ca35a1a6b75ee3d5145a99d05921026d1527331"
+    else:
+        raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="Invalid method")
 
     return JsonRpcPublic(
         jsonrpc="2.0",
         id=payload.id,
-        result={"status": "success", "message": "Operation completed successfully"}
+        result=json_rpc_result
     )
 
 
