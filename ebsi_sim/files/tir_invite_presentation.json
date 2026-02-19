@@ -1,0 +1,59 @@
+{
+  "id": "tir_invite_presentation",
+  "format": {
+    "jwt_vp": {
+      "alg": [
+        "ES256"
+      ]
+    },
+    "jwt_vp_json": {
+      "alg": [
+        "ES256"
+      ]
+    }
+  },
+  "input_descriptors": [
+    {
+      "id": "tir_invite_credential",
+      "name": "Accreditation to write to the Trusted Issuers Registry",
+      "purpose": "Please present a valid VerifiableAuthorisationForTrustChain from EBSI TO, or a Verifiable Accreditation (VerifiableAccreditationToAttest, VerifiableAccreditationToAccredit) issued by Root TAO or TAO.",
+      "format": {
+        "jwt_vc": {
+          "alg": [
+            "ES256"
+          ]
+        },
+        "jwt_vc_json": {
+          "alg": [
+            "ES256"
+          ]
+        }
+      },
+      "constraints": {
+        "fields": [
+          {
+            "path": [
+              "$.vc.type"
+            ],
+            "filter": {
+              "type": "array",
+              "contains": {
+                "anyOf": [
+                  {
+                    "const": "VerifiableAuthorisationForTrustChain"
+                  },
+                  {
+                    "const": "VerifiableAccreditationToAttest"
+                  },
+                  {
+                    "const": "VerifiableAccreditationToAccredit"
+                  }
+                ]
+              }
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

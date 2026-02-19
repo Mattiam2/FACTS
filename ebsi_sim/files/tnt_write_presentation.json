@@ -1,0 +1,20 @@
+{
+  "id": "tnt_write_presentation",
+  "name": "Any type of Verifiable Attestation",
+  "purpose": "Please present a valid Presentation signed by an account with granted access to write in TnT.",
+  "format": {
+    "jwt_vp": {
+      "alg": [
+        "ES256",
+        "ES256K"
+      ]
+    },
+    "jwt_vp_json": {
+      "alg": [
+        "ES256",
+        "ES256K"
+      ]
+    }
+  },
+  "input_descriptors": []
+}

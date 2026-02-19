@@ -1,0 +1,18 @@
+{
+  "id": "tir_write_presentation",
+  "name": "Any type of Verifiable Attestation",
+  "purpose": "Please present a valid Presentation signed by a Trusted Issuer.",
+  "format": {
+    "jwt_vp": {
+      "alg": [
+        "ES256"
+      ]
+    },
+    "jwt_vp_json": {
+      "alg": [
+        "ES256"
+      ]
+    }
+  },
+  "input_descriptors": []
+}

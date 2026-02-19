@@ -1,0 +1,18 @@
+{
+  "id": "timestamp_write_presentation",
+  "name": "Any type of Verifiable Attestation",
+  "purpose": "Please present an empty Presentation signed by a registered Legal Entity.",
+  "format": {
+    "jwt_vp": {
+      "alg": [
+        "ES256"
+      ]
+    },
+    "jwt_vp_json": {
+      "alg": [
+        "ES256"
+      ]
+    }
+  },
+  "input_descriptors": []
+}

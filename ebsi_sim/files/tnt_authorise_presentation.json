@@ -1,0 +1,62 @@
+{
+  "id": "tnt_authorise_presentation",
+  "format": {
+    "jwt_vp": {
+      "alg": [
+        "ES256",
+        "ES256K"
+      ]
+    },
+    "jwt_vp_json": {
+      "alg": [
+        "ES256",
+        "ES256K"
+      ]
+    }
+  },
+  "input_descriptors": [
+    {
+      "id": "tnt_authorise_credential",
+      "name": "Accreditation to create Track and Trace documents",
+      "purpose": "Please present a valid VerifiableAuthorisationToOnboard issued by an allowlisted entity",
+      "format": {
+        "jwt_vc": {
+          "alg": [
+            "ES256"
+          ]
+        },
+        "jwt_vc_json": {
+          "alg": [
+            "ES256"
+          ]
+        }
+      },
+      "constraints": {
+        "fields": [
+          {
+            "path": [
+              "$.vc.type"
+            ],
+            "filter": {
+              "type": "array",
+              "contains": {
+                "const": "VerifiableAuthorisationToOnboard"
+              }
+            }
+          },
+          {
+            "path": [
+              "$.vc.issuer"
+            ],
+            "filter": {
+              "type": "string",
+              "enum": [
+                "did:ebsi:zw422HHPF2McN1b8riU9Y3q"
+              ]
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

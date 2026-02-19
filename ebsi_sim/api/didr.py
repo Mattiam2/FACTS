@@ -23,7 +23,7 @@ w3 = Web3()
 
 router = APIRouter(prefix="/did-registry", tags=["did-registry"])
 
-didr_abi = json.load(open("ebsi_sim/core/didr_abi.json", "r"))
+didr_abi = json.load(open("ebsi_sim/files/didr_abi.json", "r"))
 
 register_address = "0x823BBc0ceE3dE3B61AcfA0CEedb951AB9a013F05"
 
@@ -34,7 +34,7 @@ eth_contract = w3.eth.contract(
 
 @router.post("/jsonrpc",
              description="The JSON-RPC API provides methods assisting the construction of blockchain transactions and interaction with the ledger, i.e. write operation on ledger.")
-async def rpc(payload: JsonRpcCreate) -> JsonRpcPublic:
+def rpc(payload: JsonRpcCreate) -> JsonRpcPublic:
     params = payload.params[0]
     if payload.method in ("insertDidDocument", "updateBaseDocument", "addService", "revokeService", "addController",
                           "revokeController", "addVerificationMethod", "addVerificationRelationship",
@@ -83,7 +83,7 @@ async def rpc(payload: JsonRpcCreate) -> JsonRpcPublic:
 
 
 @router.get("/identifiers", description="Returns a list of documents.")
-async def read_identifiers(page_after: Annotated[int, Query(alias="page[after]")] = 1,
+def read_identifiers(page_after: Annotated[int, Query(alias="page[after]")] = 1,
                            page_size: Annotated[int, Query(alias="page[size]")] = 10,
                            controller: str | None = None) -> IdentifierListPublic:
     did_repo = IdentifierControllerRepository()
@@ -110,7 +110,7 @@ async def read_identifiers(page_after: Annotated[int, Query(alias="page[after]")
 
 
 @router.get("/identifiers/{did}", description="Gets the document corresponding to the ID.")
-async def read_identifier(did: str, valid_at=None) -> IdentifierPublic:
+def read_identifier(did: str, valid_at=None) -> IdentifierPublic:
     did_repo = IdentifierRepository()
     did_controller_repo = IdentifierControllerRepository()
     vmethod_repo = VerificationMethodRepository()
@@ -135,7 +135,7 @@ async def read_identifier(did: str, valid_at=None) -> IdentifierPublic:
 
 
 @router.post("/identifiers/{did}/actions", description="Returns a list of events.")
-async def post_action_identifier(did: str, payload: JsonRpcCreate) -> JsonRpcPublic:
+def post_action_identifier(did: str, payload: JsonRpcCreate) -> JsonRpcPublic:
     vmethod_repo = VerificationMethodRepository()
     vmethods = vmethod_repo.list(did_controller=did)
 
@@ -146,5 +146,5 @@ async def post_action_identifier(did: str, payload: JsonRpcCreate) -> JsonRpcPub
 
 
 @router.get("/abi")
-async def abi():
-    pass
+def abi() -> dict:
+    return didr_abi

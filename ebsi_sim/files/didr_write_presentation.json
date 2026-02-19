@@ -1,0 +1,20 @@
+{
+  "id": "didr_write_presentation",
+  "name": "Any type of Verifiable Attestation",
+  "format": {
+    "jwt_vp": {
+      "alg": [
+        "ES256",
+        "ES256K"
+      ]
+    },
+    "jwt_vp_json": {
+      "alg": [
+        "ES256",
+        "ES256K"
+      ]
+    }
+  },
+  "purpose": "Please present a valid Presentation signed by a registered Legal Entity.",
+  "input_descriptors": []
+}

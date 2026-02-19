@@ -28,7 +28,7 @@ w3 = Web3()
 router = APIRouter(prefix="/track-and-trace", tags=["track-and-trace"])
 
 
-tnt_abi = json.load(open("ebsi_sim/core/tnt_abi.json", "r"))
+tnt_abi = json.load(open("ebsi_sim/files/tnt_abi.json", "r"))
 
 register_address = "0x823BBc0ceE3dE3B61AcfA0CEedb951AB9a013F05"
 
@@ -39,7 +39,7 @@ eth_contract = w3.eth.contract(
 
 @router.post("/jsonrpc",
              description="The JSON-RPC API provides methods assisting the construction of blockchain transactions and interaction with the ledger, i.e. write operation on ledger.")
-async def rpc(payload: JsonRpcCreate) -> JsonRpcPublic:
+def rpc(payload: JsonRpcCreate) -> JsonRpcPublic:
     params = payload.params[0]
     if payload.method in ("authoriseDid", "createDocument", "removeDocument", "grantAccess", "revokeAccess", "writeEvent"):
         abi_functions: list[BaseContractFunction] = sorted(eth_contract.find_functions_by_name(payload.method), key=lambda x: len(x.argument_names), reverse=True)
@@ -91,7 +91,7 @@ async def rpc(payload: JsonRpcCreate) -> JsonRpcPublic:
                  HTTP_404_NOT_FOUND: {"description": "DID not found in the allowlist"},
                  HTTP_500_INTERNAL_SERVER_ERROR: {"description": "Internal Server Error"},
              })
-async def check_access(creator: Annotated[str, Query()]):
+def check_access(creator: Annotated[str, Query()]):
     access_repo = AccessRepository()
     creator_access = access_repo.list(subject=creator)
 
@@ -102,7 +102,7 @@ async def check_access(creator: Annotated[str, Query()]):
 
 
 @router.get("/accesses", description="Get accesses filtered by subject.")
-async def read_subject_accesses(subject: str, page_after: Annotated[int, Query(alias="page[after]")] = 1,
+def read_subject_accesses(subject: str, page_after: Annotated[int, Query(alias="page[after]")] = 1,
                                 page_size: Annotated[int, Query(alias="page[size]")] = 10) -> AccessListPublic:
     access_repo = AccessRepository()
 
@@ -126,7 +126,7 @@ async def read_subject_accesses(subject: str, page_after: Annotated[int, Query(a
 
 
 @router.get("/documents", description="Returns a list of documents.")
-async def read_docs(page_after: Annotated[int, Query(alias="page[after]")] = 1,
+def read_docs(page_after: Annotated[int, Query(alias="page[after]")] = 1,
                     page_size: Annotated[int, Query(alias="page[size]")] = 10) -> DocumentListPublic:
     doc_repo = DocumentRepository()
     docs_count = doc_repo.count()
@@ -152,7 +152,7 @@ async def read_docs(page_after: Annotated[int, Query(alias="page[after]")] = 1,
 
 
 @router.get("/documents/{documentId}", description="Gets the document corresponding to the ID.")
-async def read_doc(documentId: str, version: VersionEnum = VersionEnum.latest) -> DocumentPublic:
+def read_doc(documentId: str, version: VersionEnum = VersionEnum.latest) -> DocumentPublic:
     doc_repo = DocumentRepository()
 
     doc = doc_repo.get(documentId)
@@ -171,7 +171,7 @@ async def read_doc(documentId: str, version: VersionEnum = VersionEnum.latest) -
 
 
 @router.get("/documents/{documentId}/events", description="Returns a list of events.")
-async def read_doc_events(documentId: str, page_after: Annotated[int, Query(alias="page[after]")] = 1,
+def read_doc_events(documentId: str, page_after: Annotated[int, Query(alias="page[after]")] = 1,
                           page_size: Annotated[int, Query(alias="page[size]")] = 10) -> EventListPublic:
     event_repo = EventRepository()
     events_count = event_repo.count(document_id=documentId)
@@ -198,7 +198,7 @@ async def read_doc_events(documentId: str, page_after: Annotated[int, Query(alia
 
 
 @router.get("/documents/{documentId}/events/{eventId}", description="Gets the event corresponding to the document ID and event ID.")
-async def read_doc_event(documentId: str, eventId: str) -> EventPublic:
+def read_doc_event(documentId: str, eventId: str) -> EventPublic:
     event_repo = EventRepository()
 
     events = event_repo.list(id=eventId, document_id=documentId)
@@ -216,7 +216,7 @@ async def read_doc_event(documentId: str, eventId: str) -> EventPublic:
 
 
 @router.get("/documents/{documentId}/accesses", description="Returns a list of accesses related to the document.")
-async def read_doc_accesses(documentId: str, page_after: Annotated[int, Query(alias="page[after]")] = 1,
+def read_doc_accesses(documentId: str, page_after: Annotated[int, Query(alias="page[after]")] = 1,
                             page_size: Annotated[int, Query(alias="page[size]")] = 10) -> AccessListPublic:
     access_repo = AccessRepository()
 
@@ -240,5 +240,5 @@ async def read_doc_accesses(documentId: str, page_after: Annotated[int, Query(al
 
 
 @router.get("/abi")
-async def abi():
-    pass
+def abi() -> dict:
+    return tnt_abi

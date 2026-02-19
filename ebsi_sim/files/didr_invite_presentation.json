@@ -1,0 +1,51 @@
+{
+  "id": "didr_invite_presentation",
+  "format": {
+    "jwt_vp": {
+      "alg": [
+        "ES256",
+        "ES256K"
+      ]
+    },
+    "jwt_vp_json": {
+      "alg": [
+        "ES256",
+        "ES256K"
+      ]
+    }
+  },
+  "input_descriptors": [
+    {
+      "id": "didr_invite_credential",
+      "name": "Accreditation to write to the DID Registry",
+      "purpose": "Please present a valid VerifiableAuthorisationToOnboard issued by Root TAO or TAO",
+      "format": {
+        "jwt_vc": {
+          "alg": [
+            "ES256"
+          ]
+        },
+        "jwt_vc_json": {
+          "alg": [
+            "ES256"
+          ]
+        }
+      },
+      "constraints": {
+        "fields": [
+          {
+            "path": [
+              "$.vc.type"
+            ],
+            "filter": {
+              "type": "array",
+              "contains": {
+                "const": "VerifiableAuthorisationToOnboard"
+              }
+            }
+          }
+        ]
+      }
+    }
+  ]
+}
