@@ -39,14 +39,18 @@ async def rpc(payload: JsonRpcCreate) -> JsonRpcPublic:
     if payload.method in ("insertDidDocument", "updateBaseDocument", "addService", "revokeService", "addController",
                           "revokeController", "addVerificationMethod", "addVerificationRelationship",
                           "revokeVerificationMethod", "expireVerificationMethod", "rollVerificationMethod"):
-        abi_functions: list[BaseContractFunction] = eth_contract.find_functions_by_name(payload.method)
-        abi_fn = None
-        for tmp_fn in sorted(abi_functions, key=lambda x: len(x.argument_names), reverse=True):
+        abi_functions: list[BaseContractFunction] = sorted(eth_contract.find_functions_by_name(payload.method),
+                                                           key=lambda x: len(x.argument_names), reverse=True)
+        abi_fn: BaseContractFunction | None = None
+        for tmp_fn in abi_functions:
             if set(tmp_fn.argument_names).issubset(params.keys()):
                 abi_fn = tmp_fn
+                break
         if abi_fn is None:
             raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="Invalid arguments")
+
         abi_args = {k: params[k] for k in abi_fn.argument_names if k in params}
+        # noinspection PyCallingNonCallable
         unsigned_transaction = abi_fn(
             **abi_args).build_transaction({"from": params['from'], "to": register_address,
                                            "nonce": 0xb1d3,

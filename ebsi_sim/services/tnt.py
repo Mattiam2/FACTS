@@ -18,9 +18,10 @@ def createDocument(documentHash: str, documentMetadata: str, didEbsiCreator: str
     db.session.commit()
 
 
-def removeDocument(documentHash: str):
+def removeDocument(documentHash: bytes):
     doc_repo = DocumentRepository()
-    doc_repo.delete(commit=False, id=documentHash)
+    document_hash_str = documentHash.decode('utf-8')
+    doc_repo.delete(commit=False, id=document_hash_str)
     db.session.commit()
 
 
@@ -46,7 +47,7 @@ def revokeAccess(documentHash: str, revokedByAccount: str, subjectAccount: str, 
     db.session.commit()
 
 
-def writeEvent(documentHash: str, eventParams: list[dict], timestamp: str | None = None, timestampProof: str | None = None):
+def writeEvent(eventParams: list[dict], timestamp: str | None = None, timestampProof: str | None = None):
     event_repo = EventRepository()
     doc_id = eventParams[0]['documentHash']
     external_hash = eventParams[0]['externalHash']
