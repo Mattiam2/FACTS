@@ -17,10 +17,16 @@ from ebsi_sim.schemas.identifier import IdentifierListPublic, IdentifierPublic, 
 from ebsi_sim.schemas.jsonrpc import JsonRpcCreate, JsonRpcPublic
 from ebsi_sim.schemas.presentation import ScopeEnum
 from ebsi_sim.schemas.shared import PageLinksPublic
+from ebsi_sim.schemas.token import TokenCreate, TokenBase
 
 from ebsi_sim.services import didr
 
 router = APIRouter(prefix="/authorisation", tags=["authorisation"])
+
+
+@router.post("/token")
+def create_token(request: TokenCreate) -> TokenBase:
+    pass
 
 
 @router.get("/.well-known/openid-configuration")
