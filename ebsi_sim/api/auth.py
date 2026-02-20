@@ -128,25 +128,25 @@ def read_presentation_definitions(scope: ScopeEnum) -> dict:
     path = None
     match scope:
         case scope.tir_write:
-            path = f"ebsi_sim/files/tir_write_presentation.json"
+            path = f"ebsi_sim/files/presentation_tir_write.json"
         case scope.tnt_write:
-            path = f"ebsi_sim/files/tnt_write_presentation.json"
+            path = f"ebsi_sim/files/presentation_tnt_write.json"
         case scope.tpr_write:
-            path = f"ebsi_sim/files/tpr_write_presentation.json"
+            path = f"ebsi_sim/files/presentation_tpr_write.json"
         case scope.didr_invite:
-            path = f"ebsi_sim/files/didr_invite_presentation.json"
+            path = f"ebsi_sim/files/presentation_didr_invite.json"
         case scope.didr_write:
-            path = f"ebsi_sim/files/didr_write_presentation.json"
+            path = f"ebsi_sim/files/presentation_didr_write.json"
         case scope.timestamp_write:
-            path = f"ebsi_sim/files/timestamp_write_presentation.json"
+            path = f"ebsi_sim/files/presentation_timestamp_write.json"
         case scope.tir_invite:
-            path = f"ebsi_sim/files/tir_invite_presentation.json"
+            path = f"ebsi_sim/files/presentation_tir_invite.json"
         case scope.tnt_authorise:
-            path = f"ebsi_sim/files/tnt_authorise_presentation.json"
+            path = f"ebsi_sim/files/presentation_tnt_authorise.json"
         case scope.tnt_create:
-            path = f"ebsi_sim/files/tnt_create_presentation.json"
+            path = f"ebsi_sim/files/presentation_tnt_create.json"
         case scope.tsr_write:
-            path = f"ebsi_sim/files/tsr_write_presentation.json"
+            path = f"ebsi_sim/files/presentation_tsr_write.json"
         case _:
             raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="Invalid scope")
 

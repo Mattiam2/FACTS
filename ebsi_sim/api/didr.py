@@ -23,7 +23,7 @@ w3 = Web3()
 
 router = APIRouter(prefix="/did-registry", tags=["did-registry"])
 
-didr_abi = json.load(open("ebsi_sim/files/didr_abi.json", "r"))
+didr_abi = json.load(open("ebsi_sim/files/abi_didr.json", "r"))
 
 register_address = "0x823BBc0ceE3dE3B61AcfA0CEedb951AB9a013F05"
 

@@ -28,7 +28,7 @@ w3 = Web3()
 router = APIRouter(prefix="/track-and-trace", tags=["track-and-trace"])
 
 
-tnt_abi = json.load(open("ebsi_sim/files/tnt_abi.json", "r"))
+tnt_abi = json.load(open("ebsi_sim/files/abi_tnt.json", "r"))
 
 register_address = "0x823BBc0ceE3dE3B61AcfA0CEedb951AB9a013F05"
 
