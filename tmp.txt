@@ -1,0 +1,21 @@
+{
+  "grant_type": "vp_token",
+  "vp_token": "eyJ0eXAiOiJKV1QiLCJhbGciOiJFUzI1NiJ9.eyJpc3MiOiJkaWQ6ZWJzaTpob2xkZXI6MTIzNDUiLCJhdWQiOiJodHRwczovL2FwaS1waWxvdC5lYnNpLmV1L2F1dGhvcmlzYXRpb24vdjQvdG9rZW4iLCJub25jZSI6InJhbmRvbS1ub25jZS1mcm9tLWRlZmluaXRpb24iLCJpYXQiOjE3MTAwMDAwMDAsImV4cCI6MTcxMDAwMzYwMCwidnAiOnsidHlwZSI6WyJWZXJpZmlhYmxlUHJlc2VudGF0aW9uIl0sInZlcmlmaWFibGVDcmVkZW50aWFsIjpbImV5SjBlWEFpT2lKS1YxUWlMQ0poYkdjaU9pSkZVekkxTmlKOS5leUpwYzNNaU9pSmthV1E2WldKemFUcHliMjkwVkVGUElpd2ljM1ZpSWpvaVpHbGtPbVZpYzJrNmFHOXNaR1Z5T2pFeU16UTFJaXdpYVdGMElqb3hOekV3TURBd01EQXdMQ0psZUhBaU9qRTNNVEF3TURNMk1EQXNJblpqSWpwN0luUjVjR1VpT2xzaVZtVnlhV1pwWVdKc1pVTnlaV1JsYm5ScFlXd2lMQ0pXWlhKcFptbGhZbXhsUVhWMGFHOXlhWE5oZEdsdmJsUnZUMjVpYjJGeVpDSmRMQ0pqY21Wa1pXNTBhV0ZzVTNWaWFtVmpkQ0k2ZXlKcFpDSTZJbVJwWkRwbFluTnBPbWh2YkdSbGNqb3hNak0wTlNJc0luQmxjbTFwYzNOcGIyNXpJanBiSW1ScFpISmZkM0pwZEdVaVhYMTlMQ0p3Y205dlppSTZleUowZVhCbElqb2lSV05rYzJGVFpXTndNalUyYXpGVGFXZHVZWFIxY21VeU1ERTVJaXdpWTNKbFlYUmxaQ0k2SWpJd01qWXRNREl0TWpOVU1UQTZNREE2TURCYUlpd2ljSEp2YjJaUWRYSndiM05sSWpvaVlYTnpaWEowYVc5dVRXVjBhRzlrSWl3aWRtVnlhV1pwWTJGMGFXOXVUV1YwYUc5a0lqb2laR2xrT21WaWMyazZjbTl2ZEZSQlR5TnJaWGt0TVNJc0ltcDNjeUk2SW1WNVNtaGlSMk5wVDJsS1JsVjZTVEZPYVVvNUxpNHVJbjE5LmNlcng2V05sMV81OWJBUnFHT1V3NnROdjlkR1N6RUloLWRBNzh3RFE0Wnhqbm1lT3FHVVUtRE1KQ25nVWZNSW8tVmlIWHRWR2lUZFJ2d0NiWXc4QjdnIl19LCJwcm9vZiI6eyJ0eXBlIjoiRWNkc2FTZWNwMjU2azFTaWduYXR1cmUyMDE5IiwiY3JlYXRlZCI6IjIwMjYtMDItMjNUMTE6MDA6MDBaIiwicHJvb2ZQdXJwb3NlIjoiYXV0aGVudGljYXRpb24iLCJ2ZXJpZmljYXRpb25NZXRob2QiOiJkaWQ6ZWJzaTpob2xkZXI6MTIzNDUja2V5LTEiLCJqd3MiOiJleUpoYkdjaU9pSkZVekkxTmlKOS4uLiJ9fQ.yXmzu8zGEhIwp3jAdFLmOnc1r0Moy4KoPYMBC2DD389yNRy9El79W65SG24DC_fB-0HSOr5e2Ltpa4FHZAYWPg",
+  "presentation_submission": {
+    "id": "ac9026c2-c3f5-4a26-b609-ec215cf97ba2",
+    "definition_id": "didr_invite_presentation",
+    "descriptor_map": [
+      {
+        "id": "didr_invite_credential",
+        "format": "jwt_vp",
+        "path": "$",
+        "path_nested": {
+          "id": "didr_invite_credential",
+          "format": "jwt_vc",
+          "path": "$.vp.verifiableCredential[0]"
+        }
+      }
+    ]
+  },
+  "scope": "openid didr_invite"
+}

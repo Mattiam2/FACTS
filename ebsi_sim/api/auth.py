@@ -21,6 +21,7 @@ from ebsi_sim.schemas.jsonrpc import JsonRpcCreate, JsonRpcPublic
 from ebsi_sim.schemas.presentation import ScopeEnum
 from ebsi_sim.schemas.shared import PageLinksPublic
 from ebsi_sim.schemas.token import TokenCreate, TokenBase, PresentationSubmission, PresentationDescriptor
+from jsonschema import validate, ValidationError
 
 from ebsi_sim.services import didr
 
@@ -69,10 +70,13 @@ def find_credential(token_payload, submission: PresentationDescriptor, presentat
     credential_format = submission.format
 
     descriptor_algos = presentation_definition["format"]
+    descriptor_constraints = []
 
-    for id in presentation_definition["input_descriptors"]:
-        if id["id"] == credential_id:
-            descriptor_algos.update(id["format"])
+    for in_desc in presentation_definition["input_descriptors"]:
+        if in_desc["id"] == credential_id:
+            descriptor_algos.update(in_desc["format"])
+            descriptor_constraints.extend(in_desc["constraints"]["fields"])
+            break
 
     credential_algo = descriptor_algos[credential_format]["alg"]
 
@@ -82,6 +86,11 @@ def find_credential(token_payload, submission: PresentationDescriptor, presentat
     decoded_payload = jwt.decode(match_payload.value, settings.public_key, algorithms=credential_algo, options={'verify_exp': False, "verify_aud": False,})
 
     if not submission.path_nested:
+        for constraint in descriptor_constraints:
+            for const_path in constraint["path"]:
+                jsonpath_expr = parse(const_path)
+                match_field = jsonpath_expr.find(decoded_payload)[0]
+                validate(match_field.value, constraint["filter"])
         return decoded_payload
     else:
         return find_credential(decoded_payload, submission.path_nested, presentation_definition)
