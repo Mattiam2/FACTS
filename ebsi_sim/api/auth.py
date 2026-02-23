@@ -1,6 +1,9 @@
 import json
 import math
+import jwt
+from ..core.config import settings
 from datetime import datetime
+from jsonpath_ng import parse
 
 from web3 import Web3
 from fastapi import APIRouter, HTTPException
@@ -17,7 +20,7 @@ from ebsi_sim.schemas.identifier import IdentifierListPublic, IdentifierPublic, 
 from ebsi_sim.schemas.jsonrpc import JsonRpcCreate, JsonRpcPublic
 from ebsi_sim.schemas.presentation import ScopeEnum
 from ebsi_sim.schemas.shared import PageLinksPublic
-from ebsi_sim.schemas.token import TokenCreate, TokenBase
+from ebsi_sim.schemas.token import TokenCreate, TokenBase, PresentationSubmission, PresentationDescriptor
 
 from ebsi_sim.services import didr
 
@@ -26,7 +29,63 @@ router = APIRouter(prefix="/authorisation", tags=["authorisation"])
 
 @router.post("/token")
 def create_token(request: TokenCreate) -> TokenBase:
-    pass
+    match request.scope:
+        case request.scope.tir_write:
+            path = f"ebsi_sim/files/presentation_tir_write.json"
+        case request.scope.tnt_write:
+            path = f"ebsi_sim/files/presentation_tnt_write.json"
+        case request.scope.tpr_write:
+            path = f"ebsi_sim/files/presentation_tpr_write.json"
+        case request.scope.didr_invite:
+            path = f"ebsi_sim/files/presentation_didr_invite.json"
+        case request.scope.didr_write:
+            path = f"ebsi_sim/files/presentation_didr_write.json"
+        case request.scope.timestamp_write:
+            path = f"ebsi_sim/files/presentation_timestamp_write.json"
+        case request.scope.tir_invite:
+            path = f"ebsi_sim/files/presentation_tir_invite.json"
+        case request.scope.tnt_authorise:
+            path = f"ebsi_sim/files/presentation_tnt_authorise.json"
+        case request.scope.tnt_create:
+            path = f"ebsi_sim/files/presentation_tnt_create.json"
+        case request.scope.tsr_write:
+            path = f"ebsi_sim/files/presentation_tsr_write.json"
+        case _:
+            raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="Invalid scope")
+    presentation_definition = json.load(open(path, "r"))
+
+    if request.presentation_submission.definition_id != presentation_definition["id"]:
+        raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="Invalid presentation definition")
+
+    credentials = []
+
+    for descriptor in request.presentation_submission.descriptor_map:
+        credentials.append(find_credential(request.vp_token, descriptor, presentation_definition))
+
+
+def find_credential(token_payload, submission: PresentationDescriptor, presentation_definition):
+    credential_id = submission.id
+    credential_path = submission.path
+    credential_format = submission.format
+
+    descriptor_algos = presentation_definition["format"]
+
+    for id in presentation_definition["input_descriptors"]:
+        if id["id"] == credential_id:
+            descriptor_algos.update(id["format"])
+
+    credential_algo = descriptor_algos[credential_format]["alg"]
+
+    jsonpath_expr = parse(credential_path)
+    match_payload = jsonpath_expr.find(token_payload)[0]
+
+    decoded_payload = jwt.decode(match_payload.value, settings.public_key, algorithms=credential_algo, options={'verify_exp': False, "verify_aud": False,})
+
+    if not submission.path_nested:
+        return decoded_payload
+    else:
+        return find_credential(decoded_payload, submission.path_nested, presentation_definition)
+
 
 
 @router.get("/.well-known/openid-configuration")
