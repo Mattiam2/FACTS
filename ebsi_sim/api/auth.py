@@ -1,9 +1,15 @@
+import base64
+import hashlib
 import json
 import math
 import jwt
 from ..core.config import settings
 from datetime import datetime
 from jsonpath_ng import parse
+from uuid import uuid4
+from jwcrypto import jwk
+from cryptography.hazmat.primitives.serialization import load_pem_public_key, load_pem_private_key
+from cryptography.hazmat.backends import default_backend
 
 from web3 import Web3
 from fastapi import APIRouter, HTTPException
@@ -26,6 +32,34 @@ from jsonschema import validate, ValidationError
 from ebsi_sim.services import didr
 
 router = APIRouter(prefix="/authorisation", tags=["authorisation"])
+
+
+def pem_to_jwk(pem_public_key: str) -> dict:
+    public_key_obj = load_pem_public_key(pem_public_key.encode(), backend=default_backend())
+    jwk_key = jwk.JWK.from_pyca(public_key_obj)
+    jwk_dict = json.loads(jwk_key.export_public())
+
+    # Calculate thumbprint for KID
+    # RFC 7638: JWK Thumbprint
+    required_members = {
+        'crv': jwk_dict.get('crv'),
+        'kty': jwk_dict.get('kty'),
+        'x': jwk_dict.get('x'),
+        'y': jwk_dict.get('y')
+    }
+
+    # Create canonical JSON representation (sorted keys, no whitespace)
+    canonical_json = json.dumps(required_members, sort_keys=True, separators=(',', ':'))
+
+    # Calculate SHA-256 hash
+    hash_bytes = hashlib.sha256(canonical_json.encode('utf-8')).digest()
+
+    # Base64url encode (without padding)
+    kid = base64.urlsafe_b64encode(hash_bytes).decode('utf-8').rstrip('=')
+
+    jwk_dict['kid'] = kid
+
+    return jwk_dict
 
 
 @router.post("/token")
@@ -63,6 +97,50 @@ def create_token(request: TokenCreate) -> TokenBase:
     for descriptor in request.presentation_submission.descriptor_map:
         credentials.append(find_credential(request.vp_token, descriptor, presentation_definition))
 
+    expires_in = 7200
+    iat = math.floor(datetime.utcnow().timestamp())
+    exp = iat + expires_in
+    pem_pub_key = settings.public_key
+    jwk_pub_key = pem_to_jwk(pem_pub_key)
+    kid = jwk_pub_key["kid"]
+
+    access_token = jwt.encode({
+        "aud": "https://api-pilot.ebsi.eu/authorisation/v4",
+        "exp": exp,
+        "iat": iat,
+        "iss": "https://api-pilot.ebsi.eu/authorisation/v4",
+        "jti": str(uuid4()),
+        "scp": request.scope.value,
+        "sub": credentials[0]["sub"],
+    },
+        settings.private_key,
+        "ES256",
+        {
+            "alg": "ES256",
+            "kid": kid,
+            "typ": "JWT"
+        }
+    )
+
+    id_token = jwt.encode({
+        "aud": credentials[0]["iss"],
+        "exp": exp,
+        "iat": iat,
+        "iss": "https://api-pilot.ebsi.eu/authorisation/v4",
+        "jti": str(uuid4()),
+        "nonce": 0,
+        "sub": credentials[0]["sub"],
+    },
+        settings.private_key,
+        "ES256",
+        {
+            "alg": "ES256",
+            "kid": kid,
+            "typ": "JWT"
+        }
+    )
+    return TokenBase(access_token=access_token, id_token=id_token, expires_in=expires_in, token_type="Bearer", scope=request.scope.value)
+
 
 def find_credential(token_payload, submission: PresentationDescriptor, presentation_definition):
     credential_id = submission.id
@@ -83,7 +161,8 @@ def find_credential(token_payload, submission: PresentationDescriptor, presentat
     jsonpath_expr = parse(credential_path)
     match_payload = jsonpath_expr.find(token_payload)[0]
 
-    decoded_payload = jwt.decode(match_payload.value, settings.public_key, algorithms=credential_algo, options={'verify_exp': False, "verify_aud": False,})
+    decoded_payload = jwt.decode(match_payload.value, settings.public_key, algorithms=credential_algo,
+                                 options={'verify_exp': False, "verify_aud": False, })
 
     if not submission.path_nested:
         for constraint in descriptor_constraints:
@@ -94,7 +173,6 @@ def find_credential(token_payload, submission: PresentationDescriptor, presentat
         return decoded_payload
     else:
         return find_credential(decoded_payload, submission.path_nested, presentation_definition)
-
 
 
 @router.get("/.well-known/openid-configuration")
