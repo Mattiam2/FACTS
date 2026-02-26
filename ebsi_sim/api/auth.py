@@ -3,6 +3,8 @@ import hashlib
 import json
 import math
 import jwt
+from fastapi.security import APIKeyHeader
+
 from ..core.config import settings
 from datetime import datetime
 from jsonpath_ng import parse
@@ -30,37 +32,9 @@ from ebsi_sim.schemas.token import TokenCreate, TokenBase, PresentationSubmissio
 from jsonschema import validate, ValidationError
 
 from ebsi_sim.services import didr
+from ..services.auth import pem_to_jwk
 
 router = APIRouter(prefix="/authorisation", tags=["authorisation"])
-
-
-def pem_to_jwk(pem_public_key: str) -> dict:
-    public_key_obj = load_pem_public_key(pem_public_key.encode(), backend=default_backend())
-    jwk_key = jwk.JWK.from_pyca(public_key_obj)
-    jwk_dict = json.loads(jwk_key.export_public())
-
-    # Calculate thumbprint for KID
-    # RFC 7638: JWK Thumbprint
-    required_members = {
-        'crv': jwk_dict.get('crv'),
-        'kty': jwk_dict.get('kty'),
-        'x': jwk_dict.get('x'),
-        'y': jwk_dict.get('y')
-    }
-
-    # Create canonical JSON representation (sorted keys, no whitespace)
-    canonical_json = json.dumps(required_members, sort_keys=True, separators=(',', ':'))
-
-    # Calculate SHA-256 hash
-    hash_bytes = hashlib.sha256(canonical_json.encode('utf-8')).digest()
-
-    # Base64url encode (without padding)
-    kid = base64.urlsafe_b64encode(hash_bytes).decode('utf-8').rstrip('=')
-
-    jwk_dict['kid'] = kid
-
-    return jwk_dict
-
 
 @router.post("/token")
 def create_token(request: TokenCreate) -> TokenBase:
@@ -123,14 +97,14 @@ def create_token(request: TokenCreate) -> TokenBase:
     )
 
     id_token = jwt.encode({
-        "aud": credentials[0]["iss"],
-        "exp": exp,
-        "iat": iat,
-        "iss": "https://api-pilot.ebsi.eu/authorisation/v4",
-        "jti": str(uuid4()),
-        "nonce": 0,
-        "sub": credentials[0]["sub"],
-    },
+            "aud": credentials[0]["iss"],
+            "exp": exp,
+            "iat": iat,
+            "iss": "https://api-pilot.ebsi.eu/authorisation/v4",
+            "jti": str(uuid4()),
+            "nonce": 0,
+            "sub": credentials[0]["sub"],
+        },
         settings.private_key,
         "ES256",
         {

@@ -2,8 +2,9 @@ import json
 import math
 from datetime import datetime
 
+from fastapi.params import Security
 from web3 import Web3
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
 from typing import Annotated
 
 from fastapi import Query
@@ -18,6 +19,7 @@ from ebsi_sim.schemas.jsonrpc import JsonRpcCreate, JsonRpcPublic
 from ebsi_sim.schemas.shared import PageLinksPublic
 
 from ebsi_sim.services import didr
+from ebsi_sim.services.auth import get_current_user, User
 
 w3 = Web3()
 
@@ -34,7 +36,7 @@ eth_contract = w3.eth.contract(
 
 @router.post("/jsonrpc",
              description="The JSON-RPC API provides methods assisting the construction of blockchain transactions and interaction with the ledger, i.e. write operation on ledger.")
-def rpc(payload: JsonRpcCreate) -> JsonRpcPublic:
+def rpc(current_user: Annotated[User, Depends(get_current_user)], payload: JsonRpcCreate) -> JsonRpcPublic:
     params = payload.params[0]
     if payload.method in ("insertDidDocument", "updateBaseDocument", "addService", "revokeService", "addController",
                           "revokeController", "addVerificationMethod", "addVerificationRelationship",
