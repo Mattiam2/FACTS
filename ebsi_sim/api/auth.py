@@ -1,38 +1,15 @@
-import base64
-import hashlib
 import json
 import math
 import jwt
-from fastapi.security import APIKeyHeader
 
 from ..core.config import settings
 from datetime import datetime
-from jsonpath_ng import parse
 from uuid import uuid4
-from jwcrypto import jwk
-from cryptography.hazmat.primitives.serialization import load_pem_public_key, load_pem_private_key
-from cryptography.hazmat.backends import default_backend
-
-from web3 import Web3
 from fastapi import APIRouter, HTTPException
-from typing import Annotated
-
-from fastapi import Query
 from starlette.status import HTTP_400_BAD_REQUEST
-from web3.contract.base_contract import BaseContractFunction
-
-from ebsi_sim.core.db import db
-from ebsi_sim.repositories.identifier import IdentifierRepository, VerificationRelationshipRepository, \
-    VerificationMethodRepository, IdentifierControllerRepository
-from ebsi_sim.schemas.identifier import IdentifierListPublic, IdentifierPublic, IdentifierItemPublic
-from ebsi_sim.schemas.jsonrpc import JsonRpcCreate, JsonRpcPublic
 from ebsi_sim.schemas.presentation import ScopeEnum
-from ebsi_sim.schemas.shared import PageLinksPublic
-from ebsi_sim.schemas.token import TokenCreate, TokenBase, PresentationSubmission, PresentationDescriptor
-from jsonschema import validate, ValidationError
-
-from ebsi_sim.services import didr
-from ..services.auth import pem_to_jwk
+from ebsi_sim.schemas.token import TokenCreate, TokenBase
+from ..services.auth import pem_to_jwk, find_credential
 
 router = APIRouter(prefix="/authorisation", tags=["authorisation"])
 
@@ -114,39 +91,6 @@ def create_token(request: TokenCreate) -> TokenBase:
         }
     )
     return TokenBase(access_token=access_token, id_token=id_token, expires_in=expires_in, token_type="Bearer", scope=request.scope.value)
-
-
-def find_credential(token_payload, submission: PresentationDescriptor, presentation_definition):
-    credential_id = submission.id
-    credential_path = submission.path
-    credential_format = submission.format
-
-    descriptor_algos = presentation_definition["format"]
-    descriptor_constraints = []
-
-    for in_desc in presentation_definition["input_descriptors"]:
-        if in_desc["id"] == credential_id:
-            descriptor_algos.update(in_desc["format"])
-            descriptor_constraints.extend(in_desc["constraints"]["fields"])
-            break
-
-    credential_algo = descriptor_algos[credential_format]["alg"]
-
-    jsonpath_expr = parse(credential_path)
-    match_payload = jsonpath_expr.find(token_payload)[0]
-
-    decoded_payload = jwt.decode(match_payload.value, settings.public_key, algorithms=credential_algo,
-                                 options={'verify_exp': False, "verify_aud": False, })
-
-    if not submission.path_nested:
-        for constraint in descriptor_constraints:
-            for const_path in constraint["path"]:
-                jsonpath_expr = parse(const_path)
-                match_field = jsonpath_expr.find(decoded_payload)[0]
-                validate(match_field.value, constraint["filter"])
-        return decoded_payload
-    else:
-        return find_credential(decoded_payload, submission.path_nested, presentation_definition)
 
 
 @router.get("/.well-known/openid-configuration")

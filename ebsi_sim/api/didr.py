@@ -8,7 +8,7 @@ from fastapi import APIRouter, HTTPException, Depends
 from typing import Annotated
 
 from fastapi import Query
-from starlette.status import HTTP_400_BAD_REQUEST
+from starlette.status import HTTP_400_BAD_REQUEST, HTTP_403_FORBIDDEN, HTTP_401_UNAUTHORIZED
 from web3.contract.base_contract import BaseContractFunction
 
 from ebsi_sim.core.db import db
@@ -33,10 +33,33 @@ eth_contract = w3.eth.contract(
     abi=didr_abi
 )
 
+def check_scopes(user: User, method: str):
+    scopes = {
+        "insertDidDocument": ["didr_invite", "didr_write"],
+        "updateBaseDocument": ["didr_write"],
+        "addService": ["didr_write"],
+        "revokeService": ["didr_write"],
+        "addController": ["didr_write"],
+        "revokeController": ["didr_write"],
+        "addVerificationMethod": ["didr_write"],
+        "addVerificationRelationship": ["didr_write"],
+        "revokeVerificationMethod": ["didr_write"],
+        "expireVerificationMethod": ["didr_write"],
+        "rollVerificationMethod": ["didr_write"],
+        "sendSignedTransaction": ["didr_invite", "didr_write"]
+    }
+    if method in scopes:
+        common_scopes = set(user.scopes) & set(scopes[method])
+        return len(common_scopes) > 0
+    return False
+
 
 @router.post("/jsonrpc",
              description="The JSON-RPC API provides methods assisting the construction of blockchain transactions and interaction with the ledger, i.e. write operation on ledger.")
 def rpc(current_user: Annotated[User, Depends(get_current_user)], payload: JsonRpcCreate) -> JsonRpcPublic:
+    authorization = check_scopes(current_user, payload.method)
+    if not authorization:
+        raise HTTPException(status_code=HTTP_403_FORBIDDEN, detail="Forbidden")
     params = payload.params[0]
     if payload.method in ("insertDidDocument", "updateBaseDocument", "addService", "revokeService", "addController",
                           "revokeController", "addVerificationMethod", "addVerificationRelationship",

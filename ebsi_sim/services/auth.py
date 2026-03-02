@@ -9,13 +9,17 @@ from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer, APIKeyHeader
 from jwcrypto import jwk
 import jwt
+from jsonpath_ng import parse
+from jsonschema import validate, ValidationError
+from sqlmodel import SQLModel
 
 from ebsi_sim.core.config import settings
+from ebsi_sim.schemas.token import PresentationDescriptor
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/authorisation/token")
 
-class User:
-    scp: str
+class User(SQLModel):
+    scopes: list[str]
     sub: str
 
 
@@ -56,4 +60,39 @@ async def get_current_user(token: Annotated[str, Depends(vp_scheme)]):
             detail="Not authenticated",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    return user
+    scopes = []
+    if "scp" in user:
+        scopes = user["scp"].split(" ")
+    return User(scopes=scopes, sub=user["sub"])
+
+def find_credential(token_payload, submission: PresentationDescriptor, presentation_definition):
+    credential_id = submission.id
+    credential_path = submission.path
+    credential_format = submission.format
+
+    descriptor_algos = presentation_definition["format"]
+    descriptor_constraints = []
+
+    for in_desc in presentation_definition["input_descriptors"]:
+        if in_desc["id"] == credential_id:
+            descriptor_algos.update(in_desc["format"])
+            descriptor_constraints.extend(in_desc["constraints"]["fields"])
+            break
+
+    credential_algo = descriptor_algos[credential_format]["alg"]
+
+    jsonpath_expr = parse(credential_path)
+    match_payload = jsonpath_expr.find(token_payload)[0]
+
+    decoded_payload = jwt.decode(match_payload.value, settings.public_key, algorithms=credential_algo,
+                                 options={'verify_exp': False, "verify_aud": False })
+
+    if not submission.path_nested:
+        for constraint in descriptor_constraints:
+            for const_path in constraint["path"]:
+                jsonpath_expr = parse(const_path)
+                match_field = jsonpath_expr.find(decoded_payload)[0]
+                validate(match_field.value, constraint["filter"])
+        return decoded_payload
+    else:
+        return find_credential(decoded_payload, submission.path_nested, presentation_definition)
