@@ -12,6 +12,7 @@ import jwt
 from jsonpath_ng import parse
 from jsonschema import validate, ValidationError
 from sqlmodel import SQLModel
+from starlette.status import HTTP_403_FORBIDDEN, HTTP_400_BAD_REQUEST
 
 from ebsi_sim.core.config import settings
 from ebsi_sim.schemas.token import PresentationDescriptor
@@ -53,7 +54,11 @@ def pem_to_jwk(pem_public_key: str) -> dict:
 vp_scheme = APIKeyHeader(name="Authorization", auto_error=False)
 
 async def get_current_user(token: Annotated[str, Depends(vp_scheme)]):
-    user = jwt.decode(token, settings.public_key, algorithms="ES256", options={'verify_exp': False, "verify_aud": False})
+    user = None
+    try:
+        user = jwt.decode(token, settings.public_key, algorithms="ES256", options={'verify_exp': False, "verify_aud": False})
+    except jwt.exceptions.DecodeError:
+        pass
     if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -64,6 +69,15 @@ async def get_current_user(token: Annotated[str, Depends(vp_scheme)]):
     if "scp" in user:
         scopes = user["scp"].split(" ")
     return User(scopes=scopes, sub=user["sub"])
+
+
+def check_scopes(user: User, method: str, method_scopes: dict[str, list[str]]):
+    if method in method_scopes:
+        common_scopes = set(user.scopes) & set(method_scopes[method])
+        return len(common_scopes) > 0
+    else:
+        raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="Invalid method")
+
 
 def find_credential(token_payload, submission: PresentationDescriptor, presentation_definition):
     credential_id = submission.id
