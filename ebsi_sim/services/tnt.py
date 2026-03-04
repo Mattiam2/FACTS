@@ -1,9 +1,9 @@
 from datetime import datetime
 
 from ebsi_sim.core.db import db
-from ebsi_sim.repositories.access import AccessRepository
-from ebsi_sim.repositories.document import DocumentRepository
-from ebsi_sim.repositories.event import EventRepository
+from ebsi_sim.repositories.tnt import AccessRepository
+from ebsi_sim.repositories.tnt import DocumentRepository
+from ebsi_sim.repositories.tnt import EventRepository
 
 
 def createDocument(documentHash: str, documentMetadata: str, didEbsiCreator: str, timestamp: str | None = None, timestampProof: str | None = None):

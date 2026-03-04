@@ -1,11 +1,8 @@
 import json
 import math
-import os
-from datetime import datetime
 
-import web3
 from fastapi import Response, APIRouter, Depends, HTTPException
-from typing import Annotated, Callable
+from typing import Annotated
 
 from fastapi import Query
 from starlette.status import HTTP_204_NO_CONTENT, HTTP_400_BAD_REQUEST, HTTP_404_NOT_FOUND, \
@@ -13,22 +10,16 @@ from starlette.status import HTTP_204_NO_CONTENT, HTTP_400_BAD_REQUEST, HTTP_404
 from web3 import Web3
 from web3.contract.base_contract import BaseContractFunction
 
-from ebsi_sim.core.db import db
-from ebsi_sim.repositories.access import AccessRepository
-from ebsi_sim.repositories.document import DocumentRepository
-from ebsi_sim.repositories.event import EventRepository
-from ebsi_sim.schemas.access import AccessListPublic
-from ebsi_sim.schemas.document import DocumentItemPublic, DocumentListPublic, DocumentPublic
-from ebsi_sim.schemas.event import EventItemPublic, EventListPublic, EventPublic
-from ebsi_sim.schemas.jsonrpc import JsonRpcCreate, JsonRpcPublic
-from ebsi_sim.schemas.shared import PageLinksPublic, TimestampPublic, VersionEnum
+from ebsi_sim.repositories.tnt import AccessRepository, DocumentRepository, EventRepository
+from ebsi_sim.schemas import AccessListPublic, DocumentItemPublic, DocumentListPublic, DocumentPublic, EventItemPublic, \
+    EventListPublic, EventPublic, JsonRpcCreate, JsonRpcPublic, PageLinksPublic, TimestampPublic, VersionEnum
 from ebsi_sim.services import tnt
-from ebsi_sim.services.auth import User, get_current_user, check_scopes
+from ebsi_sim.utils import User, get_current_user, check_scopes
 
 w3 = Web3()
 router = APIRouter(prefix="/track-and-trace", tags=["track-and-trace"])
 
-tnt_abi = json.load(open("ebsi_sim/files/abi_tnt.json", "r"))
+tnt_abi = json.load(open("ebsi_sim/includes/abi_tnt.json", "r"))
 
 register_address = "0x823BBc0ceE3dE3B61AcfA0CEedb951AB9a013F05"
 

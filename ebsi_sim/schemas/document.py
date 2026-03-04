@@ -1,7 +1,22 @@
 from sqlmodel import SQLModel, Field
 
-from ebsi_sim.schemas.shared import PageLinksPublic, TimestampPublic
+from ebsi_sim.schemas.shared import TimestampPublic, PageLinksPublic
 
+
+class DocumentBase(SQLModel):
+    """
+    Represents an EBSI Document base schema with metadata and timestamp.
+
+    :ivar metadata_text: The metadata of the document
+    :type metadata_text: str
+    :ivar timestamp: The timestamp when the document was recorded.
+    :type timestamp: TimestampPublic
+    :ivar creator: Denotes the creator of the document.
+    :type creator: str
+    """
+    id: str
+    metadata_text: str
+    creator: str
 
 class DocumentItemPublic(SQLModel):
     """

@@ -1,7 +1,7 @@
 from datetime import datetime
 
 from ebsi_sim.core.db import db
-from ebsi_sim.repositories.identifier import IdentifierRepository, IdentifierControllerRepository, \
+from ebsi_sim.repositories.didr import IdentifierRepository, IdentifierControllerRepository, \
     VerificationMethodRepository, VerificationRelationshipRepository
 
 

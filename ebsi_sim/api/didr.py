@@ -1,31 +1,26 @@
 import json
 import math
-from datetime import datetime
 
-from fastapi.params import Security
 from web3 import Web3
 from fastapi import APIRouter, HTTPException, Depends
 from typing import Annotated
 
 from fastapi import Query
-from starlette.status import HTTP_400_BAD_REQUEST, HTTP_403_FORBIDDEN, HTTP_401_UNAUTHORIZED
+from starlette.status import HTTP_400_BAD_REQUEST, HTTP_403_FORBIDDEN
 from web3.contract.base_contract import BaseContractFunction
 
-from ebsi_sim.core.db import db
-from ebsi_sim.repositories.identifier import IdentifierRepository, VerificationRelationshipRepository, \
+from ebsi_sim.repositories.didr import IdentifierRepository, VerificationRelationshipRepository, \
     VerificationMethodRepository, IdentifierControllerRepository
-from ebsi_sim.schemas.identifier import IdentifierListPublic, IdentifierPublic, IdentifierItemPublic
-from ebsi_sim.schemas.jsonrpc import JsonRpcCreate, JsonRpcPublic
-from ebsi_sim.schemas.shared import PageLinksPublic
+from ebsi_sim.schemas import IdentifierListPublic, IdentifierPublic, IdentifierItemPublic, JsonRpcCreate, JsonRpcPublic, PageLinksPublic
 
 from ebsi_sim.services import didr
-from ebsi_sim.services.auth import get_current_user, User, check_scopes
+from ebsi_sim.utils import get_current_user, User, check_scopes
 
 w3 = Web3()
 
 router = APIRouter(prefix="/did-registry", tags=["did-registry"])
 
-didr_abi = json.load(open("ebsi_sim/files/abi_didr.json", "r"))
+didr_abi = json.load(open("ebsi_sim/includes/abi_didr.json", "r"))
 
 register_address = "0x823BBc0ceE3dE3B61AcfA0CEedb951AB9a013F05"
 

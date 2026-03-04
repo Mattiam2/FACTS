@@ -1,4 +1,4 @@
-from ebsi_sim.models import Identifier, VerificationMethod, VerificationRelationship, IdentifierController
+from ebsi_sim.models.didr import Identifier, VerificationMethod, VerificationRelationship, IdentifierController
 from ebsi_sim.repositories.base import BaseRepository
 
 

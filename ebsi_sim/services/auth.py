@@ -1,112 +1,87 @@
-import base64
-import hashlib
 import json
-from typing import Annotated
 
-from cryptography.hazmat.backends import default_backend
-from cryptography.hazmat.primitives.serialization import load_pem_public_key
-from fastapi import Depends, HTTPException, status
-from fastapi.security import OAuth2PasswordBearer, APIKeyHeader
-from jwcrypto import jwk
-import jwt
-from jsonpath_ng import parse
-from jsonschema import validate, ValidationError
-from sqlmodel import SQLModel
-from starlette.status import HTTP_403_FORBIDDEN, HTTP_400_BAD_REQUEST
-
-from ebsi_sim.core.config import settings
-from ebsi_sim.schemas.token import PresentationDescriptor
-
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/authorisation/token")
-
-class User(SQLModel):
-    scopes: list[str]
-    sub: str
+from ebsi_sim.schemas import ScopeEnum
 
 
-def pem_to_jwk(pem_public_key: str) -> dict:
-    public_key_obj = load_pem_public_key(pem_public_key.encode(), backend=default_backend())
-    jwk_key = jwk.JWK.from_pyca(public_key_obj)
-    jwk_dict = json.loads(jwk_key.export_public())
+"""
+    const presentation = await this.validateVpJwt(
+      vpToken,
+      // skip DID resolution:
+      customScope === DIDR_INVITE_SCOPE,
+      reqId,
+      // proofPurpose to be used:
+      customScope === TNT_AUTHORISE_SCOPE ? "capabilityInvocation" : undefined,
+    ){
+        const audience = this.issuer;
+        const now = Math.floor(Date.now() / 1000);
 
-    # Calculate thumbprint for KID
-    # RFC 7638: JWK Thumbprint
-    required_members = {
-        'crv': jwk_dict.get('crv'),
-        'kty': jwk_dict.get('kty'),
-        'x': jwk_dict.get('x'),
-        'y': jwk_dict.get('y')
+        const didAuthenticator = await validateHolder(
+            vp,
+            iss,
+            kid,
+            alg,
+            iat,
+            resolver,
+            options?.proofPurpose,
+            options?.timeout,
+            options?.skipHolderDidResolutionValidation,
+            options?.axiosHeaders,
+          );
+      );
+    
+    
+    };
+    
+    // `didr_invite`: the client must present a VP containing a valid VerifiableAuthorisationToOnboard VC.
+    // This is already done by the PEX library, based on the presentation definition.
+    // Verify that the DID is not registered yet.
+    if (
+      customScope === DIDR_INVITE_SCOPE &&
+      (await this.isDidRegistered(vp.holder, reqId))
+    ) {
+      throw new OAuth2TokenError("invalid_request", {
+        errorDescription: `Invalid Verifiable Presentation: DID ${vp.holder} is already registered in the DID Registry`,
+      });
     }
 
-    # Create canonical JSON representation (sorted keys, no whitespace)
-    canonical_json = json.dumps(required_members, sort_keys=True, separators=(',', ':'))
+    // `didr_write`: the client needs to have entry in DIDR / can prove her signature.
+    // This is already done in validateVpJwt.
 
-    # Calculate SHA-256 hash
-    hash_bytes = hashlib.sha256(canonical_json.encode('utf-8')).digest()
+    // `ledger_invoke`: the credential subject must contain the contract address and the VC issuer must be the smart contract deployer
+    if (customScope === LEDGER_INVOKE_SCOPE) {
+      const addresses = await this.validateTrustedContractDeployer(
+        presentation,
+        reqId,
+      );
+      extraClaims["authorization_details"] = { addresses };
+    }
 
-    # Base64url encode (without padding)
-    kid = base64.urlsafe_b64encode(hash_bytes).decode('utf-8').rstrip('=')
+    // `tir_invite`: the client must present a VP containing a valid VerifiableAuthorisationForTrustChain, VerifiableAccreditationToAttest, or VerifiableAccreditationToAccredit.
+    // This is already done by the PEX library, based on the presentation definition.
+    if (customScope === TIR_INVITE_SCOPE) {
+      await this.validateTrustedIssuer(vp.holder, true, reqId);
+    }
 
-    jwk_dict['kid'] = kid
+    // `tir_write`: the client needs to be registered as a Trusted Issuer with accreditations.
+    if (customScope === TIR_WRITE_SCOPE) {
+      await this.validateTrustedIssuer(vp.holder, false, reqId);
+    }
 
-    return jwk_dict
+    // `timestamp_write`: the client needs to have entry in DIDR / can prove her signature.
+    // This is already done in validateVpJwt.
 
-vp_scheme = APIKeyHeader(name="Authorization", auto_error=False)
+    // `tnt_authorise`: the client must be have the TNT:authoriseDid attribute in Trusted Policies Registry.
+    if (customScope === TNT_AUTHORISE_SCOPE) {
+      await this.validateTntAdmin(vp.holder, reqId);
+    }
 
-async def get_current_user(token: Annotated[str, Depends(vp_scheme)]):
-    user = None
-    try:
-        user = jwt.decode(token, settings.public_key, algorithms="ES256", options={'verify_exp': False, "verify_aud": False})
-    except jwt.exceptions.DecodeError:
-        pass
-    if not user:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Not authenticated",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-    scopes = []
-    if "scp" in user:
-        scopes = user["scp"].split(" ")
-    return User(scopes=scopes, sub=user["sub"])
+    // `tnt_create`: the client must be an allowlisted TnT Document creator
+    if (customScope === TNT_CREATE_SCOPE) {
+      await this.validateTntCreator(vp.holder, reqId);
+    }
 
-
-def check_scopes(user: User, method: str, method_scopes: dict[str, list[str]]):
-    if method in method_scopes:
-        common_scopes = set(user.scopes) & set(method_scopes[method])
-        return len(common_scopes) > 0
-    else:
-        raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="Invalid method")
-
-
-def find_credential(token_payload, submission: PresentationDescriptor, presentation_definition):
-    credential_id = submission.id
-    credential_path = submission.path
-    credential_format = submission.format
-
-    descriptor_algos = presentation_definition["format"]
-    descriptor_constraints = []
-
-    for in_desc in presentation_definition["input_descriptors"]:
-        if in_desc["id"] == credential_id:
-            descriptor_algos.update(in_desc["format"])
-            descriptor_constraints.extend(in_desc["constraints"]["fields"])
-            break
-
-    credential_algo = descriptor_algos[credential_format]["alg"]
-
-    jsonpath_expr = parse(credential_path)
-    match_payload = jsonpath_expr.find(token_payload)[0]
-
-    decoded_payload = jwt.decode(match_payload.value, settings.public_key, algorithms=credential_algo,
-                                 options={'verify_exp': False, "verify_aud": False })
-
-    if not submission.path_nested:
-        for constraint in descriptor_constraints:
-            for const_path in constraint["path"]:
-                jsonpath_expr = parse(const_path)
-                match_field = jsonpath_expr.find(decoded_payload)[0]
-                validate(match_field.value, constraint["filter"])
-        return decoded_payload
-    else:
-        return find_credential(decoded_payload, submission.path_nested, presentation_definition)
+    // `tnt_write`: the client must have granted access for write
+    if (customScope === TNT_WRITE_SCOPE) {
+      await this.validateTntWriter(vp.holder, reqId);
+    }
+"""
