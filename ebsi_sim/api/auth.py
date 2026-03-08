@@ -8,7 +8,8 @@ from uuid import uuid4
 from fastapi import APIRouter, HTTPException
 from starlette.status import HTTP_400_BAD_REQUEST
 from ebsi_sim.schemas import ScopeEnum, TokenCreate, TokenBase
-from ebsi_sim.utils import pem_to_jwk, find_credential
+from ebsi_sim.services.auth import check_did_is_registered, get_public_key
+from ebsi_sim.utils import pem_to_jwk, find_credential, decode_vp_token
 
 router = APIRouter(prefix="/authorisation", tags=["authorisation"])
 
@@ -42,10 +43,29 @@ def create_token(request: TokenCreate) -> TokenBase:
     if request.presentation_submission.definition_id != presentation_definition["id"]:
         raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="Invalid presentation definition")
 
+    vp_public_key = get_public_key(request.vp_token)
+
+    decoded_vp_token = decode_vp_token(request.vp_token, vp_public_key)
+
     credentials = []
 
-    for descriptor in request.presentation_submission.descriptor_map:
-        credentials.append(find_credential(request.vp_token, descriptor, presentation_definition))
+    for input_descriptor in presentation_definition["input_descriptors"]:
+        found_input = False
+        for descriptor_map in request.presentation_submission.descriptor_map:
+            if descriptor_map.id == input_descriptor["id"]:
+                credentials.append(find_credential(decoded_vp_token, descriptor_map, presentation_definition))
+        if not found_input:
+            raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="Invalid presentation")
+
+    #TODO Check DID in VC is in TIR
+
+    holder_is_registered = check_did_is_registered(credentials[0]["sub"])
+
+    if request.scope.value == ScopeEnum.didr_invite and holder_is_registered:
+        raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="DID is already registered")
+    elif not holder_is_registered:
+        raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="DID is not registered")
+
 
     expires_in = 7200
     iat = math.floor(datetime.utcnow().timestamp())

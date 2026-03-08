@@ -78,8 +78,10 @@ def check_scopes(user: User, method: str, method_scopes: dict[str, list[str]]):
     else:
         raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="Invalid method")
 
+def decode_vp_token(vp_token, vp_public_key):
+    return jwt.decode(vp_token, vp_public_key, options={'verify_exp': False, "verify_aud": False})
 
-def find_credential(token_payload, submission: PresentationDescriptor, presentation_definition):
+def find_credential(decoded_vp_token, submission: PresentationDescriptor, presentation_definition):
     credential_id = submission.id
     credential_path = submission.path
     credential_format = submission.format
@@ -96,7 +98,7 @@ def find_credential(token_payload, submission: PresentationDescriptor, presentat
     credential_algo = descriptor_algos[credential_format]["alg"]
 
     jsonpath_expr = parse(credential_path)
-    match_payload = jsonpath_expr.find(token_payload)[0]
+    match_payload = jsonpath_expr.find(decoded_vp_token)[0]
 
     decoded_payload = jwt.decode(match_payload.value, settings.public_key, algorithms=credential_algo,
                                  options={'verify_exp': False, "verify_aud": False })
@@ -105,8 +107,11 @@ def find_credential(token_payload, submission: PresentationDescriptor, presentat
         for constraint in descriptor_constraints:
             for const_path in constraint["path"]:
                 jsonpath_expr = parse(const_path)
-                match_field = jsonpath_expr.find(decoded_payload)[0]
-                validate(match_field.value, constraint["filter"])
+                try:
+                    match_field = jsonpath_expr.find(decoded_payload)[0]
+                    validate(match_field.value, constraint["filter"])
+                except Exception as e:
+                    raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="VP token is not valid")
         return decoded_payload
     else:
         return find_credential(decoded_payload, submission.path_nested, presentation_definition)

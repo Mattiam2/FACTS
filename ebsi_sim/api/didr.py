@@ -122,6 +122,7 @@ def read_identifiers(page_after: Annotated[int, Query(alias="page[after]")] = 1,
 
 @router.get("/identifiers/{did}", description="Gets the document corresponding to the ID.")
 def read_identifier(did: str, valid_at=None) -> IdentifierPublic:
+    #TODO valid_at
     did_repo = IdentifierRepository()
     did_controller_repo = IdentifierControllerRepository()
     vmethod_repo = VerificationMethodRepository()

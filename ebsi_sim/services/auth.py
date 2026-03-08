@@ -1,7 +1,43 @@
 import json
+from datetime import datetime
 
-from ebsi_sim.schemas import ScopeEnum
+import jwt
+from jwt import get_unverified_header
 
+from ebsi_sim.repositories.didr import IdentifierRepository, VerificationMethodRepository, \
+    VerificationRelationshipRepository
+
+
+def check_did_is_registered(did: str) -> bool:
+    did_repo = IdentifierRepository()
+    did_el = did_repo.get(did)
+    return did_el is not None
+
+def decode_validate_token(vp_token: str) -> str:
+    vp_header = get_unverified_header(vp_token)
+    vmethod_id = vp_header["kid"]
+
+    vmethod_repo = VerificationMethodRepository()
+    vmethod = vmethod_repo.get(vmethod_id)
+
+    if vmethod.did_controller != vp_header["iss"]:
+        raise Exception("Invalid issuer")
+
+    if vmethod.notafter < datetime.now():
+        raise Exception("VMethod expired")
+
+    vp_public_key = vmethod.public_key
+    vp_decoded = jwt.decode(vp_token, vp_public_key, options={'verify_exp': False, "verify_aud": False})
+
+    identified_did = vp_decoded["sub"]
+
+    vrelationship_repo = VerificationRelationshipRepository()
+    vrels = vrelationship_repo.list(identifier_did=identified_did, name="authentication", vmethodid=vmethod_id)
+
+    if vrels is None or len(vrels) == 0:
+        raise Exception("VP not valid for this DID")
+
+    return vp_decoded
 
 """
     const presentation = await this.validateVpJwt(
