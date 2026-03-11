@@ -1,11 +1,16 @@
-import json
 from datetime import datetime
 
 import jwt
+from fastapi import HTTPException
 from jwt import get_unverified_header
+from starlette.status import HTTP_400_BAD_REQUEST
 
 from ebsi_sim.repositories.didr import IdentifierRepository, VerificationMethodRepository, \
     VerificationRelationshipRepository
+from jsonpath_ng import parse
+from jsonschema import validate
+
+from ebsi_sim.schemas.token import PresentationDescriptor, PresentationSubmission
 
 
 def check_did_is_registered(did: str) -> bool:
@@ -13,111 +18,91 @@ def check_did_is_registered(did: str) -> bool:
     did_el = did_repo.get(did)
     return did_el is not None
 
-def decode_validate_token(vp_token: str) -> str:
-    vp_header = get_unverified_header(vp_token)
-    vmethod_id = vp_header["kid"]
+def decode_and_check_signature(token: str, relationship_type: str, credential_algos=None) -> dict:
+    token_header = get_unverified_header(token)
+    vmethod_id = token_header.get("kid")
+
+    if vmethod_id is None:
+        raise Exception("No verification method id found in token header")
 
     vmethod_repo = VerificationMethodRepository()
     vmethod = vmethod_repo.get(vmethod_id)
 
-    if vmethod.did_controller != vp_header["iss"]:
-        raise Exception("Invalid issuer")
+    vmethod_public_key = vmethod.public_key
+    decoded_token = jwt.decode(token, vmethod_public_key, algorithms=credential_algos, options={'verify_exp': False, 'verify_aud': False, 'verify_signature': False})
+
+    vmethod_issuer = decoded_token.get("iss")
+    if vmethod_issuer is None:
+        raise Exception("No issuer found in token")
+
+    if vmethod.did_controller != vmethod_issuer:
+        raise Exception("Verification method is not owned by the issuer")
 
     if vmethod.notafter < datetime.now():
-        raise Exception("VMethod expired")
+        raise Exception("Verification method is expired")
 
-    vp_public_key = vmethod.public_key
-    vp_decoded = jwt.decode(vp_token, vp_public_key, options={'verify_exp': False, "verify_aud": False})
-
-    identified_did = vp_decoded["sub"]
 
     vrelationship_repo = VerificationRelationshipRepository()
-    vrels = vrelationship_repo.list(identifier_did=identified_did, name="authentication", vmethodid=vmethod_id)
+    vrels = vrelationship_repo.list(identifier_did=vmethod_issuer, name=relationship_type, vmethodid=vmethod_id)
 
     if vrels is None or len(vrels) == 0:
-        raise Exception("VP not valid for this DID")
+        raise Exception("Verification method not valid for this operation")
 
-    return vp_decoded
+    return decoded_token
 
-"""
-    const presentation = await this.validateVpJwt(
-      vpToken,
-      // skip DID resolution:
-      customScope === DIDR_INVITE_SCOPE,
-      reqId,
-      // proofPurpose to be used:
-      customScope === TNT_AUTHORISE_SCOPE ? "capabilityInvocation" : undefined,
-    ){
-        const audience = this.issuer;
-        const now = Math.floor(Date.now() / 1000);
+def find_credential(vp_token, submission: PresentationDescriptor, vp_formats, input_descriptor):
+    credential_id = submission.id
+    credential_path = submission.path
+    credential_format = submission.format
 
-        const didAuthenticator = await validateHolder(
-            vp,
-            iss,
-            kid,
-            alg,
-            iat,
-            resolver,
-            options?.proofPurpose,
-            options?.timeout,
-            options?.skipHolderDidResolutionValidation,
-            options?.axiosHeaders,
-          );
-      );
-    
-    
-    };
-    
-    // `didr_invite`: the client must present a VP containing a valid VerifiableAuthorisationToOnboard VC.
-    // This is already done by the PEX library, based on the presentation definition.
-    // Verify that the DID is not registered yet.
-    if (
-      customScope === DIDR_INVITE_SCOPE &&
-      (await this.isDidRegistered(vp.holder, reqId))
-    ) {
-      throw new OAuth2TokenError("invalid_request", {
-        errorDescription: `Invalid Verifiable Presentation: DID ${vp.holder} is already registered in the DID Registry`,
-      });
-    }
+    descriptor_algos = vp_formats.copy()
+    descriptor_constraints = []
 
-    // `didr_write`: the client needs to have entry in DIDR / can prove her signature.
-    // This is already done in validateVpJwt.
+    if input_descriptor["id"] == credential_id:
+        descriptor_algos.update(input_descriptor["format"])
+        descriptor_constraints.extend(input_descriptor["constraints"]["fields"])
+    else:
+        raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="Mismatch between presentation definition and input descriptor")
 
-    // `ledger_invoke`: the credential subject must contain the contract address and the VC issuer must be the smart contract deployer
-    if (customScope === LEDGER_INVOKE_SCOPE) {
-      const addresses = await this.validateTrustedContractDeployer(
-        presentation,
-        reqId,
-      );
-      extraClaims["authorization_details"] = { addresses };
-    }
+    credential_algo = descriptor_algos[credential_format]["alg"]
 
-    // `tir_invite`: the client must present a VP containing a valid VerifiableAuthorisationForTrustChain, VerifiableAccreditationToAttest, or VerifiableAccreditationToAccredit.
-    // This is already done by the PEX library, based on the presentation definition.
-    if (customScope === TIR_INVITE_SCOPE) {
-      await this.validateTrustedIssuer(vp.holder, true, reqId);
-    }
+    jsonpath_expr = parse(credential_path)
+    match_payload = jsonpath_expr.find(vp_token)[0]
 
-    // `tir_write`: the client needs to be registered as a Trusted Issuer with accreditations.
-    if (customScope === TIR_WRITE_SCOPE) {
-      await this.validateTrustedIssuer(vp.holder, false, reqId);
-    }
+    # Decode only if VC because VP is already decoded
+    decoded_payload = match_payload.value
+    if credential_format in ["jwt_vc_json", "jwt_vc_jwt"]:
+        relationship_type = "assertionMethod"
+        decoded_payload = decode_and_check_signature(match_payload.value, relationship_type, credential_algo)
 
-    // `timestamp_write`: the client needs to have entry in DIDR / can prove her signature.
-    // This is already done in validateVpJwt.
+    if not submission.path_nested:
+        for constraint in descriptor_constraints:
+            for const_path in constraint["path"]:
+                jsonpath_expr = parse(const_path)
+                try:
+                    match_field = jsonpath_expr.find(decoded_payload)[0]
+                    validate(match_field.value, constraint["filter"])
+                except Exception as e:
+                    raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="VP token is not valid")
+        return decoded_payload
+    else:
+        return find_credential(decoded_payload, submission.path_nested, vp_formats, input_descriptor)
 
-    // `tnt_authorise`: the client must be have the TNT:authoriseDid attribute in Trusted Policies Registry.
-    if (customScope === TNT_AUTHORISE_SCOPE) {
-      await this.validateTntAdmin(vp.holder, reqId);
-    }
 
-    // `tnt_create`: the client must be an allowlisted TnT Document creator
-    if (customScope === TNT_CREATE_SCOPE) {
-      await this.validateTntCreator(vp.holder, reqId);
-    }
-
-    // `tnt_write`: the client must have granted access for write
-    if (customScope === TNT_WRITE_SCOPE) {
-      await this.validateTntWriter(vp.holder, reqId);
-    }
-"""
+def extract_and_validate_credentials(vp_decoded, presentation_submission: PresentationSubmission, presentation_definition):
+    credentials = []
+    if len(presentation_definition["input_descriptors"]) > 0:
+        for input_descriptor in presentation_definition["input_descriptors"]:
+            found_input = False
+            for descriptor_map in presentation_submission.descriptor_map:
+                if descriptor_map.id == input_descriptor["id"]:
+                    vc = find_credential(vp_decoded, descriptor_map, presentation_definition["format"],
+                                         input_descriptor)
+                    if vc["sub"] != vp_decoded["vp"]["holder"]:
+                        raise HTTPException(status_code=HTTP_400_BAD_REQUEST,
+                                            detail="Credential subject mismatch with holder")
+                    found_input = True
+                    credentials.append(vc)
+            if not found_input:
+                raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="Invalid presentation")
+    return credentials

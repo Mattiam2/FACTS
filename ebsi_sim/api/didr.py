@@ -57,6 +57,15 @@ def rpc(current_user: Annotated[User, Depends(get_current_user)], payload: JsonR
                           "revokeVerificationMethod", "expireVerificationMethod", "rollVerificationMethod"):
         abi_functions: list[BaseContractFunction] = eth_contract.find_functions_by_name(payload.method)
 
+        did_being_operated_on = params.get("did")
+        if did_being_operated_on is not None and did_being_operated_on != current_user.sub:
+            if payload.method == "insertDidDocument":
+                raise HTTPException(status_code=HTTP_403_FORBIDDEN, detail="Forbidden DID")
+            did_repo = IdentifierControllerRepository()
+            controllers = did_repo.list(identifier_did=did_being_operated_on)
+            if current_user.sub not in [c.did_controller for c in controllers]:
+                raise HTTPException(status_code=HTTP_403_FORBIDDEN, detail="Forbidden DID")
+
         candidate_function: BaseContractFunction = next(
             (tmp_fn for tmp_fn in abi_functions if set(tmp_fn.argument_names) == set(params.keys())), None)
 

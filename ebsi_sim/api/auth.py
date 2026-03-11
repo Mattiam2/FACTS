@@ -7,59 +7,50 @@ from datetime import datetime
 from uuid import uuid4
 from fastapi import APIRouter, HTTPException
 from starlette.status import HTTP_400_BAD_REQUEST
+
 from ebsi_sim.schemas import ScopeEnum, TokenCreate, TokenBase
-from ebsi_sim.services.auth import check_did_is_registered, get_public_key
-from ebsi_sim.utils import pem_to_jwk, find_credential, decode_vp_token
+from ebsi_sim.services.auth import check_did_is_registered, find_credential, decode_and_check_signature, \
+    extract_and_validate_credentials
+from ebsi_sim.utils import pem_to_jwk
 
 router = APIRouter(prefix="/authorisation", tags=["authorisation"])
 
 @router.post("/token")
 def create_token(request: TokenCreate) -> TokenBase:
     match request.scope:
-        case request.scope.tir_write:
+        case ScopeEnum.tir_write:
             path = f"ebsi_sim/includes/presentation_tir_write.json"
-        case request.scope.tnt_write:
+        case ScopeEnum.tnt_write:
             path = f"ebsi_sim/includes/presentation_tnt_write.json"
-        case request.scope.tpr_write:
+        case ScopeEnum.tpr_write:
             path = f"ebsi_sim/includes/presentation_tpr_write.json"
-        case request.scope.didr_invite:
+        case ScopeEnum.didr_invite:
             path = f"ebsi_sim/includes/presentation_didr_invite.json"
-        case request.scope.didr_write:
+        case ScopeEnum.didr_write:
             path = f"ebsi_sim/includes/presentation_didr_write.json"
-        case request.scope.timestamp_write:
+        case ScopeEnum.timestamp_write:
             path = f"ebsi_sim/includes/presentation_timestamp_write.json"
-        case request.scope.tir_invite:
+        case ScopeEnum.tir_invite:
             path = f"ebsi_sim/includes/presentation_tir_invite.json"
-        case request.scope.tnt_authorise:
+        case ScopeEnum.tnt_authorise:
             path = f"ebsi_sim/includes/presentation_tnt_authorise.json"
-        case request.scope.tnt_create:
+        case ScopeEnum.tnt_create:
             path = f"ebsi_sim/includes/presentation_tnt_create.json"
-        case request.scope.tsr_write:
+        case ScopeEnum.tsr_write:
             path = f"ebsi_sim/includes/presentation_tsr_write.json"
         case _:
             raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="Invalid scope")
+
     presentation_definition = json.load(open(path, "r"))
 
     if request.presentation_submission.definition_id != presentation_definition["id"]:
         raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="Invalid presentation definition")
 
-    vp_public_key = get_public_key(request.vp_token)
+    vp_decoded = decode_and_check_signature(request.vp_token, "authentication")
 
-    decoded_vp_token = decode_vp_token(request.vp_token, vp_public_key)
+    holder_is_registered = check_did_is_registered(vp_decoded["vp"]["holder"])
 
-    credentials = []
-
-    for input_descriptor in presentation_definition["input_descriptors"]:
-        found_input = False
-        for descriptor_map in request.presentation_submission.descriptor_map:
-            if descriptor_map.id == input_descriptor["id"]:
-                credentials.append(find_credential(decoded_vp_token, descriptor_map, presentation_definition))
-        if not found_input:
-            raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="Invalid presentation")
-
-    #TODO Check DID in VC is in TIR
-
-    holder_is_registered = check_did_is_registered(credentials[0]["sub"])
+    credentials = extract_and_validate_credentials(vp_decoded, request.presentation_submission, presentation_definition)
 
     if request.scope.value == ScopeEnum.didr_invite and holder_is_registered:
         raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="DID is already registered")
@@ -81,7 +72,7 @@ def create_token(request: TokenCreate) -> TokenBase:
         "iss": "https://api-pilot.ebsi.eu/authorisation/v4",
         "jti": str(uuid4()),
         "scp": request.scope.value,
-        "sub": credentials[0]["sub"],
+        "sub": vp_decoded["sub"],
     },
         settings.private_key,
         "ES256",
