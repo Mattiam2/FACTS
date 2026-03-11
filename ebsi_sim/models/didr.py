@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlmodel import SQLModel, Field
+from sqlmodel import SQLModel, Field, func
 
 from ebsi_sim.schemas.identifier import IdentifierBase
 from ebsi_sim.schemas.verification import VerificationMethodBase, VerificationRelationshipBase
@@ -39,7 +39,8 @@ class Identifier(IdentifierBase, table=True):
 
     did: str = Field(primary_key=True)
     context: str | None = Field(default=None)
-    created_at: datetime
+    created_at: datetime = Field(default=func.now())
+    is_tir: bool = Field(default=False)
 
 class IdentifierController(SQLModel, table=True):
     __tablename__ = "identifier_controllers"

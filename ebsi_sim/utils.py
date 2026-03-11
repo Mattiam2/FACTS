@@ -9,8 +9,7 @@ from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer, APIKeyHeader
 from jwcrypto import jwk
 import jwt
-from jsonpath_ng import parse
-from jsonschema import validate
+
 from sqlmodel import SQLModel
 from starlette.status import HTTP_400_BAD_REQUEST
 
@@ -56,7 +55,7 @@ vp_scheme = APIKeyHeader(name="Authorization", auto_error=False)
 async def get_current_user(token: Annotated[str, Depends(vp_scheme)]):
     user = None
     try:
-        user = jwt.decode(token, settings.public_key, algorithms="ES256", options={'verify_exp': False, "verify_aud": False})
+        user = jwt.decode(token, settings.public_key, options={'verify_exp': False, "verify_aud": False})
     except jwt.exceptions.DecodeError:
         pass
     if not user:
@@ -77,41 +76,3 @@ def check_scopes(user: User, method: str, method_scopes: dict[str, list[str]]):
         return len(common_scopes) > 0
     else:
         raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="Invalid method")
-
-def decode_vp_token(vp_token, vp_public_key):
-    return jwt.decode(vp_token, vp_public_key, options={'verify_exp': False, "verify_aud": False})
-
-def find_credential(decoded_vp_token, submission: PresentationDescriptor, presentation_definition):
-    credential_id = submission.id
-    credential_path = submission.path
-    credential_format = submission.format
-
-    descriptor_algos = presentation_definition["format"]
-    descriptor_constraints = []
-
-    for in_desc in presentation_definition["input_descriptors"]:
-        if in_desc["id"] == credential_id:
-            descriptor_algos.update(in_desc["format"])
-            descriptor_constraints.extend(in_desc["constraints"]["fields"])
-            break
-
-    credential_algo = descriptor_algos[credential_format]["alg"]
-
-    jsonpath_expr = parse(credential_path)
-    match_payload = jsonpath_expr.find(decoded_vp_token)[0]
-
-    decoded_payload = jwt.decode(match_payload.value, settings.public_key, algorithms=credential_algo,
-                                 options={'verify_exp': False, "verify_aud": False })
-
-    if not submission.path_nested:
-        for constraint in descriptor_constraints:
-            for const_path in constraint["path"]:
-                jsonpath_expr = parse(const_path)
-                try:
-                    match_field = jsonpath_expr.find(decoded_payload)[0]
-                    validate(match_field.value, constraint["filter"])
-                except Exception as e:
-                    raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="VP token is not valid")
-        return decoded_payload
-    else:
-        return find_credential(decoded_payload, submission.path_nested, presentation_definition)
