@@ -5,18 +5,17 @@ import jwt
 from ebsi_sim.core.config import settings
 from datetime import datetime
 from uuid import uuid4
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
 from starlette.status import HTTP_400_BAD_REQUEST
 
 from ebsi_sim.schemas import ScopeEnum, TokenCreate, TokenBase
-from ebsi_sim.services.auth import check_did_is_registered, find_credential, decode_and_check_signature, \
-    extract_and_validate_credentials
+from ebsi_sim.services.auth import AuthService
 from ebsi_sim.utils import pem_to_jwk
 
 router = APIRouter(prefix="/authorisation", tags=["authorisation"])
 
 @router.post("/token")
-def create_token(request: TokenCreate) -> TokenBase:
+def create_token(request: TokenCreate, auth_service: AuthService = Depends()) -> TokenBase:
     match request.scope:
         case ScopeEnum.tir_write:
             path = f"ebsi_sim/includes/presentation_tir_write.json"
@@ -46,11 +45,11 @@ def create_token(request: TokenCreate) -> TokenBase:
     if request.presentation_submission.definition_id != presentation_definition["id"]:
         raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="Invalid presentation definition")
 
-    vp_decoded = decode_and_check_signature(request.vp_token, "authentication")
+    vp_decoded = auth_service.decode_and_check_signature(request.vp_token, "authentication")
 
-    holder_is_registered = check_did_is_registered(vp_decoded["vp"]["holder"])
+    holder_is_registered = auth_service.check_did_exists(vp_decoded["vp"]["holder"])
 
-    credentials = extract_and_validate_credentials(vp_decoded, request.presentation_submission, presentation_definition)
+    credentials = auth_service.extract_and_validate_credentials(vp_decoded, request.presentation_submission, presentation_definition)
 
     if request.scope.value == ScopeEnum.didr_invite and holder_is_registered:
         raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="DID is already registered")

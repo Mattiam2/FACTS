@@ -14,6 +14,7 @@ from ebsi_sim.repositories.didr import IdentifierRepository, VerificationRelatio
 from ebsi_sim.schemas import IdentifierListPublic, IdentifierPublic, IdentifierItemPublic, JsonRpcCreate, JsonRpcPublic, PageLinksPublic
 
 from ebsi_sim.services import didr
+from ebsi_sim.services.didr import DidrService
 from ebsi_sim.utils import get_current_user, User, check_scopes
 
 w3 = Web3()
@@ -31,7 +32,7 @@ eth_contract = w3.eth.contract(
 
 @router.post("/jsonrpc",
              description="The JSON-RPC API provides methods assisting the construction of blockchain transactions and interaction with the ledger, i.e. write operation on ledger.")
-def rpc(current_user: Annotated[User, Depends(get_current_user)], payload: JsonRpcCreate) -> JsonRpcPublic:
+def rpc(current_user: Annotated[User, Depends(get_current_user)], payload: JsonRpcCreate, didr_service: DidrService = Depends()) -> JsonRpcPublic:
     is_authorized = check_scopes(current_user, payload.method, {
         "insertDidDocument": ["didr_invite", "didr_write"],
         "updateBaseDocument": ["didr_write"],
@@ -90,7 +91,7 @@ def rpc(current_user: Annotated[User, Depends(get_current_user)], payload: JsonR
 
         func_obj, params = eth_contract.decode_function_input(data=data)
 
-        function = getattr(didr, func_obj.fn_name)
+        function = getattr(didr_service, func_obj.fn_name)
 
         func_result = function(**params)
         json_rpc_result = "0xe670ec64341771606e55d6b4ca35a1a6b75ee3d5145a99d05921026d1527331"
@@ -130,21 +131,17 @@ def read_identifiers(page_after: Annotated[int, Query(alias="page[after]")] = 1,
 
 
 @router.get("/identifiers/{did}", description="Gets the document corresponding to the ID.")
-def read_identifier(did: str, valid_at=None) -> IdentifierPublic:
+def read_identifier(did: str, valid_at=None, didr_service: DidrService = Depends()) -> IdentifierPublic:
     #TODO valid_at
-    did_repo = IdentifierRepository()
-    did_controller_repo = IdentifierControllerRepository()
-    vmethod_repo = VerificationMethodRepository()
-    vrelationship_repo = VerificationRelationshipRepository()
 
-    identifier = did_repo.get(did)
-    did_controllers = did_controller_repo.list(identifier_did=did)
-    vmethods = vmethod_repo.list(did_controller=did)
-    vrelationships = vrelationship_repo.list(identifier_did=did)
+    identifier = didr_service.getDidDocument(did)
+    did_controllers = identifier.controllers
+    vmethods = identifier.verification_methods
+    vrelationships = identifier.verification_relationships
 
     return IdentifierPublic(
         did=identifier.did,
-        controller=[did_controller.did_controller for did_controller in did_controllers],
+        controller=[did_controller.did for did_controller in did_controllers],
         context=identifier.context,
         verificationMethod=vmethods,
         authentication=[vrel.vmethodid for vrel in vrelationships if vrel.name == "authentication"],
@@ -156,14 +153,13 @@ def read_identifier(did: str, valid_at=None) -> IdentifierPublic:
 
 
 @router.post("/identifiers/{did}/actions", description="Returns a list of events.")
-def post_action_identifier(did: str, payload: JsonRpcCreate) -> JsonRpcPublic:
-    vmethod_repo = VerificationMethodRepository()
-    vmethods = vmethod_repo.list(did_controller=did)
+def post_action_identifier(did: str, payload: JsonRpcCreate, didr_service: DidrService = Depends()) -> JsonRpcPublic:
+    vmethods = didr_service.listVerificationMethods(did_controller=did)
 
     return JsonRpcPublic(
         jsonrpc="2.0",
         id=payload.id,
-        result=(vmethods.count() > 0))
+        result=(len(vmethods) > 0))
 
 
 @router.get("/abi")

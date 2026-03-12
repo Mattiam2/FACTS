@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlmodel import Field
+from sqlmodel import Field, Relationship
 
 from ebsi_sim.schemas.access import AccessBase
 from ebsi_sim.schemas.document import DocumentBase
@@ -22,6 +22,8 @@ class Access(AccessBase, table=True):
 
     id: int = Field(primary_key=True, nullable=False)
     document_id: str = Field(foreign_key="public.documents.id", schema_extra={'serialization_alias': 'documentId'})
+
+    document: "Document" = Relationship(back_populates="accesses")
 
 
 class Document(DocumentBase, table=True):
@@ -55,6 +57,9 @@ class Document(DocumentBase, table=True):
     timestamp_proof: str
     creator: str
 
+    events: list["Event"] = Relationship(back_populates="document")
+    accesses: list["Access"] = Relationship(back_populates="document")
+
 
 class Event(EventBase, table=True):
     """
@@ -75,3 +80,5 @@ class Event(EventBase, table=True):
     timestamp_datetime: datetime
     timestamp_source: str
     timestamp_proof: str
+
+    document: Document = Relationship(back_populates="events")

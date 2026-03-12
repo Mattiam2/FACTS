@@ -14,6 +14,7 @@ from ebsi_sim.repositories.tnt import AccessRepository, DocumentRepository, Even
 from ebsi_sim.schemas import AccessListPublic, DocumentItemPublic, DocumentListPublic, DocumentPublic, EventItemPublic, \
     EventListPublic, EventPublic, JsonRpcCreate, JsonRpcPublic, PageLinksPublic, TimestampPublic, VersionEnum
 from ebsi_sim.services import tnt
+from ebsi_sim.services.tnt import TntService
 from ebsi_sim.utils import User, get_current_user, check_scopes
 
 w3 = Web3()
@@ -30,7 +31,7 @@ eth_contract = w3.eth.contract(
 
 @router.post("/jsonrpc",
              description="The JSON-RPC API provides methods assisting the construction of blockchain transactions and interaction with the ledger, i.e. write operation on ledger.")
-def rpc(current_user: Annotated[User, Depends(get_current_user)], payload: JsonRpcCreate) -> JsonRpcPublic:
+def rpc(current_user: Annotated[User, Depends(get_current_user)], payload: JsonRpcCreate, tnt_service: TntService = Depends()) -> JsonRpcPublic:
     is_authorized = check_scopes(current_user, payload.method, {
         "authoriseDid": ["tnt_authorise"],
         "createDocument": ["tnt_create"],
@@ -75,7 +76,7 @@ def rpc(current_user: Annotated[User, Depends(get_current_user)], payload: JsonR
         func_obj, params = eth_contract.decode_function_input(data=data)
 
         try:
-            function = getattr(tnt, func_obj.fn_name)
+            function = getattr(tnt_service, func_obj.fn_name)
 
             func_result = function(**params)
             json_rpc_result = "0xe670ec64341771606e55d6b4ca35a1a6b75ee3d5145a99d05921026d1527331"
@@ -98,9 +99,8 @@ def rpc(current_user: Annotated[User, Depends(get_current_user)], payload: JsonR
                  HTTP_404_NOT_FOUND: {"description": "DID not found in the allowlist"},
                  HTTP_500_INTERNAL_SERVER_ERROR: {"description": "Internal Server Error"},
              })
-def check_access(creator: Annotated[str, Query()]):
-    access_repo = AccessRepository()
-    creator_access = access_repo.list(subject=creator)
+def check_access(creator: Annotated[str, Query()], tnt_service: TntService = Depends()):
+    creator_access = tnt_service.listAccesses(subject=creator)
 
     if not creator_access:
         raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="DID not found in the allowlist")
@@ -110,10 +110,9 @@ def check_access(creator: Annotated[str, Query()]):
 
 @router.get("/accesses", description="Get accesses filtered by subject.")
 def read_subject_accesses(subject: str, page_after: Annotated[int, Query(alias="page[after]")] = 1,
-                          page_size: Annotated[int, Query(alias="page[size]")] = 10) -> AccessListPublic:
-    access_repo = AccessRepository()
+                          page_size: Annotated[int, Query(alias="page[size]")] = 10, tnt_service: TntService = Depends()) -> AccessListPublic:
 
-    accesses_count = access_repo.count(subject=subject)
+    accesses_count = tnt_service.countAccesses(subject=subject)
     n_pages = math.ceil(accesses_count / page_size)
 
     links = PageLinksPublic(first=f"/accesses?page[after]=1&page[size]={page_size}&subject={subject}",
@@ -121,7 +120,7 @@ def read_subject_accesses(subject: str, page_after: Annotated[int, Query(alias="
                             next=f"/accesses?page[after]={min(page_after + 1, max(n_pages, 1))}&page[size]={page_size}&subject={subject}",
                             last=f"/accesses?page[after]={max(n_pages, 1)}&page[size]={page_size}&subject={subject}")
 
-    accesses = access_repo.list(offset=(page_after - 1) * page_size, limit=page_size, subject=subject)
+    accesses = tnt_service.listAccesses(offset=(page_after - 1) * page_size, limit=page_size, subject=subject)
 
     return AccessListPublic(
         self=f"/accesses?page[after]={page_after}&page[size]={page_size}&subject={subject}",
@@ -134,9 +133,9 @@ def read_subject_accesses(subject: str, page_after: Annotated[int, Query(alias="
 
 @router.get("/documents", description="Returns a list of documents.")
 def read_docs(page_after: Annotated[int, Query(alias="page[after]")] = 1,
-              page_size: Annotated[int, Query(alias="page[size]")] = 10) -> DocumentListPublic:
-    doc_repo = DocumentRepository()
-    docs_count = doc_repo.count()
+              page_size: Annotated[int, Query(alias="page[size]")] = 10, tnt_service: TntService = Depends()) -> DocumentListPublic:
+
+    docs_count = tnt_service.countDocuments()
     n_pages = math.ceil(docs_count / page_size)
 
     links = PageLinksPublic(first=f"/documents?page[after]=1&page[size]={page_size}",
@@ -144,7 +143,7 @@ def read_docs(page_after: Annotated[int, Query(alias="page[after]")] = 1,
                             next=f"/documents?page[after]={min(page_after + 1, max(n_pages, 1))}&page[size]={page_size}",
                             last=f"/documents?page[after]={max(n_pages, 1)}&page[size]={page_size}")
 
-    docs = doc_repo.list(offset=(page_after - 1) * page_size, limit=page_size)
+    docs = tnt_service.listDocuments(offset=(page_after - 1) * page_size, limit=page_size)
     items = []
     for doc in docs:
         items.append(DocumentItemPublic(documentId=doc.id, href=f"/documents/{doc.id}"))
@@ -159,10 +158,8 @@ def read_docs(page_after: Annotated[int, Query(alias="page[after]")] = 1,
 
 
 @router.get("/documents/{documentId}", description="Gets the document corresponding to the ID.")
-def read_doc(documentId: str, version: VersionEnum = VersionEnum.latest) -> DocumentPublic:
-    doc_repo = DocumentRepository()
-
-    doc = doc_repo.get(documentId)
+def read_doc(documentId: str, version: VersionEnum = VersionEnum.latest, tnt_service: TntService = Depends()) -> DocumentPublic:
+    doc = tnt_service.getDocument(documentId)
 
     timestamp = TimestampPublic(
         datetime=doc.timestamp_datetime.isoformat(),
@@ -179,9 +176,9 @@ def read_doc(documentId: str, version: VersionEnum = VersionEnum.latest) -> Docu
 
 @router.get("/documents/{documentId}/events", description="Returns a list of events.")
 def read_doc_events(documentId: str, page_after: Annotated[int, Query(alias="page[after]")] = 1,
-                    page_size: Annotated[int, Query(alias="page[size]")] = 10) -> EventListPublic:
-    event_repo = EventRepository()
-    events_count = event_repo.count(document_id=documentId)
+                    page_size: Annotated[int, Query(alias="page[size]")] = 10, tnt_service: TntService = Depends()) -> EventListPublic:
+
+    events_count = tnt_service.countEvents(document_id=documentId)
     n_pages = math.ceil(events_count / page_size)
 
     links = PageLinksPublic(first=f"/documents/{documentId}/events?page[after]=1&page[size]={page_size}",
@@ -189,7 +186,7 @@ def read_doc_events(documentId: str, page_after: Annotated[int, Query(alias="pag
                             next=f"/documents/{documentId}/events?page[after]={min(page_after + 1, max(n_pages, 1))}&page[size]={page_size}",
                             last=f"/documents/{documentId}/events?page[after]={max(n_pages, 1)}&page[size]={page_size}")
 
-    events = event_repo.list(offset=(page_after - 1) * page_size, limit=page_size, document_id=documentId)
+    events = tnt_service.listEvents(offset=(page_after - 1) * page_size, limit=page_size, document_id=documentId)
 
     items = []
     for event in events:
@@ -206,10 +203,8 @@ def read_doc_events(documentId: str, page_after: Annotated[int, Query(alias="pag
 
 @router.get("/documents/{documentId}/events/{eventId}",
             description="Gets the event corresponding to the document ID and event ID.")
-def read_doc_event(documentId: str, eventId: str) -> EventPublic:
-    event_repo = EventRepository()
-
-    events = event_repo.list(id=eventId, document_id=documentId)
+def read_doc_event(documentId: str, eventId: str, tnt_service: TntService = Depends()) -> EventPublic:
+    events = tnt_service.listEvents(document_id=documentId, id=eventId)
     event = events[0] if events else None
 
     timestamp = TimestampPublic(
@@ -225,10 +220,9 @@ def read_doc_event(documentId: str, eventId: str) -> EventPublic:
 
 @router.get("/documents/{documentId}/accesses", description="Returns a list of accesses related to the document.")
 def read_doc_accesses(documentId: str, page_after: Annotated[int, Query(alias="page[after]")] = 1,
-                      page_size: Annotated[int, Query(alias="page[size]")] = 10) -> AccessListPublic:
-    access_repo = AccessRepository()
+                      page_size: Annotated[int, Query(alias="page[size]")] = 10, tnt_service: TntService = Depends()) -> AccessListPublic:
 
-    accesses_count = access_repo.count(document_id=documentId)
+    accesses_count = tnt_service.countAccesses(document_id=documentId)
     n_pages = math.ceil(accesses_count / page_size)
 
     links = PageLinksPublic(first=f"/documents/{documentId}/accesses?page[after]=1&page[size]={page_size}",
@@ -236,7 +230,7 @@ def read_doc_accesses(documentId: str, page_after: Annotated[int, Query(alias="p
                             next=f"/documents/{documentId}/accesses?page[after]={min(page_after + 1, max(n_pages, 1))}&page[size]={page_size}",
                             last=f"/documents/{documentId}/accesses?page[after]={max(n_pages, 1)}&page[size]={page_size}")
 
-    accesses = access_repo.list(document_id=documentId, offset=(page_after - 1) * page_size, limit=page_size)
+    accesses = tnt_service.listAccesses(document_id=documentId, offset=(page_after - 1) * page_size, limit=page_size)
 
     return AccessListPublic(
         self=f"/documents/{documentId}/accesses?page[after]={page_after}&page[size]={page_size}&documentId={documentId}",

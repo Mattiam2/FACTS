@@ -1,7 +1,7 @@
 from datetime import datetime
 
 import jwt
-from fastapi import HTTPException
+from fastapi import HTTPException, Depends
 from jwt import get_unverified_header
 from starlette.status import HTTP_400_BAD_REQUEST
 
@@ -13,96 +13,106 @@ from jsonschema import validate
 from ebsi_sim.schemas.token import PresentationDescriptor, PresentationSubmission
 
 
-def check_did_is_registered(did: str) -> bool:
-    did_repo = IdentifierRepository()
-    did_el = did_repo.get(did)
-    return did_el is not None
+class AuthService:
+    identifier_repository: IdentifierRepository
+    verification_method_repository: VerificationMethodRepository
+    verification_relationship_repository: VerificationRelationshipRepository
 
-def decode_and_check_signature(token: str, relationship_type: str, credential_algos=None) -> dict:
-    token_header = get_unverified_header(token)
-    vmethod_id = token_header.get("kid")
+    def __init__(self, identifier_repository: IdentifierRepository = Depends(),
+                 verification_method_repository: VerificationMethodRepository = Depends(),
+                 verification_relationship_repository: VerificationRelationshipRepository = Depends()):
+        self.identifier_repository = identifier_repository
+        self.verification_method_repository = verification_method_repository
+        self.verification_relationship_repository = verification_relationship_repository
 
-    if vmethod_id is None:
-        raise Exception("No verification method id found in token header")
+    def check_did_exists(self, did: str) -> bool:
+        did_el = self.identifier_repository.get(did)
+        return did_el is not None
 
-    vmethod_repo = VerificationMethodRepository()
-    vmethod = vmethod_repo.get(vmethod_id)
+    def decode_and_check_signature(self, token: str, relationship_type: str, credential_algos=None) -> dict:
+        token_header = get_unverified_header(token)
+        vmethod_id = token_header.get("kid")
 
-    vmethod_public_key = vmethod.public_key
-    decoded_token = jwt.decode(token, vmethod_public_key, algorithms=credential_algos, options={'verify_exp': False, 'verify_aud': False, 'verify_signature': False})
+        if vmethod_id is None:
+            raise Exception("No verification method id found in token header")
 
-    vmethod_issuer = decoded_token.get("iss")
-    if vmethod_issuer is None:
-        raise Exception("No issuer found in token")
+        vmethod = self.verification_method_repository.get(vmethod_id)
 
-    if vmethod.did_controller != vmethod_issuer:
-        raise Exception("Verification method is not owned by the issuer")
+        vmethod_public_key = vmethod.public_key
+        decoded_token = jwt.decode(token, vmethod_public_key, algorithms=credential_algos,
+                                   options={'verify_exp': False, 'verify_aud': False, 'verify_signature': False})
 
-    if vmethod.notafter < datetime.now():
-        raise Exception("Verification method is expired")
+        vmethod_issuer = decoded_token.get("iss")
+        if vmethod_issuer is None:
+            raise Exception("No issuer found in token")
 
+        if vmethod.did_controller != vmethod_issuer:
+            raise Exception("Verification method is not owned by the issuer")
 
-    vrelationship_repo = VerificationRelationshipRepository()
-    vrels = vrelationship_repo.list(identifier_did=vmethod_issuer, name=relationship_type, vmethodid=vmethod_id)
+        if vmethod.notafter < datetime.now():
+            raise Exception("Verification method is expired")
 
-    if vrels is None or len(vrels) == 0:
-        raise Exception("Verification method not valid for this operation")
+        vrels = self.verification_relationship_repository.list(identifier_did=vmethod_issuer, name=relationship_type, vmethodid=vmethod_id)
 
-    return decoded_token
+        if vrels is None or len(vrels) == 0:
+            raise Exception("Verification method not valid for this operation")
 
-def find_credential(vp_token, submission: PresentationDescriptor, vp_formats, input_descriptor):
-    credential_id = submission.id
-    credential_path = submission.path
-    credential_format = submission.format
+        return decoded_token
 
-    descriptor_algos = vp_formats.copy()
-    descriptor_constraints = []
+    def find_credential(self, vp_token, submission: PresentationDescriptor, vp_formats, input_descriptor):
+        credential_id = submission.id
+        credential_path = submission.path
+        credential_format = submission.format
 
-    if input_descriptor["id"] == credential_id:
-        descriptor_algos.update(input_descriptor["format"])
-        descriptor_constraints.extend(input_descriptor["constraints"]["fields"])
-    else:
-        raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="Mismatch between presentation definition and input descriptor")
+        descriptor_algos = vp_formats.copy()
+        descriptor_constraints = []
 
-    credential_algo = descriptor_algos[credential_format]["alg"]
+        if input_descriptor["id"] == credential_id:
+            descriptor_algos.update(input_descriptor["format"])
+            descriptor_constraints.extend(input_descriptor["constraints"]["fields"])
+        else:
+            raise HTTPException(status_code=HTTP_400_BAD_REQUEST,
+                                detail="Mismatch between presentation definition and input descriptor")
 
-    jsonpath_expr = parse(credential_path)
-    match_payload = jsonpath_expr.find(vp_token)[0]
+        credential_algo = descriptor_algos[credential_format]["alg"]
 
-    # Decode only if VC because VP is already decoded
-    decoded_payload = match_payload.value
-    if credential_format in ["jwt_vc_json", "jwt_vc_jwt"]:
-        relationship_type = "assertionMethod"
-        decoded_payload = decode_and_check_signature(match_payload.value, relationship_type, credential_algo)
+        jsonpath_expr = parse(credential_path)
+        match_payload = jsonpath_expr.find(vp_token)[0]
 
-    if not submission.path_nested:
-        for constraint in descriptor_constraints:
-            for const_path in constraint["path"]:
-                jsonpath_expr = parse(const_path)
-                try:
-                    match_field = jsonpath_expr.find(decoded_payload)[0]
-                    validate(match_field.value, constraint["filter"])
-                except Exception as e:
-                    raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="VP token is not valid")
-        return decoded_payload
-    else:
-        return find_credential(decoded_payload, submission.path_nested, vp_formats, input_descriptor)
+        # Decode only if VC because VP is already decoded
+        decoded_payload = match_payload.value
+        if credential_format in ["jwt_vc_json", "jwt_vc_jwt"]:
+            relationship_type = "assertionMethod"
+            decoded_payload = self.decode_and_check_signature(match_payload.value, relationship_type, credential_algo)
 
+        if not submission.path_nested:
+            for constraint in descriptor_constraints:
+                for const_path in constraint["path"]:
+                    jsonpath_expr = parse(const_path)
+                    try:
+                        match_field = jsonpath_expr.find(decoded_payload)[0]
+                        validate(match_field.value, constraint["filter"])
+                    except Exception as e:
+                        raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="VP token is not valid")
+            return decoded_payload
+        else:
+            return self.find_credential(decoded_payload, submission.path_nested, vp_formats, input_descriptor)
 
-def extract_and_validate_credentials(vp_decoded, presentation_submission: PresentationSubmission, presentation_definition):
-    credentials = []
-    if len(presentation_definition["input_descriptors"]) > 0:
-        for input_descriptor in presentation_definition["input_descriptors"]:
-            found_input = False
-            for descriptor_map in presentation_submission.descriptor_map:
-                if descriptor_map.id == input_descriptor["id"]:
-                    vc = find_credential(vp_decoded, descriptor_map, presentation_definition["format"],
-                                         input_descriptor)
-                    if vc["sub"] != vp_decoded["vp"]["holder"]:
-                        raise HTTPException(status_code=HTTP_400_BAD_REQUEST,
-                                            detail="Credential subject mismatch with holder")
-                    found_input = True
-                    credentials.append(vc)
-            if not found_input:
-                raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="Invalid presentation")
-    return credentials
+    def extract_and_validate_credentials(self, vp_decoded, presentation_submission: PresentationSubmission,
+                                         presentation_definition):
+        credentials = []
+        if len(presentation_definition["input_descriptors"]) > 0:
+            for input_descriptor in presentation_definition["input_descriptors"]:
+                found_input = False
+                for descriptor_map in presentation_submission.descriptor_map:
+                    if descriptor_map.id == input_descriptor["id"]:
+                        vc = self.find_credential(vp_decoded, descriptor_map, presentation_definition["format"],
+                                             input_descriptor)
+                        if vc["sub"] != vp_decoded["vp"]["holder"]:
+                            raise HTTPException(status_code=HTTP_400_BAD_REQUEST,
+                                                detail="Credential subject mismatch with holder")
+                        found_input = True
+                        credentials.append(vc)
+                if not found_input:
+                    raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="Invalid presentation")
+        return credentials
