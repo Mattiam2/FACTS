@@ -58,13 +58,13 @@ def rpc(current_user: Annotated[User, Depends(get_current_user)], payload: JsonR
                           "revokeVerificationMethod", "expireVerificationMethod", "rollVerificationMethod"):
         abi_functions: list[BaseContractFunction] = eth_contract.find_functions_by_name(payload.method)
 
-        did_being_operated_on = params.get("did")
-        if did_being_operated_on is not None and did_being_operated_on != current_user.sub:
+        subject_did = params.get("did")
+        if subject_did is not None and subject_did != current_user.sub:
             if payload.method == "insertDidDocument":
                 raise HTTPException(status_code=HTTP_403_FORBIDDEN, detail="Forbidden DID")
-            did_repo = IdentifierControllerRepository()
-            controllers = did_repo.list(identifier_did=did_being_operated_on)
-            if current_user.sub not in [c.did_controller for c in controllers]:
+            sub_identifier = didr_service.getDidDocument(subject_did)
+            controllers = sub_identifier.controllers
+            if current_user.sub not in [c.did for c in controllers]:
                 raise HTTPException(status_code=HTTP_403_FORBIDDEN, detail="Forbidden DID")
 
         candidate_function: BaseContractFunction = next(
@@ -106,9 +106,8 @@ def rpc(current_user: Annotated[User, Depends(get_current_user)], payload: JsonR
 @router.get("/identifiers", description="Returns a list of documents.")
 def read_identifiers(page_after: Annotated[int, Query(alias="page[after]")] = 1,
                            page_size: Annotated[int, Query(alias="page[size]")] = 10,
-                           controller: str | None = None) -> IdentifierListPublic:
-    did_repo = IdentifierControllerRepository()
-    dids_count = did_repo.count(did_controller=controller)
+                           controller: str | None = None, didr_service: DidrService = Depends()) -> IdentifierListPublic:
+    dids_count = didr_service.countDidDocuments(controller=controller)
     n_pages = math.ceil(dids_count / page_size)
 
     links = PageLinksPublic(first=f"/identifiers?page[after]=1&page[size]={page_size}",
@@ -116,10 +115,10 @@ def read_identifiers(page_after: Annotated[int, Query(alias="page[after]")] = 1,
                             next=f"/identifiers?page[after]={min(page_after + 1, max(n_pages, 1))}&page[size]={page_size}",
                             last=f"/identifiers?page[after]={max(n_pages, 1)}&page[size]={page_size}")
 
-    dids = did_repo.list(did_controller=controller, offset=(page_after - 1) * page_size, limit=page_size)
+    dids = didr_service.listDidDocuments(controller=controller, offset=(page_after - 1) * page_size, limit=page_size)
     items = []
     for d in dids:
-        items.append(IdentifierItemPublic(did=d.identifier_did, href=f"/identifiers/{d.identifier_did}"))
+        items.append(IdentifierItemPublic(did=d.did, href=f"/identifiers/{d.did}"))
 
     return IdentifierListPublic(
         self=f"/identifiers?page[after]={page_after}&page[size]={page_size}",
@@ -132,8 +131,6 @@ def read_identifiers(page_after: Annotated[int, Query(alias="page[after]")] = 1,
 
 @router.get("/identifiers/{did}", description="Gets the document corresponding to the ID.")
 def read_identifier(did: str, valid_at=None, didr_service: DidrService = Depends()) -> IdentifierPublic:
-    #TODO valid_at
-
     identifier = didr_service.getDidDocument(did)
     did_controllers = identifier.controllers
     vmethods = identifier.verification_methods

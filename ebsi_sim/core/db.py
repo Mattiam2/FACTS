@@ -2,7 +2,7 @@ from contextvars import ContextVar
 from sqlmodel import create_engine, Session
 from .config import settings
 
-engine = create_engine(settings.db_url)
+engine = create_engine(settings.db_url, echo=True)
 
 session_ctx = ContextVar("session_ctx", default=None)
 

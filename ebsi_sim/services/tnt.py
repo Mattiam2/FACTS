@@ -3,6 +3,7 @@ from datetime import datetime
 from fastapi import Depends
 
 from ebsi_sim.core.db import db
+from ebsi_sim.repositories.didr import IdentifierRepository
 from ebsi_sim.repositories.tnt import AccessRepository
 from ebsi_sim.repositories.tnt import DocumentRepository
 from ebsi_sim.repositories.tnt import EventRepository
@@ -11,11 +12,13 @@ class TntService:
     document_repository: DocumentRepository
     access_repository: AccessRepository
     event_repository: EventRepository
+    identifier_repository: IdentifierRepository
 
-    def __init__(self, document_repository: DocumentRepository = Depends(), access_repository: AccessRepository = Depends(), event_repository: EventRepository = Depends()):
+    def __init__(self, document_repository: DocumentRepository = Depends(), access_repository: AccessRepository = Depends(), event_repository: EventRepository = Depends(), identifier_repository: IdentifierRepository = Depends()):
         self.document_repository = document_repository
         self.access_repository = access_repository
         self.event_repository = event_repository
+        self.identifier_repository = identifier_repository
 
     def getDocument(self, documentHash: str):
         return self.document_repository.get(documentHash)
@@ -37,6 +40,9 @@ class TntService:
 
     def listEvents(self, *, offset=None, limit=None, order_by=None, **filters):
         return self.event_repository.list(offset=offset, limit=limit, order_by=order_by, **filters)
+
+    def authoriseDid(self, *, from_: str, senderDid: str, authoriseDid: str, whiteList: bool):
+        return self.identifier_repository.update(commit=False, id=authoriseDid, tnt_authorized=whiteList)
 
     def createDocument(self, *, documentHash: str, documentMetadata: str, didEbsiCreator: str, timestamp: str | None = None, timestampProof: str | None = None):
         doc_metadata = bytes.fromhex(documentMetadata[2:]).decode('utf-8')

@@ -55,8 +55,8 @@ vp_scheme = APIKeyHeader(name="Authorization", auto_error=False)
 async def get_current_user(token: Annotated[str, Depends(vp_scheme)]):
     user = None
     try:
-        user = jwt.decode(token, settings.public_key, options={'verify_exp': False, "verify_aud": False})
-    except jwt.exceptions.DecodeError:
+        user = jwt.decode(token, settings.public_key, algorithms=["ES256"], options={'verify_exp': False, "verify_aud": False})
+    except jwt.exceptions.DecodeError as e:
         pass
     if not user:
         raise HTTPException(
