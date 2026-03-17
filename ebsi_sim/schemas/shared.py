@@ -66,4 +66,3 @@ class PermissionEnum(str, Enum):
 
     write = "write"
     delegate = "delegate"
-    creator = "creator"

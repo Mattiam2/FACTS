@@ -12,10 +12,12 @@ from web3.contract.base_contract import BaseContractFunction
 
 from ebsi_sim.repositories.tnt import AccessRepository, DocumentRepository, EventRepository
 from ebsi_sim.schemas import AccessListPublic, DocumentItemPublic, DocumentListPublic, DocumentPublic, EventItemPublic, \
-    EventListPublic, EventPublic, JsonRpcCreate, JsonRpcPublic, PageLinksPublic, TimestampPublic, VersionEnum
+    EventListPublic, EventPublic, JsonRpcCreate, JsonRpcPublic, PageLinksPublic, TimestampPublic, VersionEnum, \
+    PermissionEnum
 from ebsi_sim.services import tnt
+from ebsi_sim.services.didr import DidrService
 from ebsi_sim.services.tnt import TntService
-from ebsi_sim.utils import User, get_current_user, check_scopes
+from ebsi_sim.utils import User, get_current_user, check_scopes, booleanize
 
 w3 = Web3()
 router = APIRouter(prefix="/track-and-trace", tags=["track-and-trace"])
@@ -54,13 +56,54 @@ def rpc(current_user: Annotated[User, Depends(get_current_user)], payload: JsonR
         params_set = set(params.keys())
         params_set.remove("from")
 
+        if "didEbsiCreator" in params and current_user.sub != params['didEbsiCreator']:
+            raise HTTPException(status_code=HTTP_403_FORBIDDEN, detail="didEbsiCreator is not the same as the subject")
+
+        if payload.method == "removeDocument":
+            document = tnt_service.getDocument(params['eventParams'][0]['documentHash'])
+            if document.creator != current_user.sub:
+                raise HTTPException(status_code=HTTP_403_FORBIDDEN, detail="Document creator is not the same as the subject")
+
+
+        if payload.method == "grantAccess":
+            if "grantedByAccount" in params and current_user.sub != params['grantedByAccount']:
+                raise HTTPException(status_code=HTTP_403_FORBIDDEN, detail="grantedByAccount is not the same as the subject")
+            user_accesses = tnt_service.listAccesses(subject=params['grantedByAccount'], document_id=params['documentHash'])
+            document = tnt_service.getDocument(params['documentHash'])
+            if document is None:
+                raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Document not found")
+            if document.creator != params['grantedByAccount']:
+                if params['permission'] != PermissionEnum.write:
+                    raise HTTPException(status_code=HTTP_403_FORBIDDEN, detail="grantedByAccount is not the same as the creator")
+                else:
+                    is_delegated = bool([access for access in user_accesses if access.permission == PermissionEnum.delegate])
+                    if not is_delegated:
+                        raise HTTPException(status_code=HTTP_403_FORBIDDEN, detail="Permission not granted")
+
+        if payload.method == 'revokeAccess':
+            if "revokedByAccount" in params and current_user.sub != params['revokedByAccount']:
+                raise HTTPException(status_code=HTTP_403_FORBIDDEN, detail="revokedByAccount is not the same as the subject")
+            document = tnt_service.getDocument(params['documentHash'])
+            if document is None:
+                raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Document not found")
+            if document.creator != params['revokedByAccount']:
+                raise HTTPException(status_code=HTTP_403_FORBIDDEN, detail="revokedByAccount is not the same as the creator")
+
+        if payload.method == "writeEvent":
+            document = tnt_service.getDocument(params['eventParams'][0]['documentHash'])
+            user_accesses = tnt_service.listAccesses(subject=params['grantedByAccount'], document_id=params['documentHash'], permission=PermissionEnum.write)
+            if document is None:
+                raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Document not found")
+            if user_accesses is None:
+                raise HTTPException(status_code=HTTP_403_FORBIDDEN, detail="Permission not granted")
+
         candidate_function: BaseContractFunction = next(
             (tmp_fn for tmp_fn in abi_functions if set(tmp_fn.argument_names) == params_set), None)
 
         if not candidate_function:
             raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="Invalid arguments")
 
-        abi_args = {k: params[k] for k in candidate_function.argument_names if k in params}
+        abi_args = {k: booleanize(params[k]) for k in candidate_function.argument_names if k in params}
         unsigned_transaction = candidate_function(**abi_args).build_transaction({"from": params['from'],
                                                                                       "to": register_address,
                                                                                       "nonce": 0xb1d3,

@@ -10,12 +10,13 @@ from starlette.status import HTTP_400_BAD_REQUEST
 
 from ebsi_sim.schemas import ScopeEnum, TokenCreate, TokenBase
 from ebsi_sim.services.auth import AuthService
+from ebsi_sim.services.didr import DidrService
 from ebsi_sim.utils import pem_to_jwk
 
 router = APIRouter(prefix="/authorisation", tags=["authorisation"])
 
 @router.post("/token")
-def create_token(request: TokenCreate, auth_service: AuthService = Depends()) -> TokenBase:
+def create_token(request: TokenCreate, auth_service: AuthService = Depends(), didr_service: DidrService = Depends()) -> TokenBase:
     match request.scope:
         case ScopeEnum.tir_write:
             path = f"ebsi_sim/includes/presentation_tir_write.json"
@@ -46,6 +47,11 @@ def create_token(request: TokenCreate, auth_service: AuthService = Depends()) ->
         raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="Invalid presentation definition")
 
     vp_decoded = auth_service.decode_and_check_signature(request.vp_token, "authentication")
+
+    subject_did = didr_service.getDidDocument(vp_decoded["sub"])
+
+    if request.scope == ScopeEnum.tnt_create and not subject_did.tnt_authorized:
+        raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="DID not authorized to this scope")
 
     holder_is_registered = auth_service.check_did_exists(vp_decoded["vp"]["holder"])
 

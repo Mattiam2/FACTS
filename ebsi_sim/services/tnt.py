@@ -41,8 +41,8 @@ class TntService:
     def listEvents(self, *, offset=None, limit=None, order_by=None, **filters):
         return self.event_repository.list(offset=offset, limit=limit, order_by=order_by, **filters)
 
-    def authoriseDid(self, *, from_: str, senderDid: str, authoriseDid: str, whiteList: bool):
-        return self.identifier_repository.update(commit=False, id=authoriseDid, tnt_authorized=whiteList)
+    def authoriseDid(self, *, senderDid: str, authorisedDid: str, whiteList: bool):
+        self.identifier_repository.update(id=authorisedDid, tnt_authorized=whiteList)
 
     def createDocument(self, *, documentHash: str, documentMetadata: str, didEbsiCreator: str, timestamp: str | None = None, timestampProof: str | None = None):
         doc_metadata = bytes.fromhex(documentMetadata[2:]).decode('utf-8')

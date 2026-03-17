@@ -1,7 +1,7 @@
 import base64
 import hashlib
 import json
-from typing import Annotated
+from typing import Annotated, Any
 
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives.serialization import load_pem_public_key
@@ -68,6 +68,14 @@ async def get_current_user(token: Annotated[str, Depends(vp_scheme)]):
     if "scp" in user:
         scopes = user["scp"].split(" ")
     return User(scopes=scopes, sub=user["sub"])
+
+
+def booleanize(value: str) -> Any:
+    if value == "0x01":
+        return True
+    if value == "0x00":
+        return False
+    return value
 
 
 def check_scopes(user: User, method: str, method_scopes: dict[str, list[str]]):
