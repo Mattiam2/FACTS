@@ -1,5 +1,7 @@
 import json
+import math
 from datetime import datetime
+from uuid import uuid4
 
 import jwt
 from fastapi import Depends
@@ -7,10 +9,12 @@ from jsonpath_ng import parse
 from jsonschema import validate
 from jwt import get_unverified_header
 
+from ebsi_sim.core.config import settings
 from ebsi_sim.repositories.didr import IdentifierRepository, VerificationMethodRepository, \
     VerificationRelationshipRepository
 from ebsi_sim.schemas import ScopeEnum
 from ebsi_sim.schemas.token import PresentationDescriptor, PresentationSubmission
+from ebsi_sim.utils import pem_to_jwk
 
 
 class AuthServiceException(Exception):
@@ -28,6 +32,62 @@ class AuthService:
         self.identifier_repository = identifier_repository
         self.verification_method_repository = verification_method_repository
         self.verification_relationship_repository = verification_relationship_repository
+
+    @staticmethod
+    def create_access_token(scope: ScopeEnum, subject: str):
+        pem_pub_key = settings.public_key
+        jwk_pub_key = pem_to_jwk(pem_pub_key)
+        kid = jwk_pub_key["kid"]
+
+        expires_in = 7200
+        iat = math.floor(datetime.utcnow().timestamp())
+        exp = iat + expires_in
+
+        payload = {
+            "aud": "https://api-pilot.ebsi.eu/authorisation/v4",
+            "exp": exp,
+            "iat": iat,
+            "iss": "https://api-pilot.ebsi.eu/authorisation/v4",
+            "jti": str(uuid4()),
+            "scp": scope,
+            "sub": subject,
+        }
+        private_key = settings.private_key
+        algorithm = "ES256"
+        headers = {
+            "alg": "ES256",
+            "kid": kid,
+            "typ": "JWT"
+        }
+        return jwt.encode(payload, private_key, algorithm=algorithm, headers=headers)
+
+    @staticmethod
+    def create_id_token(subject: str, issuer: str):
+        pem_pub_key = settings.public_key
+        jwk_pub_key = pem_to_jwk(pem_pub_key)
+        kid = jwk_pub_key["kid"]
+
+        expires_in = 7200
+        iat = math.floor(datetime.utcnow().timestamp())
+        exp = iat + expires_in
+
+        payload = {
+            "aud": issuer,
+            "exp": exp,
+            "iat": iat,
+            "iss": "https://api-pilot.ebsi.eu/authorisation/v4",
+            "jti": str(uuid4()),
+            "nonce": 0,
+            "sub": subject,
+        }
+        private_key = settings.private_key
+        algorithm = "ES256"
+        headers = {
+            "alg": "ES256",
+            "kid": kid,
+            "typ": "JWT"
+        }
+        return jwt.encode(payload, private_key, algorithm=algorithm, headers=headers)
 
     @staticmethod
     def load_presentation(scope: ScopeEnum):

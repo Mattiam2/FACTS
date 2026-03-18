@@ -36,54 +36,16 @@ def create_token(request: TokenCreate, auth_service: AuthService = Depends(),
     credentials = auth_service.extract_and_validate_credentials(vp_decoded, request.presentation_submission,
                                                                 presentation_definition)
 
-    if request.scope.value == ScopeEnum.didr_invite and holder_did:
+    if request.scope == ScopeEnum.didr_invite and holder_did:
         raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="DID is already registered")
     elif not holder_did:
         raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="DID is not registered")
 
-    expires_in = 7200
-    iat = math.floor(datetime.utcnow().timestamp())
-    exp = iat + expires_in
-    pem_pub_key = settings.public_key
-    jwk_pub_key = pem_to_jwk(pem_pub_key)
-    kid = jwk_pub_key["kid"]
+    access_token = AuthService.create_access_token(request.scope, credentials[0]["sub"])
 
-    access_token = jwt.encode({
-        "aud": "https://api-pilot.ebsi.eu/authorisation/v4",
-        "exp": exp,
-        "iat": iat,
-        "iss": "https://api-pilot.ebsi.eu/authorisation/v4",
-        "jti": str(uuid4()),
-        "scp": request.scope.value,
-        "sub": vp_decoded["sub"],
-    },
-        settings.private_key,
-        "ES256",
-        {
-            "alg": "ES256",
-            "kid": kid,
-            "typ": "JWT"
-        }
-    )
+    id_token = AuthService.create_id_token(subject=credentials[0]["sub"], issuer=credentials[0]["iss"])
 
-    id_token = jwt.encode({
-        "aud": credentials[0]["iss"],
-        "exp": exp,
-        "iat": iat,
-        "iss": "https://api-pilot.ebsi.eu/authorisation/v4",
-        "jti": str(uuid4()),
-        "nonce": 0,
-        "sub": credentials[0]["sub"],
-    },
-        settings.private_key,
-        "ES256",
-        {
-            "alg": "ES256",
-            "kid": kid,
-            "typ": "JWT"
-        }
-    )
-    return TokenBase(access_token=access_token, id_token=id_token, expires_in=expires_in, token_type="Bearer",
+    return TokenBase(access_token=access_token, id_token=id_token, expires_in=7200, token_type="Bearer",
                      scope=request.scope.value)
 
 
