@@ -1,6 +1,9 @@
 import json
 import math
 
+import rlp
+from eth_account import Account
+from eth_account._utils.legacy_transactions import Transaction
 from web3 import Web3
 from fastapi import APIRouter, HTTPException, Depends
 from typing import Annotated
@@ -9,11 +12,8 @@ from fastapi import Query
 from starlette.status import HTTP_400_BAD_REQUEST, HTTP_403_FORBIDDEN
 from web3.contract.base_contract import BaseContractFunction
 
-from ebsi_sim.repositories.didr import IdentifierRepository, VerificationRelationshipRepository, \
-    VerificationMethodRepository, IdentifierControllerRepository
 from ebsi_sim.schemas import IdentifierListPublic, IdentifierPublic, IdentifierItemPublic, JsonRpcCreate, JsonRpcPublic, PageLinksPublic
 
-from ebsi_sim.services import didr
 from ebsi_sim.services.didr import DidrService
 from ebsi_sim.utils import get_current_user, User, check_scopes
 
@@ -87,7 +87,16 @@ def rpc(current_user: Annotated[User, Depends(get_current_user)], payload: JsonR
         trans_unsigned_transaction = params['unsignedTransaction']
         trans_signed_transaction = params['signedRawTransaction']
 
-        data = trans_unsigned_transaction['data']
+        decoded_transaction = rlp.decode(trans_signed_transaction, Transaction)
+
+        if decoded_transaction != trans_unsigned_transaction:
+            raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="Invalid transaction")
+
+        signer = Account.recover_transaction(trans_signed_transaction)
+        if signer.lower() != decoded_transaction['from'].lower():
+            raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="Invalid transaction")
+
+        data = decoded_transaction['data']
 
         func_obj, params = eth_contract.decode_function_input(data=data)
 
@@ -103,7 +112,7 @@ def rpc(current_user: Annotated[User, Depends(get_current_user)], payload: JsonR
     )
 
 
-@router.get("/identifiers", description="Returns a list of documents.")
+@router.get("/identifiers", description="Returns a list of identifiers.")
 def read_identifiers(page_after: Annotated[int, Query(alias="page[after]")] = 1,
                            page_size: Annotated[int, Query(alias="page[size]")] = 10,
                            controller: str | None = None, didr_service: DidrService = Depends()) -> IdentifierListPublic:
@@ -129,7 +138,7 @@ def read_identifiers(page_after: Annotated[int, Query(alias="page[after]")] = 1,
     )
 
 
-@router.get("/identifiers/{did}", description="Gets the document corresponding to the ID.")
+@router.get("/identifiers/{did}", description="Gets the identifier corresponding to the DID.")
 def read_identifier(did: str, valid_at=None, didr_service: DidrService = Depends()) -> IdentifierPublic:
     identifier = didr_service.getDidDocument(did)
     did_controllers = identifier.controllers
@@ -149,7 +158,7 @@ def read_identifier(did: str, valid_at=None, didr_service: DidrService = Depends
     )
 
 
-@router.post("/identifiers/{did}/actions", description="Returns a list of events.")
+@router.post("/identifiers/{did}/actions", description="Performs an action on the identifier corresponding to the DID.")
 def post_action_identifier(did: str, payload: JsonRpcCreate, didr_service: DidrService = Depends()) -> JsonRpcPublic:
     vmethods = didr_service.listVerificationMethods(did_controller=did)
 

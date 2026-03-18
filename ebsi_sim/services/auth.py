@@ -12,6 +12,9 @@ from jsonschema import validate
 
 from ebsi_sim.schemas.token import PresentationDescriptor, PresentationSubmission
 
+class AuthServiceException(Exception):
+    pass
+
 
 class AuthService:
     identifier_repository: IdentifierRepository
@@ -34,9 +37,12 @@ class AuthService:
         vmethod_id = token_header.get("kid")
 
         if vmethod_id is None:
-            raise Exception("No verification method id found in token header")
+            raise AuthServiceException("No verification method id found in token header")
 
         vmethod = self.verification_method_repository.get(vmethod_id)
+
+        if vmethod is None:
+            raise AuthServiceException("Verification method not found")
 
         vmethod_public_key = vmethod.public_key
         decoded_token = jwt.decode(token, vmethod_public_key, algorithms=credential_algos,
@@ -44,18 +50,18 @@ class AuthService:
 
         vmethod_issuer = decoded_token.get("iss")
         if vmethod_issuer is None:
-            raise Exception("No issuer found in token")
+            raise AuthServiceException("No issuer found in token")
 
         if vmethod.did_controller != vmethod_issuer:
-            raise Exception("Verification method is not owned by the issuer")
+            raise AuthServiceException("Verification method is not owned by the issuer")
 
         if vmethod.notafter < datetime.now():
-            raise Exception("Verification method is expired")
+            raise AuthServiceException("Verification method is expired")
 
         vrels = self.verification_relationship_repository.list(identifier_did=vmethod_issuer, name=relationship_type, vmethodid=vmethod_id)
 
         if vrels is None or len(vrels) == 0:
-            raise Exception("Verification method not valid for this operation")
+            raise AuthServiceException("Verification method not valid for this operation")
 
         return decoded_token
 
@@ -71,8 +77,7 @@ class AuthService:
             descriptor_algos.update(input_descriptor["format"])
             descriptor_constraints.extend(input_descriptor["constraints"]["fields"])
         else:
-            raise HTTPException(status_code=HTTP_400_BAD_REQUEST,
-                                detail="Mismatch between presentation definition and input descriptor")
+            raise AuthServiceException("Mismatch between presentation definition and input descriptor")
 
         credential_algo = descriptor_algos[credential_format]["alg"]
 
@@ -93,7 +98,7 @@ class AuthService:
                         match_field = jsonpath_expr.find(decoded_payload)[0]
                         validate(match_field.value, constraint["filter"])
                     except Exception as e:
-                        raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="VP token is not valid")
+                        raise AuthServiceException("VP token is not valid")
             return decoded_payload
         else:
             return self.find_credential(decoded_payload, submission.path_nested, vp_formats, input_descriptor)
@@ -109,10 +114,9 @@ class AuthService:
                         vc = self.find_credential(vp_decoded, descriptor_map, presentation_definition["format"],
                                              input_descriptor)
                         if vc["sub"] != vp_decoded["vp"]["holder"]:
-                            raise HTTPException(status_code=HTTP_400_BAD_REQUEST,
-                                                detail="Credential subject mismatch with holder")
+                            raise AuthServiceException("Credential subject mismatch with holder")
                         found_input = True
                         credentials.append(vc)
                 if not found_input:
-                    raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="Invalid presentation")
+                    raise AuthServiceException("Invalid presentation")
         return credentials

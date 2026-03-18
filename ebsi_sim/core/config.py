@@ -4,7 +4,7 @@ from pydantic_settings import BaseSettings
 
 
 class Settings(BaseSettings):
-    app_name: str = "Track 'n' Trace API"
+    app_name: str = "EBSI SIMULATOR"
     db_user: str = "postgres"
     db_password: str = "password"
     db_host: str = "localhost"

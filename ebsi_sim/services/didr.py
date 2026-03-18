@@ -7,6 +7,8 @@ from ebsi_sim.models.didr import Identifier, VerificationMethod
 from ebsi_sim.repositories.didr import IdentifierRepository, IdentifierControllerRepository, \
     VerificationMethodRepository, VerificationRelationshipRepository
 
+class DidrServiceException(Exception):
+    pass
 
 class DidrService:
     identifier_repository: IdentifierRepository
@@ -92,7 +94,7 @@ class DidrService:
     def revokeVerificationMethod(self, *, did: str, vMethodId: str, notAfter: int):
         not_after_date = datetime.fromtimestamp(notAfter)
         if not_after_date >= datetime.now():
-            raise Exception("Cannot revoke a method with date in the future")
+            raise DidrServiceException("Cannot revoke a method with date in the future")
 
         full_vmethod_id = f"{did}#{vMethodId}"
         vmethod = self.verification_method_repository.get(id=full_vmethod_id)
@@ -102,7 +104,7 @@ class DidrService:
     def expireVerificationMethod(self, *, did: str, vMethodId: str, notAfter: int):
         not_after_date = datetime.fromtimestamp(notAfter)
         if not_after_date < datetime.now():
-            raise Exception("Cannot set expiration of a method with date in the past")
+            raise DidrServiceException("Cannot set expiration of a method with date in the past")
 
         full_vmethod_id = f"{did}#{vMethodId}"
         vmethod = self.verification_method_repository.get(id=full_vmethod_id)

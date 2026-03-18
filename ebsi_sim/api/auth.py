@@ -15,9 +15,8 @@ from ebsi_sim.utils import pem_to_jwk
 
 router = APIRouter(prefix="/authorisation", tags=["authorisation"])
 
-@router.post("/token")
-def create_token(request: TokenCreate, auth_service: AuthService = Depends(), didr_service: DidrService = Depends()) -> TokenBase:
-    match request.scope:
+def load_presentation(scope: ScopeEnum):
+    match scope:
         case ScopeEnum.tir_write:
             path = f"ebsi_sim/includes/presentation_tir_write.json"
         case ScopeEnum.tnt_write:
@@ -40,8 +39,13 @@ def create_token(request: TokenCreate, auth_service: AuthService = Depends(), di
             path = f"ebsi_sim/includes/presentation_tsr_write.json"
         case _:
             raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="Invalid scope")
-
     presentation_definition = json.load(open(path, "r"))
+    return presentation_definition
+
+@router.post("/token", description="Create an access token given a Verifiable Presentation (VP) token.")
+def create_token(request: TokenCreate, auth_service: AuthService = Depends(), didr_service: DidrService = Depends()) -> TokenBase:
+
+    presentation_definition = load_presentation(scope=request.scope)
 
     if request.presentation_submission.definition_id != presentation_definition["id"]:
         raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="Invalid presentation definition")
@@ -108,7 +112,7 @@ def create_token(request: TokenCreate, auth_service: AuthService = Depends(), di
     return TokenBase(access_token=access_token, id_token=id_token, expires_in=expires_in, token_type="Bearer", scope=request.scope.value)
 
 
-@router.get("/.well-known/openid-configuration")
+@router.get("/.well-known/openid-configuration", description="OpenID Connect Discovery 1.0 endpoint.")
 def openid_configuration() -> dict:
     return {
         "issuer": "https://api-pilot.ebsi.eu/authorisation/v4",
@@ -186,7 +190,7 @@ def openid_configuration() -> dict:
     }
 
 
-@router.get("/jwks")
+@router.get("/jwks", description="JSON Web Key Set (JWK Set) endpoint.")
 def read_jwks() -> dict:
     return {
         "keys": [
@@ -202,7 +206,7 @@ def read_jwks() -> dict:
     }
 
 
-@router.get("/presentation-definitions")
+@router.get("/presentation-definitions", description="Presentation Definition endpoint.")
 def read_presentation_definitions(scope: ScopeEnum) -> dict:
     path = None
     match scope:
