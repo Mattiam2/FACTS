@@ -18,6 +18,7 @@ class DocumentBase(SQLModel):
     metadata_text: str
     creator: str
 
+
 class DocumentItemPublic(SQLModel):
     """
     Represents an EBSI Document list item with metadata and hyperlink.

@@ -13,8 +13,8 @@ class IdentifierBase(SQLModel):
     """
     did: str
 
-class IdentifierPublic(IdentifierBase):
 
+class IdentifierPublic(IdentifierBase):
     did: str = Field(schema_extra={'serialization_alias': 'id'})
     controller: list[str] | None = None
     verificationMethod: list[VerificationMethodBase] | None = None

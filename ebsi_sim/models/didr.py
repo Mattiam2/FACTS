@@ -32,12 +32,14 @@ class VerificationRelationship(VerificationRelationshipBase, table=True):
     verification_method: VerificationMethod = Relationship(back_populates="relationships")
     identifier: "Identifier" = Relationship(back_populates="verification_relationships")
 
+
 class IdentifierController(SQLModel, table=True):
     __tablename__ = "identifier_controllers"
     __table_args__ = {'schema': 'public'}
 
     identifier_did: str = Field(primary_key=True, foreign_key="public.identifiers.did")
     did_controller: str = Field(primary_key=True, foreign_key="public.identifiers.did")
+
 
 class Identifier(IdentifierBase, table=True):
     """
@@ -58,7 +60,14 @@ class Identifier(IdentifierBase, table=True):
     tir_authorized: bool = Field(default=False)
     tnt_authorized: bool = Field(default=False)
 
-    controllers: list["Identifier"] = Relationship(back_populates="controlled_identifiers", link_model=IdentifierController, sa_relationship_kwargs=dict(primaryjoin='Identifier.did==IdentifierController.identifier_did', secondaryjoin='Identifier.did==IdentifierController.did_controller'))
-    controlled_identifiers: list["Identifier"] = Relationship(back_populates="controllers", link_model=IdentifierController, sa_relationship_kwargs=dict(primaryjoin='Identifier.did==IdentifierController.did_controller', secondaryjoin='Identifier.did==IdentifierController.identifier_did'))
+    controllers: list["Identifier"] = Relationship(back_populates="controlled_identifiers",
+                                                   link_model=IdentifierController, sa_relationship_kwargs=dict(
+            primaryjoin='Identifier.did==IdentifierController.identifier_did',
+            secondaryjoin='Identifier.did==IdentifierController.did_controller'))
+    controlled_identifiers: list["Identifier"] = Relationship(back_populates="controllers",
+                                                              link_model=IdentifierController,
+                                                              sa_relationship_kwargs=dict(
+                                                                  primaryjoin='Identifier.did==IdentifierController.did_controller',
+                                                                  secondaryjoin='Identifier.did==IdentifierController.identifier_did'))
     verification_methods: list[VerificationMethod] = Relationship(back_populates="controller")
     verification_relationships: list[VerificationRelationship] = Relationship(back_populates="identifier")

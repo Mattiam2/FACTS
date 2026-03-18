@@ -1,13 +1,13 @@
 import json
 import math
-import jwt
-
-from ebsi_sim.core.config import settings
 from datetime import datetime
 from uuid import uuid4
+
+import jwt
 from fastapi import APIRouter, HTTPException, Depends
 from starlette.status import HTTP_400_BAD_REQUEST
 
+from ebsi_sim.core.config import settings
 from ebsi_sim.schemas import ScopeEnum, TokenCreate, TokenBase
 from ebsi_sim.services.auth import AuthService
 from ebsi_sim.services.didr import DidrService
@@ -15,37 +15,11 @@ from ebsi_sim.utils import pem_to_jwk
 
 router = APIRouter(prefix="/authorisation", tags=["authorisation"])
 
-def load_presentation(scope: ScopeEnum):
-    match scope:
-        case ScopeEnum.tir_write:
-            path = f"ebsi_sim/includes/presentation_tir_write.json"
-        case ScopeEnum.tnt_write:
-            path = f"ebsi_sim/includes/presentation_tnt_write.json"
-        case ScopeEnum.tpr_write:
-            path = f"ebsi_sim/includes/presentation_tpr_write.json"
-        case ScopeEnum.didr_invite:
-            path = f"ebsi_sim/includes/presentation_didr_invite.json"
-        case ScopeEnum.didr_write:
-            path = f"ebsi_sim/includes/presentation_didr_write.json"
-        case ScopeEnum.timestamp_write:
-            path = f"ebsi_sim/includes/presentation_timestamp_write.json"
-        case ScopeEnum.tir_invite:
-            path = f"ebsi_sim/includes/presentation_tir_invite.json"
-        case ScopeEnum.tnt_authorise:
-            path = f"ebsi_sim/includes/presentation_tnt_authorise.json"
-        case ScopeEnum.tnt_create:
-            path = f"ebsi_sim/includes/presentation_tnt_create.json"
-        case ScopeEnum.tsr_write:
-            path = f"ebsi_sim/includes/presentation_tsr_write.json"
-        case _:
-            raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="Invalid scope")
-    presentation_definition = json.load(open(path, "r"))
-    return presentation_definition
 
 @router.post("/token", description="Create an access token given a Verifiable Presentation (VP) token.")
-def create_token(request: TokenCreate, auth_service: AuthService = Depends(), didr_service: DidrService = Depends()) -> TokenBase:
-
-    presentation_definition = load_presentation(scope=request.scope)
+def create_token(request: TokenCreate, auth_service: AuthService = Depends(),
+                 didr_service: DidrService = Depends()) -> TokenBase:
+    presentation_definition = AuthService.load_presentation(scope=request.scope)
 
     if request.presentation_submission.definition_id != presentation_definition["id"]:
         raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="Invalid presentation definition")
@@ -57,15 +31,15 @@ def create_token(request: TokenCreate, auth_service: AuthService = Depends(), di
     if request.scope == ScopeEnum.tnt_create and not subject_did.tnt_authorized:
         raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="DID not authorized to this scope")
 
-    holder_is_registered = auth_service.check_did_exists(vp_decoded["vp"]["holder"])
+    holder_did = didr_service.getDidDocument(vp_decoded["vp"]["holder"])
 
-    credentials = auth_service.extract_and_validate_credentials(vp_decoded, request.presentation_submission, presentation_definition)
+    credentials = auth_service.extract_and_validate_credentials(vp_decoded, request.presentation_submission,
+                                                                presentation_definition)
 
-    if request.scope.value == ScopeEnum.didr_invite and holder_is_registered:
+    if request.scope.value == ScopeEnum.didr_invite and holder_did:
         raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="DID is already registered")
-    elif not holder_is_registered:
+    elif not holder_did:
         raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="DID is not registered")
-
 
     expires_in = 7200
     iat = math.floor(datetime.utcnow().timestamp())
@@ -93,14 +67,14 @@ def create_token(request: TokenCreate, auth_service: AuthService = Depends(), di
     )
 
     id_token = jwt.encode({
-            "aud": credentials[0]["iss"],
-            "exp": exp,
-            "iat": iat,
-            "iss": "https://api-pilot.ebsi.eu/authorisation/v4",
-            "jti": str(uuid4()),
-            "nonce": 0,
-            "sub": credentials[0]["sub"],
-        },
+        "aud": credentials[0]["iss"],
+        "exp": exp,
+        "iat": iat,
+        "iss": "https://api-pilot.ebsi.eu/authorisation/v4",
+        "jti": str(uuid4()),
+        "nonce": 0,
+        "sub": credentials[0]["sub"],
+    },
         settings.private_key,
         "ES256",
         {
@@ -109,7 +83,8 @@ def create_token(request: TokenCreate, auth_service: AuthService = Depends(), di
             "typ": "JWT"
         }
     )
-    return TokenBase(access_token=access_token, id_token=id_token, expires_in=expires_in, token_type="Bearer", scope=request.scope.value)
+    return TokenBase(access_token=access_token, id_token=id_token, expires_in=expires_in, token_type="Bearer",
+                     scope=request.scope.value)
 
 
 @router.get("/.well-known/openid-configuration", description="OpenID Connect Discovery 1.0 endpoint.")

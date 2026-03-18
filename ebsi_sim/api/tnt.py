@@ -1,13 +1,12 @@
 import json
 import math
+from typing import Annotated
 
 import rlp
 from eth_account import Account
 from eth_account._utils.legacy_transactions import Transaction
-from fastapi import Response, APIRouter, Depends, HTTPException
-from typing import Annotated
-
 from fastapi import Query
+from fastapi import Response, APIRouter, Depends, HTTPException
 from starlette.status import HTTP_204_NO_CONTENT, HTTP_400_BAD_REQUEST, HTTP_404_NOT_FOUND, \
     HTTP_500_INTERNAL_SERVER_ERROR, HTTP_403_FORBIDDEN
 from web3 import Web3
@@ -33,7 +32,8 @@ eth_contract = w3.eth.contract(
 
 @router.post("/jsonrpc",
              description="The JSON-RPC API provides methods assisting the construction of blockchain transactions and interaction with the ledger, i.e. write operation on ledger.")
-def rpc(current_user: Annotated[User, Depends(get_current_user)], payload: JsonRpcCreate, tnt_service: TntService = Depends()) -> JsonRpcPublic:
+def rpc(current_user: Annotated[User, Depends(get_current_user)], payload: JsonRpcCreate,
+        tnt_service: TntService = Depends()) -> JsonRpcPublic:
     is_authorized = check_scopes(current_user, payload.method, {
         "authoriseDid": ["tnt_authorise"],
         "createDocument": ["tnt_create"],
@@ -58,41 +58,50 @@ def rpc(current_user: Annotated[User, Depends(get_current_user)], payload: JsonR
 
         if payload.method == "createDocument":
             if "didEbsiCreator" in params and current_user.sub != params['didEbsiCreator']:
-                raise HTTPException(status_code=HTTP_403_FORBIDDEN, detail="didEbsiCreator is not the same as the subject")
+                raise HTTPException(status_code=HTTP_403_FORBIDDEN,
+                                    detail="didEbsiCreator is not the same as the subject")
 
         if payload.method == "removeDocument":
             document = tnt_service.getDocument(params['eventParams'][0]['documentHash'])
             if document.creator != current_user.sub:
-                raise HTTPException(status_code=HTTP_403_FORBIDDEN, detail="Document creator is not the same as the subject")
-
+                raise HTTPException(status_code=HTTP_403_FORBIDDEN,
+                                    detail="Document creator is not the same as the subject")
 
         if payload.method == "grantAccess":
             if "grantedByAccount" in params and current_user.sub != params['grantedByAccount']:
-                raise HTTPException(status_code=HTTP_403_FORBIDDEN, detail="grantedByAccount is not the same as the subject")
-            user_accesses = tnt_service.listAccesses(subject=params['grantedByAccount'], document_id=params['documentHash'])
+                raise HTTPException(status_code=HTTP_403_FORBIDDEN,
+                                    detail="grantedByAccount is not the same as the subject")
+            user_accesses = tnt_service.listAccesses(subject=params['grantedByAccount'],
+                                                     document_id=params['documentHash'])
             document = tnt_service.getDocument(params['documentHash'])
             if document is None:
                 raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Document not found")
             if document.creator != params['grantedByAccount']:
                 if params['permission'] != PermissionEnum.write:
-                    raise HTTPException(status_code=HTTP_403_FORBIDDEN, detail="grantedByAccount is not the same as the creator")
+                    raise HTTPException(status_code=HTTP_403_FORBIDDEN,
+                                        detail="grantedByAccount is not the same as the creator")
                 else:
-                    is_delegated = bool([access for access in user_accesses if access.permission == PermissionEnum.delegate])
+                    is_delegated = bool(
+                        [access for access in user_accesses if access.permission == PermissionEnum.delegate])
                     if not is_delegated:
                         raise HTTPException(status_code=HTTP_403_FORBIDDEN, detail="Permission not granted")
 
         if payload.method == 'revokeAccess':
             if "revokedByAccount" in params and current_user.sub != params['revokedByAccount']:
-                raise HTTPException(status_code=HTTP_403_FORBIDDEN, detail="revokedByAccount is not the same as the subject")
+                raise HTTPException(status_code=HTTP_403_FORBIDDEN,
+                                    detail="revokedByAccount is not the same as the subject")
             document = tnt_service.getDocument(params['documentHash'])
             if document is None:
                 raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Document not found")
             if document.creator != params['revokedByAccount']:
-                raise HTTPException(status_code=HTTP_403_FORBIDDEN, detail="revokedByAccount is not the same as the creator")
+                raise HTTPException(status_code=HTTP_403_FORBIDDEN,
+                                    detail="revokedByAccount is not the same as the creator")
 
         if payload.method == "writeEvent":
             document = tnt_service.getDocument(params['eventParams'][0]['documentHash'])
-            user_accesses = tnt_service.listAccesses(subject=params['grantedByAccount'], document_id=params['documentHash'], permission=PermissionEnum.write)
+            user_accesses = tnt_service.listAccesses(subject=params['grantedByAccount'],
+                                                     document_id=params['documentHash'],
+                                                     permission=PermissionEnum.write)
             if document is None:
                 raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Document not found")
             if user_accesses is None:
@@ -106,12 +115,12 @@ def rpc(current_user: Annotated[User, Depends(get_current_user)], payload: JsonR
 
         abi_args = {k: booleanize(params[k]) for k in candidate_function.argument_names if k in params}
         unsigned_transaction = candidate_function(**abi_args).build_transaction({"from": params['from'],
-                                                                                  "to": register_address,
-                                                                                  "nonce": 0xb1d3,
-                                                                                  "chainId": 1234,
-                                                                                  "gas": 0,
-                                                                                  "gasLimit": 1000000,
-                                                                                  "gasPrice": 0})
+                                                                                 "to": register_address,
+                                                                                 "nonce": 0xb1d3,
+                                                                                 "chainId": 1234,
+                                                                                 "gas": 0,
+                                                                                 "gasLimit": 1000000,
+                                                                                 "gasPrice": 0})
         json_rpc_result = unsigned_transaction
     elif payload.method == "sendSignedTransaction":
         trans_protocol = params['protocol']
@@ -166,8 +175,8 @@ def check_access(creator: Annotated[str, Query()], tnt_service: TntService = Dep
 
 @router.get("/accesses", description="Get accesses filtered by subject.")
 def read_subject_accesses(subject: str, page_after: Annotated[int, Query(alias="page[after]")] = 1,
-                          page_size: Annotated[int, Query(alias="page[size]")] = 10, tnt_service: TntService = Depends()) -> AccessListPublic:
-
+                          page_size: Annotated[int, Query(alias="page[size]")] = 10,
+                          tnt_service: TntService = Depends()) -> AccessListPublic:
     accesses_count = tnt_service.countAccesses(subject=subject)
     n_pages = math.ceil(accesses_count / page_size)
 
@@ -189,8 +198,8 @@ def read_subject_accesses(subject: str, page_after: Annotated[int, Query(alias="
 
 @router.get("/documents", description="Returns a list of documents.")
 def read_docs(page_after: Annotated[int, Query(alias="page[after]")] = 1,
-              page_size: Annotated[int, Query(alias="page[size]")] = 10, tnt_service: TntService = Depends()) -> DocumentListPublic:
-
+              page_size: Annotated[int, Query(alias="page[size]")] = 10,
+              tnt_service: TntService = Depends()) -> DocumentListPublic:
     docs_count = tnt_service.countDocuments()
     n_pages = math.ceil(docs_count / page_size)
 
@@ -214,7 +223,8 @@ def read_docs(page_after: Annotated[int, Query(alias="page[after]")] = 1,
 
 
 @router.get("/documents/{documentId}", description="Gets the document corresponding to the ID.")
-def read_doc(documentId: str, version: VersionEnum = VersionEnum.latest, tnt_service: TntService = Depends()) -> DocumentPublic:
+def read_doc(documentId: str, version: VersionEnum = VersionEnum.latest,
+             tnt_service: TntService = Depends()) -> DocumentPublic:
     doc = tnt_service.getDocument(documentId)
 
     timestamp = TimestampPublic(
@@ -232,8 +242,8 @@ def read_doc(documentId: str, version: VersionEnum = VersionEnum.latest, tnt_ser
 
 @router.get("/documents/{documentId}/events", description="Returns a list of events.")
 def read_doc_events(documentId: str, page_after: Annotated[int, Query(alias="page[after]")] = 1,
-                    page_size: Annotated[int, Query(alias="page[size]")] = 10, tnt_service: TntService = Depends()) -> EventListPublic:
-
+                    page_size: Annotated[int, Query(alias="page[size]")] = 10,
+                    tnt_service: TntService = Depends()) -> EventListPublic:
     events_count = tnt_service.countEvents(document_id=documentId)
     n_pages = math.ceil(events_count / page_size)
 
@@ -276,8 +286,8 @@ def read_doc_event(documentId: str, eventId: str, tnt_service: TntService = Depe
 
 @router.get("/documents/{documentId}/accesses", description="Returns a list of accesses related to the document.")
 def read_doc_accesses(documentId: str, page_after: Annotated[int, Query(alias="page[after]")] = 1,
-                      page_size: Annotated[int, Query(alias="page[size]")] = 10, tnt_service: TntService = Depends()) -> AccessListPublic:
-
+                      page_size: Annotated[int, Query(alias="page[size]")] = 10,
+                      tnt_service: TntService = Depends()) -> AccessListPublic:
     accesses_count = tnt_service.countAccesses(document_id=documentId)
     n_pages = math.ceil(accesses_count / page_size)
 

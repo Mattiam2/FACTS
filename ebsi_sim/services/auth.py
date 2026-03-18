@@ -1,16 +1,17 @@
+import json
 from datetime import datetime
 
 import jwt
-from fastapi import HTTPException, Depends
+from fastapi import Depends
+from jsonpath_ng import parse
+from jsonschema import validate
 from jwt import get_unverified_header
-from starlette.status import HTTP_400_BAD_REQUEST
 
 from ebsi_sim.repositories.didr import IdentifierRepository, VerificationMethodRepository, \
     VerificationRelationshipRepository
-from jsonpath_ng import parse
-from jsonschema import validate
-
+from ebsi_sim.schemas import ScopeEnum
 from ebsi_sim.schemas.token import PresentationDescriptor, PresentationSubmission
+
 
 class AuthServiceException(Exception):
     pass
@@ -28,9 +29,33 @@ class AuthService:
         self.verification_method_repository = verification_method_repository
         self.verification_relationship_repository = verification_relationship_repository
 
-    def check_did_exists(self, did: str) -> bool:
-        did_el = self.identifier_repository.get(did)
-        return did_el is not None
+    @staticmethod
+    def load_presentation(scope: ScopeEnum):
+        match scope:
+            case ScopeEnum.tir_write:
+                path = f"ebsi_sim/includes/presentation_tir_write.json"
+            case ScopeEnum.tnt_write:
+                path = f"ebsi_sim/includes/presentation_tnt_write.json"
+            case ScopeEnum.tpr_write:
+                path = f"ebsi_sim/includes/presentation_tpr_write.json"
+            case ScopeEnum.didr_invite:
+                path = f"ebsi_sim/includes/presentation_didr_invite.json"
+            case ScopeEnum.didr_write:
+                path = f"ebsi_sim/includes/presentation_didr_write.json"
+            case ScopeEnum.timestamp_write:
+                path = f"ebsi_sim/includes/presentation_timestamp_write.json"
+            case ScopeEnum.tir_invite:
+                path = f"ebsi_sim/includes/presentation_tir_invite.json"
+            case ScopeEnum.tnt_authorise:
+                path = f"ebsi_sim/includes/presentation_tnt_authorise.json"
+            case ScopeEnum.tnt_create:
+                path = f"ebsi_sim/includes/presentation_tnt_create.json"
+            case ScopeEnum.tsr_write:
+                path = f"ebsi_sim/includes/presentation_tsr_write.json"
+            case _:
+                raise AuthServiceException("Invalid scope")
+        presentation_definition = json.load(open(path, "r"))
+        return presentation_definition
 
     def decode_and_check_signature(self, token: str, relationship_type: str, credential_algos=None) -> dict:
         token_header = get_unverified_header(token)
@@ -58,7 +83,8 @@ class AuthService:
         if vmethod.notafter < datetime.now():
             raise AuthServiceException("Verification method is expired")
 
-        vrels = self.verification_relationship_repository.list(identifier_did=vmethod_issuer, name=relationship_type, vmethodid=vmethod_id)
+        vrels = self.verification_relationship_repository.list(identifier_did=vmethod_issuer, name=relationship_type,
+                                                               vmethodid=vmethod_id)
 
         if vrels is None or len(vrels) == 0:
             raise AuthServiceException("Verification method not valid for this operation")
@@ -112,7 +138,7 @@ class AuthService:
                 for descriptor_map in presentation_submission.descriptor_map:
                     if descriptor_map.id == input_descriptor["id"]:
                         vc = self.find_credential(vp_decoded, descriptor_map, presentation_definition["format"],
-                                             input_descriptor)
+                                                  input_descriptor)
                         if vc["sub"] != vp_decoded["vp"]["holder"]:
                             raise AuthServiceException("Credential subject mismatch with holder")
                         found_input = True

@@ -3,15 +3,16 @@ from typing import Callable, Awaitable
 from fastapi import FastAPI, Request, Response
 from sqlmodel import Session
 
-from ebsi_sim.api.tnt import router as tntapp
-from ebsi_sim.api.didr import router as didrapp
 from ebsi_sim.api.auth import router as authapp
+from ebsi_sim.api.didr import router as didrapp
+from ebsi_sim.api.tnt import router as tntapp
 from ebsi_sim.core.db import engine, session_ctx
 
 app = FastAPI()
-app.include_router(tntapp)  
+app.include_router(tntapp)
 app.include_router(didrapp)
 app.include_router(authapp)
+
 
 @app.middleware("http")
 async def db_session_handler(request: Request, call_next: Callable[[Request], Awaitable[Response]]) -> Response:

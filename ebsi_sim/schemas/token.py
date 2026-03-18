@@ -16,6 +16,7 @@ class PresentationDescriptor(SQLModel):
     path: str
     path_nested: Optional["PresentationDescriptor"] = None
 
+
 class PresentationSubmission(SQLModel):
     id: str
     definition_id: str

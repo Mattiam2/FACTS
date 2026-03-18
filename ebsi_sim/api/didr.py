@@ -1,19 +1,18 @@
 import json
 import math
+from typing import Annotated
 
 import rlp
 from eth_account import Account
 from eth_account._utils.legacy_transactions import Transaction
-from web3 import Web3
 from fastapi import APIRouter, HTTPException, Depends
-from typing import Annotated
-
 from fastapi import Query
 from starlette.status import HTTP_400_BAD_REQUEST, HTTP_403_FORBIDDEN
+from web3 import Web3
 from web3.contract.base_contract import BaseContractFunction
 
-from ebsi_sim.schemas import IdentifierListPublic, IdentifierPublic, IdentifierItemPublic, JsonRpcCreate, JsonRpcPublic, PageLinksPublic
-
+from ebsi_sim.schemas import IdentifierListPublic, IdentifierPublic, IdentifierItemPublic, JsonRpcCreate, JsonRpcPublic, \
+    PageLinksPublic
 from ebsi_sim.services.didr import DidrService
 from ebsi_sim.utils import get_current_user, User, check_scopes
 
@@ -32,7 +31,8 @@ eth_contract = w3.eth.contract(
 
 @router.post("/jsonrpc",
              description="The JSON-RPC API provides methods assisting the construction of blockchain transactions and interaction with the ledger, i.e. write operation on ledger.")
-def rpc(current_user: Annotated[User, Depends(get_current_user)], payload: JsonRpcCreate, didr_service: DidrService = Depends()) -> JsonRpcPublic:
+def rpc(current_user: Annotated[User, Depends(get_current_user)], payload: JsonRpcCreate,
+        didr_service: DidrService = Depends()) -> JsonRpcPublic:
     is_authorized = check_scopes(current_user, payload.method, {
         "insertDidDocument": ["didr_invite", "didr_write"],
         "updateBaseDocument": ["didr_write"],
@@ -114,8 +114,8 @@ def rpc(current_user: Annotated[User, Depends(get_current_user)], payload: JsonR
 
 @router.get("/identifiers", description="Returns a list of identifiers.")
 def read_identifiers(page_after: Annotated[int, Query(alias="page[after]")] = 1,
-                           page_size: Annotated[int, Query(alias="page[size]")] = 10,
-                           controller: str | None = None, didr_service: DidrService = Depends()) -> IdentifierListPublic:
+                     page_size: Annotated[int, Query(alias="page[size]")] = 10,
+                     controller: str | None = None, didr_service: DidrService = Depends()) -> IdentifierListPublic:
     dids_count = didr_service.countDidDocuments(controller=controller)
     n_pages = math.ceil(dids_count / page_size)
 

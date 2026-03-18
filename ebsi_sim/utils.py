@@ -3,20 +3,19 @@ import hashlib
 import json
 from typing import Annotated, Any
 
+import jwt
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives.serialization import load_pem_public_key
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer, APIKeyHeader
 from jwcrypto import jwk
-import jwt
-
 from sqlmodel import SQLModel
 from starlette.status import HTTP_400_BAD_REQUEST
 
 from ebsi_sim.core.config import settings
-from ebsi_sim.schemas.token import PresentationDescriptor
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/authorisation/token")
+
 
 class User(SQLModel):
     scopes: list[str]
@@ -50,12 +49,15 @@ def pem_to_jwk(pem_public_key: str) -> dict:
 
     return jwk_dict
 
+
 vp_scheme = APIKeyHeader(name="Authorization", auto_error=False)
+
 
 async def get_current_user(token: Annotated[str, Depends(vp_scheme)]):
     user = None
     try:
-        user = jwt.decode(token, settings.public_key, algorithms=["ES256"], options={'verify_exp': False, "verify_aud": False})
+        user = jwt.decode(token, settings.public_key, algorithms=["ES256"],
+                          options={'verify_exp': False, "verify_aud": False})
     except jwt.exceptions.DecodeError as e:
         pass
     if not user:

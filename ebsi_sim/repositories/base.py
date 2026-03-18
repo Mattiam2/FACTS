@@ -1,10 +1,12 @@
-from typing import Any, Generic, Iterable, Type, TypeVar
 from abc import ABC, abstractmethod
+from typing import Any, Generic, Type, TypeVar
+
 from sqlmodel import SQLModel, select, func
 
 from ebsi_sim.core.db import db
 
 T = TypeVar("T", bound=SQLModel)
+
 
 class Repository(ABC, Generic[T]):
     """
@@ -19,13 +21,17 @@ class Repository(ABC, Generic[T]):
 
     @abstractmethod
     def get(self, id: Any) -> T | None: ...
+
     @abstractmethod
     def list(self, *, offset=0, limit=100,
              order_by: str | None = None, **filters: Any) -> list[T]: ...
+
     @abstractmethod
     def create(self, **data: Any) -> T: ...
+
     @abstractmethod
     def update(self, id: Any, **data: Any) -> T: ...
+
     @abstractmethod
     def delete(self, id: Any) -> None: ...
 

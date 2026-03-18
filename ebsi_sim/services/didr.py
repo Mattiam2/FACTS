@@ -7,8 +7,10 @@ from ebsi_sim.models.didr import Identifier, VerificationMethod
 from ebsi_sim.repositories.didr import IdentifierRepository, IdentifierControllerRepository, \
     VerificationMethodRepository, VerificationRelationshipRepository
 
+
 class DidrServiceException(Exception):
     pass
+
 
 class DidrService:
     identifier_repository: IdentifierRepository
