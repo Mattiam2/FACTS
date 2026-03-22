@@ -1,17 +1,11 @@
 import json
-import math
-from datetime import datetime
-from uuid import uuid4
 
-import jwt
 from fastapi import APIRouter, HTTPException, Depends
 from starlette.status import HTTP_400_BAD_REQUEST
 
-from ebsi_sim.core.config import settings
 from ebsi_sim.schemas import ScopeEnum, TokenCreate, TokenBase
 from ebsi_sim.services.auth import AuthService
 from ebsi_sim.services.didr import DidrService
-from ebsi_sim.utils import pem_to_jwk
 
 router = APIRouter(prefix="/authorisation", tags=["authorisation"])
 
