@@ -2,21 +2,17 @@ import json
 import math
 from typing import Annotated
 
-import rlp
-from eth_account import Account
-from eth_account._utils.legacy_transactions import Transaction
 from fastapi import Query
 from fastapi import Response, APIRouter, Depends, HTTPException
 from starlette.status import HTTP_204_NO_CONTENT, HTTP_400_BAD_REQUEST, HTTP_404_NOT_FOUND, \
     HTTP_500_INTERNAL_SERVER_ERROR, HTTP_403_FORBIDDEN
 from web3 import Web3
-from web3.contract.base_contract import BaseContractFunction
 
 from ebsi_sim.schemas import AccessListPublic, DocumentItemPublic, DocumentListPublic, DocumentPublic, EventItemPublic, \
     EventListPublic, EventPublic, JsonRpcCreate, JsonRpcPublic, PageLinksPublic, TimestampPublic, VersionEnum, \
     PermissionEnum
 from ebsi_sim.services.tnt import TntService
-from ebsi_sim.utils import User, get_current_user, check_scopes, booleanize
+from ebsi_sim.utils import User, get_current_user, check_scopes, build_unsigned_transaction, exec_signed_transaction
 
 w3 = Web3()
 router = APIRouter(prefix="/track-and-trace", tags=["track-and-trace"])
@@ -28,7 +24,6 @@ register_address = "0x823BBc0ceE3dE3B61AcfA0CEedb951AB9a013F05"
 eth_contract = w3.eth.contract(
     abi=tnt_abi
 )
-
 
 @router.post("/jsonrpc",
              description="The JSON-RPC API provides methods assisting the construction of blockchain transactions and interaction with the ledger, i.e. write operation on ledger.")
@@ -50,8 +45,6 @@ def rpc(current_user: Annotated[User, Depends(get_current_user)], payload: JsonR
     params = payload.params[0]
     if payload.method in ("authoriseDid", "createDocument", "removeDocument", "grantAccess", "revokeAccess",
                           "writeEvent"):
-
-        abi_functions: list[BaseContractFunction] = eth_contract.find_functions_by_name(payload.method)
 
         params_set = set(params.keys())
         params_set.remove("from")
@@ -107,46 +100,13 @@ def rpc(current_user: Annotated[User, Depends(get_current_user)], payload: JsonR
             if user_accesses is None:
                 raise HTTPException(status_code=HTTP_403_FORBIDDEN, detail="Permission not granted")
 
-        candidate_function: BaseContractFunction = next(
-            (tmp_fn for tmp_fn in abi_functions if set(tmp_fn.argument_names) == params_set), None)
+        json_rpc_result = build_unsigned_transaction(eth_contract, register_address, payload.method, params)
 
-        if not candidate_function:
-            raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="Invalid arguments")
-
-        abi_args = {k: booleanize(params[k]) for k in candidate_function.argument_names if k in params}
-        unsigned_transaction = candidate_function(**abi_args).build_transaction({"from": params['from'],
-                                                                                 "to": register_address,
-                                                                                 "nonce": 0xb1d3,
-                                                                                 "chainId": 1234,
-                                                                                 "gas": 0,
-                                                                                 "gasLimit": 1000000,
-                                                                                 "gasPrice": 0})
-        json_rpc_result = unsigned_transaction
     elif payload.method == "sendSignedTransaction":
-        trans_protocol = params['protocol']
-        trans_unsigned_transaction = params['unsignedTransaction']
-        trans_signed_transaction = params['signedRawTransaction']
 
-        decoded_transaction = rlp.decode(trans_signed_transaction, Transaction)
+        json_rpc_result = exec_signed_transaction(eth_contract, register_address, tnt_service, params['unsignedTransaction'],
+                                                  params['signedRawTransaction'])
 
-        if decoded_transaction != trans_unsigned_transaction:
-            raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="Invalid transaction")
-
-        signer = Account.recover_transaction(trans_signed_transaction)
-        if signer.lower() != decoded_transaction['from'].lower():
-            raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="Invalid transaction")
-
-        data = decoded_transaction['data']
-
-        func_obj, params = eth_contract.decode_function_input(data=data)
-
-        try:
-            function = getattr(tnt_service, func_obj.fn_name)
-
-            func_result = function(**params)
-            json_rpc_result = "0xe670ec64341771606e55d6b4ca35a1a6b75ee3d5145a99d05921026d1527331"
-        except Exception as e:
-            raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail=str(e))
     else:
         raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="Invalid method")
 

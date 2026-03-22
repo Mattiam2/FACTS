@@ -4,13 +4,17 @@ import json
 from typing import Annotated, Any
 
 import jwt
+import rlp
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives.serialization import load_pem_public_key
+from eth_account import Account
+from eth_account._utils.legacy_transactions import Transaction
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer, APIKeyHeader
 from jwcrypto import jwk
 from sqlmodel import SQLModel
 from starlette.status import HTTP_400_BAD_REQUEST
+from web3.contract.base_contract import BaseContractFunction
 
 from ebsi_sim.core.config import settings
 
@@ -86,3 +90,49 @@ def check_scopes(user: User, method: str, method_scopes: dict[str, list[str]]):
         return len(common_scopes) > 0
     else:
         raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="Invalid method")
+
+
+def build_unsigned_transaction(eth_contract, register_address: str, method: str, params: dict) -> dict:
+    abi_functions: list[BaseContractFunction] = eth_contract.find_functions_by_name(method)
+
+    candidate_function: BaseContractFunction = next(
+        (tmp_fn for tmp_fn in abi_functions if set(tmp_fn.argument_names) == set(params.keys())), None)
+
+    if not candidate_function:
+        raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="Invalid arguments")
+
+    abi_args = {k: params[k] for k in candidate_function.argument_names if k in params}
+    unsigned_transaction = candidate_function.call(**abi_args).build_transaction({"from": params['from'],
+                                                                                  "to": register_address,
+                                                                                  "nonce": 0xb1d3,
+                                                                                  "chainId": 1234,
+                                                                                  "gas": 0,
+                                                                                  "gasLimit": 1000000,
+                                                                                  "gasPrice": 0})
+    return unsigned_transaction
+
+
+def exec_signed_transaction(eth_contract, register_address, service, unsigned_transaction, signed_transaction):
+    decoded_transaction = rlp.decode(signed_transaction, Transaction)
+
+    if decoded_transaction != unsigned_transaction:
+        raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="Invalid transaction")
+
+    signer = Account.recover_transaction(signed_transaction)
+    if signer.lower() != decoded_transaction['from'].lower():
+        raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="Invalid transaction")
+
+    if decoded_transaction['to'].lower() != register_address.lower():
+        raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="Invalid transaction")
+
+    data = decoded_transaction['data']
+
+    func_obj, params = eth_contract.decode_function_input(data=data)
+
+    try:
+        function = getattr(service, func_obj.fn_name)
+
+        func_result = function(**params)
+        return '0xe670ec64341771606e55d6b4ca35a1a6b75ee3d5145a99d05921026d1527331';
+    except Exception as e:
+        raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="Invalid transaction")
