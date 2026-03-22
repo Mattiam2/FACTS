@@ -20,20 +20,30 @@ def create_token(request: TokenCreate, auth_service: AuthService = Depends(),
 
     vp_decoded = auth_service.decode_and_check_signature(request.vp_token, "authentication")
 
+    if "sub" not in vp_decoded:
+        raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="Invalid VP")
+
+    if "vp" not in vp_decoded or "holder" not in vp_decoded["vp"]:
+        raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="Invalid VP")
+
+    if vp_decoded["sub"] != vp_decoded["vp"]["holder"]:
+        raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="Invalid VP")
+
     subject_did = didr_service.getDidDocument(vp_decoded["sub"])
+
+    if request.scope == ScopeEnum.didr_invite and subject_did:
+        raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="DID is already registered")
+    elif not subject_did:
+        raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="DID is not registered")
 
     if request.scope == ScopeEnum.tnt_create and not subject_did.tnt_authorized:
         raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="DID not authorized to this scope")
 
-    holder_did = didr_service.getDidDocument(vp_decoded["vp"]["holder"])
-
     credentials = auth_service.extract_and_validate_credentials(vp_decoded, request.presentation_submission,
                                                                 presentation_definition)
 
-    if request.scope == ScopeEnum.didr_invite and holder_did:
-        raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="DID is already registered")
-    elif not holder_did:
-        raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="DID is not registered")
+    if not credentials or len(credentials) == 0:
+        raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="Invalid credentials")
 
     access_token = AuthService.create_access_token(request.scope, credentials[0]["sub"])
 

@@ -37,7 +37,10 @@ class AuthService:
     def create_access_token(scope: ScopeEnum, subject: str):
         pem_pub_key = settings.public_key
         jwk_pub_key = pem_to_jwk(pem_pub_key)
-        kid = jwk_pub_key["kid"]
+        kid = jwk_pub_key["kid"] if "kid" in jwk_pub_key else None
+
+        if not kid:
+            raise AuthServiceException("Can't create access token")
 
         expires_in = 7200
         iat = math.floor(datetime.utcnow().timestamp())
@@ -159,12 +162,17 @@ class AuthService:
         descriptor_algos = vp_formats.copy()
         descriptor_constraints = []
 
-        if input_descriptor["id"] == credential_id:
+        if "id" in input_descriptor and input_descriptor["id"] == credential_id:
+            if "format" not in input_descriptor or "constraints" not in input_descriptor or "fields" not in \
+                    input_descriptor["constraints"]:
+                raise AuthServiceException("Missing format or constraints in input descriptor")
             descriptor_algos.update(input_descriptor["format"])
             descriptor_constraints.extend(input_descriptor["constraints"]["fields"])
         else:
             raise AuthServiceException("Mismatch between presentation definition and input descriptor")
 
+        if "alg" not in descriptor_algos[credential_format]:
+            raise AuthServiceException("Missing alg in format")
         credential_algo = descriptor_algos[credential_format]["alg"]
 
         jsonpath_expr = parse(credential_path)
@@ -178,6 +186,8 @@ class AuthService:
 
         if not submission.path_nested:
             for constraint in descriptor_constraints:
+                if "path" not in constraint or "filter" not in constraint:
+                    raise AuthServiceException("Missing path or filter in constraint")
                 for const_path in constraint["path"]:
                     jsonpath_expr = parse(const_path)
                     try:
@@ -192,13 +202,15 @@ class AuthService:
     def extract_and_validate_credentials(self, vp_decoded, presentation_submission: PresentationSubmission,
                                          presentation_definition):
         credentials = []
-        if len(presentation_definition["input_descriptors"]) > 0:
+        if "input_descriptors" in presentation_definition and len(presentation_definition["input_descriptors"]) > 0:
             for input_descriptor in presentation_definition["input_descriptors"]:
                 found_input = False
                 for descriptor_map in presentation_submission.descriptor_map:
-                    if descriptor_map.id == input_descriptor["id"]:
+                    if "id" in input_descriptor and descriptor_map.id == input_descriptor["id"]:
                         vc = self.find_credential(vp_decoded, descriptor_map, presentation_definition["format"],
                                                   input_descriptor)
+                        if "sub" not in vc or "vp" not in vp_decoded or "holder" not in vp_decoded["vp"]:
+                            raise AuthServiceException("Invalid VP")
                         if vc["sub"] != vp_decoded["vp"]["holder"]:
                             raise AuthServiceException("Credential subject mismatch with holder")
                         found_input = True
