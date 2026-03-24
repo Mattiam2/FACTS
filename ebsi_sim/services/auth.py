@@ -14,6 +14,8 @@ from ebsi_sim.repositories.didr import IdentifierRepository, VerificationMethodR
     VerificationRelationshipRepository
 from ebsi_sim.schemas import ScopeEnum
 from ebsi_sim.schemas.token import PresentationDescriptor, PresentationSubmission
+from ebsi_sim.schemas.verifiable_presentation import VerifiablePresentationPublic, VerifiablePresentationPayload
+from ebsi_sim.schemas.verifiable_credential import VerifiableCredentialPayload
 from ebsi_sim.utils import pem_to_jwk
 
 
@@ -136,7 +138,7 @@ class AuthService:
         decoded_token = jwt.decode(token, vmethod_public_key, algorithms=credential_algos,
                                    options={'verify_exp': False, 'verify_aud': False, 'verify_signature': False})
 
-        vmethod_issuer = decoded_token.get("iss")
+        vmethod_issuer = decoded_token["iss"]
         if vmethod_issuer is None:
             raise AuthServiceException("No issuer found in token")
 
@@ -154,7 +156,7 @@ class AuthService:
 
         return decoded_token
 
-    def find_credential(self, vp_token, submission: PresentationDescriptor, vp_formats, input_descriptor):
+    def find_credential(self, vp_payload: VerifiablePresentationPayload, submission: PresentationDescriptor, vp_formats, input_descriptor) -> VerifiableCredentialPayload:
         credential_id = submission.id
         credential_path = submission.path
         credential_format = submission.format
@@ -176,7 +178,7 @@ class AuthService:
         credential_algo = descriptor_algos[credential_format]["alg"]
 
         jsonpath_expr = parse(credential_path)
-        match_payload = jsonpath_expr.find(vp_token)[0]
+        match_payload = jsonpath_expr.find(vp_payload.model_dump_json())[0]
 
         # Decode only if VC because VP is already decoded
         decoded_payload = match_payload.value
@@ -195,26 +197,29 @@ class AuthService:
                         validate(match_field.value, constraint["filter"])
                     except Exception as e:
                         raise AuthServiceException("VP token is not valid")
-            return decoded_payload
+            credential = VerifiableCredentialPayload(**decoded_payload)
+            return credential
         else:
             return self.find_credential(decoded_payload, submission.path_nested, vp_formats, input_descriptor)
 
-    def extract_and_validate_credentials(self, vp_decoded, presentation_submission: PresentationSubmission,
-                                         presentation_definition):
+    def extract_and_validate_credentials(self, vp_decoded: VerifiablePresentationPayload, presentation_submission: PresentationSubmission,
+                                         presentation_definition) -> list[VerifiableCredentialPayload]:
         credentials = []
         if "input_descriptors" in presentation_definition and len(presentation_definition["input_descriptors"]) > 0:
             for input_descriptor in presentation_definition["input_descriptors"]:
                 found_input = False
                 for descriptor_map in presentation_submission.descriptor_map:
                     if "id" in input_descriptor and descriptor_map.id == input_descriptor["id"]:
-                        vc = self.find_credential(vp_decoded, descriptor_map, presentation_definition["format"],
-                                                  input_descriptor)
-                        if "sub" not in vc or "vp" not in vp_decoded or "holder" not in vp_decoded["vp"]:
+                        if vp_decoded.vp is None or vp_decoded.vp.holder is None:
                             raise AuthServiceException("Invalid VP")
-                        if vc["sub"] != vp_decoded["vp"]["holder"]:
+                        cred: VerifiableCredentialPayload = self.find_credential(vp_decoded, descriptor_map, presentation_definition["format"],
+                                                  input_descriptor)
+                        if cred.sub is None:
+                            raise AuthServiceException("Invalid VC")
+                        if cred.sub != vp_decoded.vp.holder:
                             raise AuthServiceException("Credential subject mismatch with holder")
                         found_input = True
-                        credentials.append(vc)
+                        credentials.append(cred)
                 if not found_input:
                     raise AuthServiceException("Invalid presentation")
         return credentials

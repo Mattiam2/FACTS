@@ -4,6 +4,7 @@ from fastapi import APIRouter, HTTPException, Depends
 from starlette.status import HTTP_400_BAD_REQUEST
 
 from ebsi_sim.schemas import ScopeEnum, TokenCreate, TokenBase
+from ebsi_sim.schemas.verifiable_presentation import VerifiablePresentationPayload
 from ebsi_sim.services.auth import AuthService
 from ebsi_sim.services.didr import DidrService
 
@@ -20,16 +21,18 @@ def create_token(request: TokenCreate, auth_service: AuthService = Depends(),
 
     vp_decoded = auth_service.decode_and_check_signature(request.vp_token, "authentication")
 
-    if "sub" not in vp_decoded:
+    vp_payload = VerifiablePresentationPayload(**vp_decoded)
+
+    if vp_payload.sub is None:
         raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="Invalid VP")
 
-    if "vp" not in vp_decoded or "holder" not in vp_decoded["vp"]:
+    if vp_payload.vp is None or vp_payload.vp.holder is None:
         raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="Invalid VP")
 
-    if vp_decoded["sub"] != vp_decoded["vp"]["holder"]:
+    if vp_payload.sub != vp_payload.vp.holder:
         raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="Invalid VP")
 
-    subject_did = didr_service.getDidDocument(vp_decoded["sub"])
+    subject_did = didr_service.getDidDocument(vp_payload.sub)
 
     if request.scope == ScopeEnum.didr_invite and subject_did:
         raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="DID is already registered")
@@ -39,15 +42,15 @@ def create_token(request: TokenCreate, auth_service: AuthService = Depends(),
     if request.scope == ScopeEnum.tnt_create and not subject_did.tnt_authorized:
         raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="DID not authorized to this scope")
 
-    credentials = auth_service.extract_and_validate_credentials(vp_decoded, request.presentation_submission,
+    credentials = auth_service.extract_and_validate_credentials(vp_payload, request.presentation_submission,
                                                                 presentation_definition)
 
     if not credentials or len(credentials) == 0:
         raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="Invalid credentials")
 
-    access_token = AuthService.create_access_token(request.scope, credentials[0]["sub"])
+    access_token = AuthService.create_access_token(request.scope, credentials[0].sub)
 
-    id_token = AuthService.create_id_token(subject=credentials[0]["sub"], issuer=credentials[0]["iss"])
+    id_token = AuthService.create_id_token(subject=credentials[0].sub, issuer=credentials[0].iss)
 
     return TokenBase(access_token=access_token, id_token=id_token, expires_in=7200, token_type="Bearer",
                      scope=request.scope.value)

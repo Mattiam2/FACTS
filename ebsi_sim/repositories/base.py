@@ -91,7 +91,7 @@ class BaseRepository(Repository[T]):
         stmt = stmt.offset(offset).limit(limit)
         return list(db.session.scalars(stmt))
 
-    def create(self, *, commit=True, **data: Any) -> T:
+    def create(self, *, commit=False, **data: Any) -> T:
         """
         Create a new instance of the specified model using the data provided. The method
         performs a database operation to persist the newly created object. If `commit`
@@ -125,7 +125,7 @@ class BaseRepository(Repository[T]):
         flushes the changes based on the `commit` flag.
 
         :param commit: A boolean indicating whether to commit the changes to the database.
-                       If False, only flush the changes. Defaults to True.
+                       If False, only flush the changes. Defaults to False.
         :type commit: bool
         :param id: The unique identifier of the object to be updated.
         :type id: Any

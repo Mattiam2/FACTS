@@ -57,7 +57,7 @@ def pem_to_jwk(pem_public_key: str) -> dict:
 vp_scheme = APIKeyHeader(name="Authorization", auto_error=False)
 
 
-async def get_current_user(token: Annotated[str, Depends(vp_scheme)]):
+def get_current_user(token: Annotated[str, Depends(vp_scheme)]):
     user = None
     try:
         user = jwt.decode(token, settings.public_key, algorithms=["ES256"],

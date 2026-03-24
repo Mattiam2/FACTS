@@ -2,7 +2,6 @@ from datetime import datetime
 
 from fastapi import Depends
 
-from ebsi_sim.core.db import db
 from ebsi_sim.models.didr import Identifier, VerificationMethod
 from ebsi_sim.repositories.didr import IdentifierRepository, IdentifierControllerRepository, \
     VerificationMethodRepository, VerificationRelationshipRepository
@@ -48,50 +47,44 @@ class DidrService:
         date_not_before = datetime.fromtimestamp(notBefore)
         date_not_after = datetime.fromtimestamp(notAfter)
 
-        self.identifier_repository.create(commit=False, did=did, context=baseDocument)
-        self.identifier_controller_repository.create(commit=False, identifier_did=did, did_controller=did)
+        self.identifier_repository.create(did=did, context=baseDocument)
+        self.identifier_controller_repository.create(identifier_did=did, did_controller=did)
 
         full_vmethod_id = f"{did}#{vMethodId}"
 
-        self.verification_method_repository.create(commit=False, id=full_vmethod_id, did_controller=did,
+        self.verification_method_repository.create(id=full_vmethod_id, did_controller=did,
                                                    type="JsonWebKey2020",
                                                    public_key=publicKey, issecp256k1=isSecp256k1)
 
-        self.verification_relationship_repository.create(commit=False, identifier_did=did, name="capabilityInvocation",
+        self.verification_relationship_repository.create(identifier_did=did, name="capabilityInvocation",
                                                          vmethodid=full_vmethod_id, notbefore=date_not_before,
                                                          notafter=date_not_after)
-        db.session.commit()
 
     def updateBaseDocument(self, *, did: str, baseDocument: str):
-        self.identifier_repository.update(commit=False, id=did, context=baseDocument)
-        db.session.commit()
+        self.identifier_repository.update(id=did, context=baseDocument)
 
     def addController(self, *, did: str, controller: str):
-        self.identifier_controller_repository.create(commit=False, identifier_did=did, did_controller=controller)
-        db.session.commit()
+        self.identifier_controller_repository.create(identifier_did=did, did_controller=controller)
 
     def revokeController(self, *, did: str, controller: str):
         controllers = self.identifier_controller_repository.list(identifier_did=did, did_controller=controller)
         if len(controllers) == 1:
-            self.identifier_controller_repository.delete(commit=False, id=controllers[0].id)
-        db.session.commit()
+            self.identifier_controller_repository.delete(id=controllers[0].id)
 
     def addVerificationMethod(self, *, did: str, vMethodId: str, publicKey: str, isSecp256k1: bool):
         full_vmethod_id = f"{did}#{vMethodId}"
-        self.verification_method_repository.create(commit=False, id=full_vmethod_id, did_controller=did,
+        self.verification_method_repository.create(id=full_vmethod_id, did_controller=did,
                                                    type="JsonWebKey2020",
                                                    public_key=publicKey, issecp256k1=isSecp256k1)
-        db.session.commit()
 
     def addVerificationRelationship(self, *, did: str, name: str, vMethodId: str, notBefore: int, notAfter: int):
         not_before_date = datetime.fromtimestamp(notBefore)
         not_after_date = datetime.fromtimestamp(notAfter)
 
         full_vmethod_id = f"{did}#{vMethodId}"
-        self.verification_relationship_repository.create(commit=False, identifier_did=did, name=name,
+        self.verification_relationship_repository.create(identifier_did=did, name=name,
                                                          vmethodid=full_vmethod_id,
                                                          notbefore=not_before_date, notafter=not_after_date)
-        db.session.commit()
 
     def revokeVerificationMethod(self, *, did: str, vMethodId: str, notAfter: int):
         not_after_date = datetime.fromtimestamp(notAfter)
@@ -100,8 +93,7 @@ class DidrService:
 
         full_vmethod_id = f"{did}#{vMethodId}"
         vmethod = self.verification_method_repository.get(id=full_vmethod_id)
-        self.verification_method_repository.update(commit=False, id=vmethod.id, notafter=not_after_date)
-        db.session.commit()
+        self.verification_method_repository.update(id=vmethod.id, notafter=not_after_date)
 
     def expireVerificationMethod(self, *, did: str, vMethodId: str, notAfter: int):
         not_after_date = datetime.fromtimestamp(notAfter)
@@ -110,5 +102,4 @@ class DidrService:
 
         full_vmethod_id = f"{did}#{vMethodId}"
         vmethod = self.verification_method_repository.get(id=full_vmethod_id)
-        self.verification_method_repository.update(commit=False, id=vmethod.id, notafter=not_after_date)
-        db.session.commit()
+        self.verification_method_repository.update(id=vmethod.id, notafter=not_after_date)

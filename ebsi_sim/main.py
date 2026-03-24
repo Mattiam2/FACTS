@@ -1,6 +1,7 @@
 from typing import Callable, Awaitable
 
 from fastapi import FastAPI, Request, Response
+from sqlalchemy.exc import SQLAlchemyError
 from sqlmodel import Session
 
 from ebsi_sim.api.auth import router as authapp
@@ -32,6 +33,10 @@ async def db_session_handler(request: Request, call_next: Callable[[Request], Aw
         token = session_ctx.set(session)
         try:
             response = await call_next(request)
+            session.commit()
+        except Exception:
+            session.rollback()
+            raise
         finally:
             session_ctx.reset(token)
             session.close()
