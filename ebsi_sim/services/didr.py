@@ -47,6 +47,8 @@ class DidrService:
         date_not_before = datetime.fromtimestamp(notBefore)
         date_not_after = datetime.fromtimestamp(notAfter)
 
+        publicKey = publicKey.replace("0x", "")
+
         self.identifier_repository.create(did=did, context=baseDocument)
         self.identifier_controller_repository.create(identifier_did=did, did_controller=did)
 

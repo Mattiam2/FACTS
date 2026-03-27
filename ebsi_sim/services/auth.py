@@ -4,6 +4,7 @@ from datetime import datetime
 from uuid import uuid4
 
 import jwt
+from cryptography.hazmat.primitives.asymmetric.ec import SECP256K1, EllipticCurvePublicKey
 from fastapi import Depends
 from jsonpath_ng import parse
 from jsonschema import validate
@@ -14,8 +15,8 @@ from ebsi_sim.repositories.didr import IdentifierRepository, VerificationMethodR
     VerificationRelationshipRepository
 from ebsi_sim.schemas import ScopeEnum
 from ebsi_sim.schemas.token import PresentationDescriptor, PresentationSubmission
-from ebsi_sim.schemas.verifiable_presentation import VerifiablePresentationPublic, VerifiablePresentationPayload
 from ebsi_sim.schemas.verifiable_credential import VerifiableCredentialPayload
+from ebsi_sim.schemas.verifiable_presentation import VerifiablePresentationPayload
 from ebsi_sim.utils import pem_to_jwk
 
 
@@ -37,7 +38,7 @@ class AuthService:
 
     @staticmethod
     def create_access_token(scope: ScopeEnum, subject: str):
-        pem_pub_key = settings.public_key
+        pem_pub_key = settings.AUTH_PUBLIC_KEY
         jwk_pub_key = pem_to_jwk(pem_pub_key)
         kid = jwk_pub_key["kid"] if "kid" in jwk_pub_key else None
 
@@ -57,7 +58,7 @@ class AuthService:
             "scp": scope,
             "sub": subject,
         }
-        private_key = settings.private_key
+        private_key = settings.AUTH_PRIVATE_KEY
         algorithm = "ES256"
         headers = {
             "alg": "ES256",
@@ -68,7 +69,7 @@ class AuthService:
 
     @staticmethod
     def create_id_token(subject: str, issuer: str):
-        pem_pub_key = settings.public_key
+        pem_pub_key = settings.AUTH_PUBLIC_KEY
         jwk_pub_key = pem_to_jwk(pem_pub_key)
         kid = jwk_pub_key["kid"]
 
@@ -85,7 +86,7 @@ class AuthService:
             "nonce": 0,
             "sub": subject,
         }
-        private_key = settings.private_key
+        private_key = settings.AUTH_PRIVATE_KEY
         algorithm = "ES256"
         headers = {
             "alg": "ES256",
@@ -134,7 +135,13 @@ class AuthService:
         if vmethod is None:
             raise AuthServiceException("Verification method not found")
 
-        vmethod_public_key = vmethod.public_key
+        vmethod_public_key_bytes = bytes.fromhex(vmethod.public_key)
+
+        vmethod_public_key = EllipticCurvePublicKey.from_encoded_point(
+            SECP256K1(),
+            vmethod_public_key_bytes
+        )
+
         decoded_token = jwt.decode(token, vmethod_public_key, algorithms=credential_algos,
                                    options={'verify_exp': False, 'verify_aud': False, 'verify_signature': False})
 
@@ -156,7 +163,8 @@ class AuthService:
 
         return decoded_token
 
-    def find_credential(self, vp_payload: VerifiablePresentationPayload, submission: PresentationDescriptor, vp_formats, input_descriptor) -> VerifiableCredentialPayload:
+    def find_credential(self, vp_payload: VerifiablePresentationPayload, submission: PresentationDescriptor, vp_formats,
+                        input_descriptor) -> VerifiableCredentialPayload:
         credential_id = submission.id
         credential_path = submission.path
         credential_format = submission.format
@@ -202,7 +210,8 @@ class AuthService:
         else:
             return self.find_credential(decoded_payload, submission.path_nested, vp_formats, input_descriptor)
 
-    def extract_and_validate_credentials(self, vp_decoded: VerifiablePresentationPayload, presentation_submission: PresentationSubmission,
+    def extract_and_validate_credentials(self, vp_decoded: VerifiablePresentationPayload,
+                                         presentation_submission: PresentationSubmission,
                                          presentation_definition) -> list[VerifiableCredentialPayload]:
         credentials = []
         if "input_descriptors" in presentation_definition and len(presentation_definition["input_descriptors"]) > 0:
@@ -212,8 +221,9 @@ class AuthService:
                     if "id" in input_descriptor and descriptor_map.id == input_descriptor["id"]:
                         if vp_decoded.vp is None or vp_decoded.vp.holder is None:
                             raise AuthServiceException("Invalid VP")
-                        cred: VerifiableCredentialPayload = self.find_credential(vp_decoded, descriptor_map, presentation_definition["format"],
-                                                  input_descriptor)
+                        cred: VerifiableCredentialPayload = self.find_credential(vp_decoded, descriptor_map,
+                                                                                 presentation_definition["format"],
+                                                                                 input_descriptor)
                         if cred.sub is None:
                             raise AuthServiceException("Invalid VC")
                         if cred.sub != vp_decoded.vp.holder:

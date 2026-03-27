@@ -3,10 +3,12 @@ import json
 from fastapi import APIRouter, HTTPException, Depends
 from starlette.status import HTTP_400_BAD_REQUEST
 
+from ebsi_sim.core.config import settings
 from ebsi_sim.schemas import ScopeEnum, TokenCreate, TokenBase
 from ebsi_sim.schemas.verifiable_presentation import VerifiablePresentationPayload
 from ebsi_sim.services.auth import AuthService
 from ebsi_sim.services.didr import DidrService
+from ebsi_sim.utils import pem_to_jwk
 
 router = APIRouter(prefix="/authorisation", tags=["authorisation"])
 
@@ -36,7 +38,7 @@ def create_token(request: TokenCreate, auth_service: AuthService = Depends(),
 
     if request.scope == ScopeEnum.didr_invite and subject_did:
         raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="DID is already registered")
-    elif not subject_did:
+    elif request.scope != ScopeEnum.didr_invite and not subject_did:
         raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="DID is not registered")
 
     if request.scope == ScopeEnum.tnt_create and not subject_did.tnt_authorized:
@@ -138,14 +140,7 @@ def openid_configuration() -> dict:
 def read_jwks() -> dict:
     return {
         "keys": [
-            {
-                "kty": "EC",
-                "crv": "P-256",
-                "alg": "ES256",
-                "x": "9Cn5hmFfG-uVuixEk4zCdeF6ZLeeWuvqfGPPWMKDKOw",
-                "y": "yNnt9p06g8gzoKToQZwzJ-7z6ES-dR2PkyV6oQecaUA",
-                "kid": "hcpxQ2xL8ncXKB9SoEgW2ImiG_4WR5NXJvQ_PGuHO5k"
-            }
+            pem_to_jwk(settings.AUTH_PUBLIC_KEY)
         ]
     }
 
