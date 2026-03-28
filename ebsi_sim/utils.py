@@ -95,14 +95,17 @@ def check_scopes(user: User, method: str, method_scopes: dict[str, list[str]]):
 def build_unsigned_transaction(eth_contract, register_address: str, method: str, params: dict) -> dict:
     abi_functions: list[BaseContractFunction] = eth_contract.find_functions_by_name(method)
 
+    params_comparison = params.copy()
+    params_comparison.pop('from')
+
     candidate_function: BaseContractFunction = next(
-        (tmp_fn for tmp_fn in abi_functions if set(tmp_fn.argument_names) == set(params.keys())), None)
+        (tmp_fn for tmp_fn in abi_functions if set(tmp_fn.argument_names) == set(params_comparison.keys())), None)
 
     if not candidate_function:
         raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="Invalid arguments")
 
     abi_args = {k: params[k] for k in candidate_function.argument_names if k in params}
-    unsigned_transaction = candidate_function.call(**abi_args).build_transaction({"from": params['from'],
+    unsigned_transaction = candidate_function(**abi_args).build_transaction({"from": params['from'],
                                                                                   "to": register_address,
                                                                                   "nonce": 0xb1d3,
                                                                                   "chainId": 1234,

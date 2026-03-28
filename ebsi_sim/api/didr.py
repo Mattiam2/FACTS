@@ -28,6 +28,9 @@ eth_contract = w3.eth.contract(
              description="The JSON-RPC API provides methods assisting the construction of blockchain transactions and interaction with the ledger, i.e. write operation on ledger.")
 def rpc(current_user: Annotated[User, Depends(get_current_user)], payload: JsonRpcCreate,
         didr_service: DidrService = Depends()) -> JsonRpcPublic:
+
+    #TODO Test insertDidDocument with signature
+
     is_authorized = check_scopes(current_user, payload.method, {
         "insertDidDocument": ["didr_invite", "didr_write"],
         "updateBaseDocument": ["didr_write"],

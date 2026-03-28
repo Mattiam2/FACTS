@@ -21,7 +21,8 @@ def create_token(request: TokenCreate, auth_service: AuthService = Depends(),
     if request.presentation_submission.definition_id != presentation_definition["id"]:
         raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="Invalid presentation definition")
 
-    vp_decoded = auth_service.decode_and_check_signature(request.vp_token, "authentication")
+    check_signature = (request.scope != ScopeEnum.didr_invite)
+    vp_decoded = auth_service.decode_and_check_signature(request.vp_token, "authentication", check_signature=check_signature)
 
     vp_payload = VerifiablePresentationPayload(**vp_decoded)
 

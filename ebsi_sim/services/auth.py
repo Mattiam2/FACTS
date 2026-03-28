@@ -4,11 +4,12 @@ from datetime import datetime
 from uuid import uuid4
 
 import jwt
-from cryptography.hazmat.primitives.asymmetric.ec import SECP256K1, EllipticCurvePublicKey
+from cryptography.hazmat.primitives.asymmetric.ec import SECP256K1, EllipticCurvePublicKey, SECP256R1
 from fastapi import Depends
 from jsonpath_ng import parse
 from jsonschema import validate
 from jwt import get_unverified_header
+from jwt.algorithms import ECAlgorithm
 
 from ebsi_sim.core.config import settings
 from ebsi_sim.repositories.didr import IdentifierRepository, VerificationMethodRepository, \
@@ -123,43 +124,51 @@ class AuthService:
         presentation_definition = json.load(open(path, "r"))
         return presentation_definition
 
-    def decode_and_check_signature(self, token: str, relationship_type: str, credential_algos=None) -> dict:
-        token_header = get_unverified_header(token)
-        vmethod_id = token_header.get("kid")
+    def decode_and_check_signature(self, token: str, relationship_type: str, credential_algos=None, check_signature=True) -> dict:
+        if check_signature:
+            token_header = get_unverified_header(token)
+            vmethod_id = token_header.get("kid")
 
-        if vmethod_id is None:
-            raise AuthServiceException("No verification method id found in token header")
+            if vmethod_id is None:
+                raise AuthServiceException("No verification method id found in token header")
 
-        vmethod = self.verification_method_repository.get(vmethod_id)
+            vmethod = self.verification_method_repository.get(vmethod_id)
 
-        if vmethod is None:
-            raise AuthServiceException("Verification method not found")
+            if vmethod is None:
+                raise AuthServiceException("Verification method not found")
 
-        vmethod_public_key_bytes = bytes.fromhex(vmethod.public_key)
+            vmethod_public_key_bytes = bytes.fromhex(vmethod.public_key)
+            if vmethod.issecp256k1:
+                vmethod_public_key = EllipticCurvePublicKey.from_encoded_point(
+                    SECP256K1(),
+                    vmethod_public_key_bytes
+                )
+            else:
+                vmethod_public_key_string = vmethod_public_key_bytes.decode('utf-8')
+                vmethod_public_key = ECAlgorithm.from_jwk(vmethod_public_key_string)
 
-        vmethod_public_key = EllipticCurvePublicKey.from_encoded_point(
-            SECP256K1(),
-            vmethod_public_key_bytes
-        )
+            decoded_token = jwt.decode(token, vmethod_public_key, algorithms=credential_algos,
+                                       options={'verify_exp': False, 'verify_aud': False, 'verify_signature': True})
 
-        decoded_token = jwt.decode(token, vmethod_public_key, algorithms=credential_algos,
-                                   options={'verify_exp': False, 'verify_aud': False, 'verify_signature': False})
+            vmethod_issuer = decoded_token["iss"]
+            if vmethod_issuer is None:
+                raise AuthServiceException("No issuer found in token")
 
-        vmethod_issuer = decoded_token["iss"]
-        if vmethod_issuer is None:
-            raise AuthServiceException("No issuer found in token")
+            if vmethod.did_controller != vmethod_issuer:
+                raise AuthServiceException("Verification method is not owned by the issuer")
 
-        if vmethod.did_controller != vmethod_issuer:
-            raise AuthServiceException("Verification method is not owned by the issuer")
+            if vmethod.notafter < datetime.now():
+                raise AuthServiceException("Verification method is expired")
 
-        if vmethod.notafter < datetime.now():
-            raise AuthServiceException("Verification method is expired")
+            vrels = self.verification_relationship_repository.list(identifier_did=vmethod_issuer,
+                                                                   name=relationship_type,
+                                                                   vmethodid=vmethod_id)
 
-        vrels = self.verification_relationship_repository.list(identifier_did=vmethod_issuer, name=relationship_type,
-                                                               vmethodid=vmethod_id)
+            if vrels is None or len(vrels) == 0:
+                raise AuthServiceException("Verification method not valid for this operation")
 
-        if vrels is None or len(vrels) == 0:
-            raise AuthServiceException("Verification method not valid for this operation")
+        else:
+            decoded_token = jwt.decode(token, options={'verify_exp': False, 'verify_aud': False, 'verify_signature': False})
 
         return decoded_token
 
@@ -186,11 +195,11 @@ class AuthService:
         credential_algo = descriptor_algos[credential_format]["alg"]
 
         jsonpath_expr = parse(credential_path)
-        match_payload = jsonpath_expr.find(vp_payload.model_dump_json())[0]
+        match_payload = jsonpath_expr.find(json.loads(vp_payload.model_dump_json()))[0]
 
         # Decode only if VC because VP is already decoded
         decoded_payload = match_payload.value
-        if credential_format in ["jwt_vc_json", "jwt_vc_jwt"]:
+        if credential_format in ["jwt_vc_json", "jwt_vc"]:
             relationship_type = "assertionMethod"
             decoded_payload = self.decode_and_check_signature(match_payload.value, relationship_type, credential_algo)
 
@@ -208,7 +217,8 @@ class AuthService:
             credential = VerifiableCredentialPayload(**decoded_payload)
             return credential
         else:
-            return self.find_credential(decoded_payload, submission.path_nested, vp_formats, input_descriptor)
+            vp_payload = VerifiablePresentationPayload(**decoded_payload)
+            return self.find_credential(vp_payload, submission.path_nested, vp_formats, input_descriptor)
 
     def extract_and_validate_credentials(self, vp_decoded: VerifiablePresentationPayload,
                                          presentation_submission: PresentationSubmission,

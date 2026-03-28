@@ -10,6 +10,7 @@ from fastapi import APIRouter, Query
 
 from ebsi_sim.core.config import settings
 from ebsi_sim.schemas.verifiable_credential import VerifiableCredentialPublic, VerifiableCredentialPayload
+from ebsi_sim.schemas.verifiable_presentation import VerifiablePresentationPayload, VerifiablePresentationPublic
 
 router = APIRouter(prefix="/utils", tags=["utils"])
 
@@ -50,16 +51,53 @@ def request_vc(subject_did: str, credential_type: Annotated[list[str], Query()])
 
     credential_payload_json = credential_payload.model_dump_json()
 
-    issuer_private_key_bytes = bytes.fromhex(settings.ISSUER_PRIVATE_KEY)
-    issuer_private_key = derive_private_key(int.from_bytes(issuer_private_key_bytes), SECP256K1())
-
     signed_credential = jwt.encode(json.loads(credential_payload_json),
-                                   issuer_private_key,
-                                   algorithm="ES256K",
+                                   settings.ISSUER_ASSERTION_PRIVATE_KEY,
+                                   algorithm="ES256",
                                    headers={
                                        "typ": "JWT",
-                                       "alg": "ES256K",
-                                       "kid": settings.ISSUER_VMETHOD_ID
+                                       "alg": "ES256",
+                                       "kid": settings.ISSUER_ASSERTION_VMETHOD_ID
                                    })
 
     return signed_credential
+
+
+@router.get("/create_vp")
+def create_vp(vc_token: str, did: str, private_key: str) -> str:
+    uuid_str = uuid4().urn
+
+    vp = VerifiablePresentationPublic(
+        context=["https://www.w3.org/2018/credentials/v1"],
+        id=uuid_str,
+        type=["VerifiablePresentation"],
+        holder=did,
+        verifiableCredential=[
+           vc_token
+        ]
+    )
+
+    vp_payload = VerifiablePresentationPayload(
+        iss=did,
+        aud=settings.ISSUER_DID,
+        sub=did,
+        iat=int(datetime.now().timestamp()),
+        nbf=int(datetime.now().timestamp()),
+        exp=int((datetime.now() + timedelta(days=10 * 365)).timestamp()),
+        nonce=uuid_str,
+        jti=uuid_str,
+        vp=vp
+    )
+
+    client_private_key_bytes = bytes.fromhex(private_key)
+    client_private_key = derive_private_key(int.from_bytes(client_private_key_bytes), SECP256K1())
+
+    return jwt.encode(
+        json.loads(vp_payload.model_dump_json()),
+        client_private_key,
+        algorithm="ES256K",
+        headers={
+            "typ": "JWT",
+            "alg": "ES256K",
+        }
+    )
