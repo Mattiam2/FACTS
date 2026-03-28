@@ -42,7 +42,7 @@ class DidrService:
     def listVerificationMethods(self, *, offset=None, limit=None, order_by=None, **filters) -> list[VerificationMethod]:
         return self.verification_method_repository.list(offset=offset, limit=limit, order_by=order_by, **filters)
 
-    def insertDidDocument(self, *, did: str, baseDocument: str, vMethodId: str, publicKey: str, isSecp256k1: bool,
+    def insertDidDocument(self, *, did: str, baseDocument: str, vMethodId: str, publicKey: bytes | str, isSecp256k1: bool,
                           notBefore: int, notAfter: int):
         date_not_before = datetime.fromtimestamp(notBefore)
         date_not_after = datetime.fromtimestamp(notAfter)
@@ -52,11 +52,18 @@ class DidrService:
 
         full_vmethod_id = f"{did}#{vMethodId}"
 
+        if isinstance(publicKey, bytes):
+            publicKey = "0x" + publicKey.hex()
+
         self.verification_method_repository.create(id=full_vmethod_id, did_controller=did,
                                                    type="JsonWebKey2020",
-                                                   public_key=publicKey, issecp256k1=isSecp256k1)
+                                                   public_key=publicKey, issecp256k1=isSecp256k1, notafter=date_not_after)
 
         self.verification_relationship_repository.create(identifier_did=did, name="capabilityInvocation",
+                                                         vmethodid=full_vmethod_id, notbefore=date_not_before,
+                                                         notafter=date_not_after)
+
+        self.verification_relationship_repository.create(identifier_did=did, name="authentication",
                                                          vmethodid=full_vmethod_id, notbefore=date_not_before,
                                                          notafter=date_not_after)
 

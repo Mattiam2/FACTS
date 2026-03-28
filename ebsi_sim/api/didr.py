@@ -68,7 +68,7 @@ def rpc(current_user: Annotated[User, Depends(get_current_user)], payload: JsonR
 
     elif payload.method == "sendSignedTransaction":
 
-        json_rpc_result = exec_signed_transaction(eth_contract, register_address, didr_service,
+        json_rpc_result = exec_signed_transaction(current_user, eth_contract, register_address, didr_service,
                                                   params['unsignedTransaction'],
                                                   params['signedRawTransaction'])
 

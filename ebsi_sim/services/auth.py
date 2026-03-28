@@ -137,7 +137,7 @@ class AuthService:
             if vmethod is None:
                 raise AuthServiceException("Verification method not found")
 
-            vmethod_public_key_bytes = bytes.fromhex(vmethod.public_key)
+            vmethod_public_key_bytes = bytes.fromhex(vmethod.public_key.replace("0x", ""))
             if vmethod.issecp256k1:
                 vmethod_public_key = EllipticCurvePublicKey.from_encoded_point(
                     SECP256K1(),
@@ -242,4 +242,5 @@ class AuthService:
                         credentials.append(cred)
                 if not found_input:
                     raise AuthServiceException("Invalid presentation")
+
         return credentials

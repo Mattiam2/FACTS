@@ -11,8 +11,8 @@ class VerificationMethodBase(SQLModel):
     public_key: str
 
 class VerificationRelationshipNameEnum(str, Enum):
-    authentication = "authentication"
-    assertionMethod = "assertionMethod"
+    authentication = "authentication"  # For authenticate the entity itself
+    assertionMethod = "assertionMethod"  # For sign and issue a VC
     capabilityInvocation = "capabilityInvocation"
     capabilityDelegation = "capabilityDelegation"
     keyAgreement = "keyAgreement"

@@ -22,7 +22,7 @@ def create_token(request: TokenCreate, auth_service: AuthService = Depends(),
         raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="Invalid presentation definition")
 
     check_signature = (request.scope != ScopeEnum.didr_invite)
-    vp_decoded = auth_service.decode_and_check_signature(request.vp_token, "authentication", check_signature=check_signature)
+    vp_decoded = auth_service.decode_and_check_signature(request.vp_token, "authentication", credential_algos=['ES256', 'ES256K'], check_signature=check_signature)
 
     vp_payload = VerifiablePresentationPayload(**vp_decoded)
 
@@ -45,15 +45,23 @@ def create_token(request: TokenCreate, auth_service: AuthService = Depends(),
     if request.scope == ScopeEnum.tnt_create and not subject_did.tnt_authorized:
         raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="DID not authorized to this scope")
 
-    credentials = auth_service.extract_and_validate_credentials(vp_payload, request.presentation_submission,
-                                                                presentation_definition)
+    credentials_required = ("input_descriptors" in presentation_definition and len(presentation_definition["input_descriptors"]) > 0)
 
-    if not credentials or len(credentials) == 0:
-        raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="Invalid credentials")
+    credential_subject = vp_payload.sub
+    credential_issuer = vp_payload.iss
+    if credentials_required:
+        credentials = auth_service.extract_and_validate_credentials(vp_payload, request.presentation_submission,
+                                                                    presentation_definition)
 
-    access_token = AuthService.create_access_token(request.scope, credentials[0].sub)
+        if not credentials or len(credentials) == 0:
+            raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="Invalid credentials")
+        else:
+            credential_subject = credentials[0].sub
+            credential_issuer = credentials[0].iss
 
-    id_token = AuthService.create_id_token(subject=credentials[0].sub, issuer=credentials[0].iss)
+    access_token = AuthService.create_access_token(request.scope, credential_subject)
+
+    id_token = AuthService.create_id_token(subject=credential_subject, issuer=credential_issuer)
 
     return TokenBase(access_token=access_token, id_token=id_token, expires_in=7200, token_type="Bearer",
                      scope=request.scope.value)

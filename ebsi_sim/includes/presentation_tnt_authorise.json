@@ -51,7 +51,7 @@
             "filter": {
               "type": "string",
               "enum": [
-                "did:ebsi:zw422HHPF2McN1b8riU9Y3q"
+                "did:ebsi:zE971oT9esuKdcHspKdfAXg"
               ]
             }
           }

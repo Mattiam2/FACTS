@@ -110,32 +110,34 @@ def build_unsigned_transaction(eth_contract, register_address: str, method: str,
                                                                                   "nonce": 0xb1d3,
                                                                                   "chainId": 1234,
                                                                                   "gas": 0,
-                                                                                  "gasLimit": 1000000,
                                                                                   "gasPrice": 0})
     return unsigned_transaction
 
 
-def exec_signed_transaction(eth_contract, register_address, service, unsigned_transaction, signed_transaction):
-    decoded_transaction = rlp.decode(signed_transaction, Transaction)
+def exec_signed_transaction(current_user: User, eth_contract, register_address, service, unsigned_transaction, signed_transaction):
+    decoded_transaction: Transaction = rlp.decode(bytes.fromhex(signed_transaction), Transaction)
+    decoded_transaction_data = decoded_transaction['data']
+    if decoded_transaction['data'] != bytes.fromhex(unsigned_transaction['data'].replace("0x", "")):
+        raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="Signed transaction mismatch with unsigned transaction")
 
-    if decoded_transaction != unsigned_transaction:
-        raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="Invalid transaction")
+    signer = Account.recover_transaction(bytes.fromhex(signed_transaction))
+    if signer.lower() != unsigned_transaction['from'].lower():
+        raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="Invalid transaction from")
 
-    signer = Account.recover_transaction(signed_transaction)
-    if signer.lower() != decoded_transaction['from'].lower():
-        raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="Invalid transaction")
-
-    if decoded_transaction['to'].lower() != register_address.lower():
-        raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="Invalid transaction")
+    if decoded_transaction['to'] != bytes.fromhex(register_address.replace("0x", "")):
+        raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="Invalid transaction to")
 
     data = decoded_transaction['data']
 
     func_obj, params = eth_contract.decode_function_input(data=data)
 
+    if "did" in params and current_user.sub != params['did']:
+        raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="Invalid transaction")
+
     try:
         function = getattr(service, func_obj.fn_name)
 
         func_result = function(**params)
-        return '0xe670ec64341771606e55d6b4ca35a1a6b75ee3d5145a99d05921026d1527331';
+        return '0xe670ec64341771606e55d6b4ca35a1a6b75ee3d5145a99d05921026d1527331'
     except Exception as e:
         raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="Invalid transaction")

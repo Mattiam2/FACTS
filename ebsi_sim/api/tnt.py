@@ -12,7 +12,8 @@ from ebsi_sim.schemas import AccessListPublic, DocumentItemPublic, DocumentListP
     EventListPublic, EventPublic, JsonRpcCreate, JsonRpcPublic, PageLinksPublic, TimestampPublic, VersionEnum, \
     PermissionEnum
 from ebsi_sim.services.tnt import TntService
-from ebsi_sim.utils import User, get_current_user, check_scopes, build_unsigned_transaction, exec_signed_transaction
+from ebsi_sim.utils import User, get_current_user, check_scopes, build_unsigned_transaction, exec_signed_transaction, \
+    booleanize
 
 w3 = Web3()
 router = APIRouter(prefix="/track-and-trace", tags=["track-and-trace"])
@@ -46,8 +47,8 @@ def rpc(current_user: Annotated[User, Depends(get_current_user)], payload: JsonR
     if payload.method in ("authoriseDid", "createDocument", "removeDocument", "grantAccess", "revokeAccess",
                           "writeEvent"):
 
-        params_set = set(params.keys())
-        params_set.remove("from")
+        if payload.method == "authoriseDid":
+            params['whiteList'] = booleanize(params['whiteList'])
 
         if payload.method == "createDocument":
             if "didEbsiCreator" in params and current_user.sub != params['didEbsiCreator']:
@@ -104,7 +105,7 @@ def rpc(current_user: Annotated[User, Depends(get_current_user)], payload: JsonR
 
     elif payload.method == "sendSignedTransaction":
 
-        json_rpc_result = exec_signed_transaction(eth_contract, register_address, tnt_service, params['unsignedTransaction'],
+        json_rpc_result = exec_signed_transaction(current_user, eth_contract, register_address, tnt_service, params['unsignedTransaction'],
                                                   params['signedRawTransaction'])
 
     else:

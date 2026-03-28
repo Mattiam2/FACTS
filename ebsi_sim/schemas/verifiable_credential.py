@@ -22,6 +22,7 @@ class VerifiableCredentialPublic(SQLModel):
     validUntil: Optional[datetime] = None
     expirationDate: Optional[datetime] = None
     issued: Optional[datetime] = None
+    issuer: Optional[str] = None
     credentialSubject: CredentialSubjectPublic
     credentialSchema: CredentialSchemaPublic
 
