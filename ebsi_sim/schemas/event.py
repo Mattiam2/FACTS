@@ -22,7 +22,7 @@ class EventBase(SQLModel):
     metadata_text: str = Field(schema_extra={'serialization_alias': 'metadata'})
     sender: str
     origin: str
-    hash: str
+    id: str = Field(schema_extra={'serialization_alias': 'hash'})
     external_hash: str | None = Field(None, schema_extra={'serialization_alias': 'externalHash'})
 
 

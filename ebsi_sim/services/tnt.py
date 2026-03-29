@@ -1,3 +1,6 @@
+import hashlib
+import time
+import uuid
 from datetime import datetime
 
 from fastapi import Depends
@@ -52,6 +55,10 @@ class TntService:
         doc_timestamp_datetime = datetime.fromtimestamp(
             int(timestamp, 0)) if timestamp is not None else None
         doc_timestamp_proof = timestampProof
+
+        if isinstance(documentHash, bytes):
+            publicKey = "0x" + documentHash.hex()
+
         self.document_repository.create(id=documentHash, creator=didEbsiCreator,
                                         metadata_text=doc_metadata,
                                         timestamp_datetime=doc_timestamp_datetime, timestamp_proof=doc_timestamp_proof,
@@ -78,16 +85,18 @@ class TntService:
             0]
         self.access_repository.delete(id=revoked_access.id)
 
-    def writeEvent(self, *, eventParams: list[dict], timestamp: str | None = None, timestampProof: str | None = None):
-        doc_id = eventParams[0]['documentHash']
-        external_hash = eventParams[0]['externalHash']
-        sender = bytes.fromhex(eventParams[0]['sender'][2:]).decode('utf-8')
-        origin = eventParams[0]['origin']
-        metadata = eventParams[0]['metadata']
+    def writeEvent(self, *, eventParams: dict, timestamp: str | None = None, timestampProof: str | None = None):
+        doc_id = eventParams['documentHash']
+        external_hash = eventParams['externalHash']
+        sender = eventParams['sender'].decode('utf-8')
+        origin = eventParams['origin']
+        metadata = eventParams['metadata']
         event_timestamp_datetime = datetime.fromtimestamp(
             int(timestamp, 0)) if timestamp else None
         event_timestamp_proof = timestampProof
-        self.event_repository.create(document_id=doc_id, metadata_text=metadata, sender=sender,
+        raw_id = f"{doc_id}{external_hash}{sender}{time.time_ns()}"
+        event_id = "0x" + hashlib.sha256(raw_id.encode()).hexdigest()
+        self.event_repository.create(id=event_id, document_id=doc_id, metadata_text=metadata, sender=sender,
                                      origin=origin, hash=00000, external_hash=external_hash,
                                      timestamp_datetime=event_timestamp_datetime, timestamp_proof=event_timestamp_proof,
                                      timestamp_source="block")

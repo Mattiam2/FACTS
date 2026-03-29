@@ -26,6 +26,7 @@ eth_contract = w3.eth.contract(
     abi=tnt_abi
 )
 
+
 @router.post("/jsonrpc",
              description="The JSON-RPC API provides methods assisting the construction of blockchain transactions and interaction with the ledger, i.e. write operation on ledger.")
 def rpc(current_user: Annotated[User, Depends(get_current_user)], payload: JsonRpcCreate,
@@ -92,20 +93,21 @@ def rpc(current_user: Annotated[User, Depends(get_current_user)], payload: JsonR
                                     detail="revokedByAccount is not the same as the creator")
 
         if payload.method == "writeEvent":
-            document = tnt_service.getDocument(params['eventParams'][0]['documentHash'])
-            user_accesses = tnt_service.listAccesses(subject=params['grantedByAccount'],
-                                                     document_id=params['documentHash'],
-                                                     permission=PermissionEnum.write)
+            params = {'from': params['from'], 'eventParams': params['eventParams'][0]}
+            document = tnt_service.getDocument(params['eventParams']['documentHash'])
+            user_accesses = [access for access in document.accesses if
+                             access.subject == current_user.sub and access.permission == PermissionEnum.write]
             if document is None:
                 raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Document not found")
-            if user_accesses is None:
+            if document.creator != current_user.sub and len(user_accesses) == 0:
                 raise HTTPException(status_code=HTTP_403_FORBIDDEN, detail="Permission not granted")
 
         json_rpc_result = build_unsigned_transaction(eth_contract, register_address, payload.method, params)
 
     elif payload.method == "sendSignedTransaction":
 
-        json_rpc_result = exec_signed_transaction(current_user, eth_contract, register_address, tnt_service, params['unsignedTransaction'],
+        json_rpc_result = exec_signed_transaction(current_user, eth_contract, register_address, tnt_service,
+                                                  params['unsignedTransaction'],
                                                   params['signedRawTransaction'])
 
     else:
@@ -189,7 +191,7 @@ def read_doc(documentId: str, version: VersionEnum = VersionEnum.latest,
     doc = tnt_service.getDocument(documentId)
 
     timestamp = TimestampPublic(
-        datetime=doc.timestamp_datetime.isoformat(),
+        datetime=doc.timestamp_datetime.isoformat() if doc.timestamp_datetime else None,
         source=doc.timestamp_source,
         proof=doc.timestamp_proof
     )
@@ -235,7 +237,7 @@ def read_doc_event(documentId: str, eventId: str, tnt_service: TntService = Depe
     event = events[0] if events else None
 
     timestamp = TimestampPublic(
-        datetime=event.timestamp_datetime.isoformat(),
+        datetime=event.timestamp_datetime.isoformat() if event.timestamp_datetime else None,
         source=event.timestamp_source,
         proof=event.timestamp_proof
     )

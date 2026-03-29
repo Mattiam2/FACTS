@@ -75,7 +75,7 @@ class Event(EventBase, table=True):
     __tablename__ = "events"
     __table_args__ = {'schema': 'public'}
 
-    id: str = Field(default=None, primary_key=True)
+    id: str = Field(schema_extra={'serialization_alias': 'hash'}, primary_key=True)
     document_id: str = Field(foreign_key="public.documents.id")
     timestamp_datetime: datetime
     timestamp_source: str

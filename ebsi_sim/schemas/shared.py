@@ -18,9 +18,9 @@ class TimestampPublic(SQLModel):
     :type proof: str
     """
 
-    datetime: str
-    source: str
-    proof: str
+    datetime: str | None = None
+    source: str | None = None
+    proof: str | None = None
 
 
 class PageLinksPublic(SQLModel):

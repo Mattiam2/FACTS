@@ -96,7 +96,8 @@ def build_unsigned_transaction(eth_contract, register_address: str, method: str,
     abi_functions: list[BaseContractFunction] = eth_contract.find_functions_by_name(method)
 
     params_comparison = params.copy()
-    params_comparison.pop('from')
+    if 'from' in params_comparison:
+        params_comparison.pop('from')
 
     candidate_function: BaseContractFunction = next(
         (tmp_fn for tmp_fn in abi_functions if set(tmp_fn.argument_names) == set(params_comparison.keys())), None)

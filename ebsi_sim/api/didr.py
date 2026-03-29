@@ -29,8 +29,6 @@ eth_contract = w3.eth.contract(
 def rpc(current_user: Annotated[User, Depends(get_current_user)], payload: JsonRpcCreate,
         didr_service: DidrService = Depends()) -> JsonRpcPublic:
 
-    #TODO Test insertDidDocument with signature
-
     is_authorized = check_scopes(current_user, payload.method, {
         "insertDidDocument": ["didr_invite", "didr_write"],
         "updateBaseDocument": ["didr_write"],
