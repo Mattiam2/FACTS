@@ -58,7 +58,7 @@ def rpc(current_user: Annotated[User, Depends(get_current_user)], payload: JsonR
                                     detail="didEbsiCreator is not the same as the subject")
 
         if payload.method == "removeDocument":
-            document = tnt_service.getDocument(params['eventParams'][0]['documentHash'])
+            document = tnt_service.get_document(params['eventParams'][0]['documentHash'])
             if document.creator != current_user.sub:
                 raise HTTPException(status_code=HTTP_403_FORBIDDEN,
                                     detail="Document creator is not the same as the subject")
@@ -67,9 +67,9 @@ def rpc(current_user: Annotated[User, Depends(get_current_user)], payload: JsonR
             if "grantedByAccount" in params and current_user.sub != params['grantedByAccount']:
                 raise HTTPException(status_code=HTTP_403_FORBIDDEN,
                                     detail="grantedByAccount is not the same as the subject")
-            user_accesses = tnt_service.listAccesses(subject=params['grantedByAccount'],
+            user_accesses = tnt_service.list_accesses(subject=params['grantedByAccount'],
                                                      document_id=params['documentHash'])
-            document = tnt_service.getDocument(params['documentHash'])
+            document = tnt_service.get_document(params['documentHash'])
             if document is None:
                 raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Document not found")
             if document.creator != params['grantedByAccount']:
@@ -86,7 +86,7 @@ def rpc(current_user: Annotated[User, Depends(get_current_user)], payload: JsonR
             if "revokedByAccount" in params and current_user.sub != params['revokedByAccount']:
                 raise HTTPException(status_code=HTTP_403_FORBIDDEN,
                                     detail="revokedByAccount is not the same as the subject")
-            document = tnt_service.getDocument(params['documentHash'])
+            document = tnt_service.get_document(params['documentHash'])
             if document is None:
                 raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Document not found")
             if document.creator != params['revokedByAccount']:
@@ -102,7 +102,7 @@ def rpc(current_user: Annotated[User, Depends(get_current_user)], payload: JsonR
                 params['timestamp'] = timestamp
             if timestamp_proof:
                 params['timestampProof'] = timestamp_proof
-            document = tnt_service.getDocument(event_params['documentHash'])
+            document = tnt_service.get_document(event_params['documentHash'])
             user_accesses = [access for access in document.accesses if
                              access.subject == current_user.sub and access.permission == PermissionEnum.write]
             if document is None:
@@ -140,7 +140,7 @@ def rpc(current_user: Annotated[User, Depends(get_current_user)], payload: JsonR
                  HTTP_500_INTERNAL_SERVER_ERROR: {"description": "Internal Server Error"},
              })
 def check_access(creator: Annotated[str, Query()], tnt_service: TntService = Depends()):
-    creator_access = tnt_service.listAccesses(subject=creator)
+    creator_access = tnt_service.list_accesses(subject=creator)
 
     if not creator_access:
         raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="DID not found in the allowlist")
@@ -152,7 +152,7 @@ def check_access(creator: Annotated[str, Query()], tnt_service: TntService = Dep
 def read_subject_accesses(subject: str, page_after: Annotated[int, Query(alias="page[after]")] = 1,
                           page_size: Annotated[int, Query(alias="page[size]")] = 10,
                           tnt_service: TntService = Depends()) -> AccessListPublic:
-    accesses_count = tnt_service.countAccesses(subject=subject)
+    accesses_count = tnt_service.count_accesses(subject=subject)
     n_pages = math.ceil(accesses_count / page_size)
 
     links = PageLinksPublic(first=f"/accesses?page[after]=1&page[size]={page_size}&subject={subject}",
@@ -160,7 +160,7 @@ def read_subject_accesses(subject: str, page_after: Annotated[int, Query(alias="
                             next=f"/accesses?page[after]={min(page_after + 1, max(n_pages, 1))}&page[size]={page_size}&subject={subject}",
                             last=f"/accesses?page[after]={max(n_pages, 1)}&page[size]={page_size}&subject={subject}")
 
-    accesses = tnt_service.listAccesses(offset=(page_after - 1) * page_size, limit=page_size, subject=subject)
+    accesses = tnt_service.list_accesses(offset=(page_after - 1) * page_size, limit=page_size, subject=subject)
 
     return AccessListPublic(
         self=f"/accesses?page[after]={page_after}&page[size]={page_size}&subject={subject}",
@@ -175,7 +175,7 @@ def read_subject_accesses(subject: str, page_after: Annotated[int, Query(alias="
 def read_docs(page_after: Annotated[int, Query(alias="page[after]")] = 1,
               page_size: Annotated[int, Query(alias="page[size]")] = 10,
               tnt_service: TntService = Depends()) -> DocumentListPublic:
-    docs_count = tnt_service.countDocuments()
+    docs_count = tnt_service.count_documents()
     n_pages = math.ceil(docs_count / page_size)
 
     links = PageLinksPublic(first=f"/documents?page[after]=1&page[size]={page_size}",
@@ -183,7 +183,7 @@ def read_docs(page_after: Annotated[int, Query(alias="page[after]")] = 1,
                             next=f"/documents?page[after]={min(page_after + 1, max(n_pages, 1))}&page[size]={page_size}",
                             last=f"/documents?page[after]={max(n_pages, 1)}&page[size]={page_size}")
 
-    docs = tnt_service.listDocuments(offset=(page_after - 1) * page_size, limit=page_size)
+    docs = tnt_service.list_documents(offset=(page_after - 1) * page_size, limit=page_size)
     items = []
     for doc in docs:
         items.append(DocumentItemPublic(documentId=doc.id, href=f"/documents/{doc.id}"))
@@ -200,7 +200,7 @@ def read_docs(page_after: Annotated[int, Query(alias="page[after]")] = 1,
 @router.get("/documents/{documentId}", description="Gets the document corresponding to the ID.")
 def read_doc(documentId: str, version: VersionEnum = VersionEnum.latest,
              tnt_service: TntService = Depends()) -> DocumentPublic:
-    doc = tnt_service.getDocument(documentId)
+    doc = tnt_service.get_document(documentId)
 
     timestamp = TimestampPublic(
         datetime=doc.timestamp_datetime.isoformat() if doc.timestamp_datetime else None,
@@ -219,7 +219,7 @@ def read_doc(documentId: str, version: VersionEnum = VersionEnum.latest,
 def read_doc_events(documentId: str, page_after: Annotated[int, Query(alias="page[after]")] = 1,
                     page_size: Annotated[int, Query(alias="page[size]")] = 10,
                     tnt_service: TntService = Depends()) -> EventListPublic:
-    events_count = tnt_service.countEvents(document_id=documentId)
+    events_count = tnt_service.count_events(document_id=documentId)
     n_pages = math.ceil(events_count / page_size)
 
     links = PageLinksPublic(first=f"/documents/{documentId}/events?page[after]=1&page[size]={page_size}",
@@ -227,7 +227,7 @@ def read_doc_events(documentId: str, page_after: Annotated[int, Query(alias="pag
                             next=f"/documents/{documentId}/events?page[after]={min(page_after + 1, max(n_pages, 1))}&page[size]={page_size}",
                             last=f"/documents/{documentId}/events?page[after]={max(n_pages, 1)}&page[size]={page_size}")
 
-    events = tnt_service.listEvents(offset=(page_after - 1) * page_size, limit=page_size, document_id=documentId)
+    events = tnt_service.list_events(offset=(page_after - 1) * page_size, limit=page_size, document_id=documentId)
 
     items = []
     for event in events:
@@ -245,8 +245,10 @@ def read_doc_events(documentId: str, page_after: Annotated[int, Query(alias="pag
 @router.get("/documents/{documentId}/events/{eventId}",
             description="Gets the event corresponding to the document ID and event ID.")
 def read_doc_event(documentId: str, eventId: str, tnt_service: TntService = Depends()) -> EventPublic:
-    events = tnt_service.listEvents(document_id=documentId, id=eventId)
-    event = events[0] if events else None
+    events = tnt_service.list_events(document_id=documentId, id=eventId)
+    if not events:
+        raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Event not found")
+    event = events[0]
 
     timestamp = TimestampPublic(
         datetime=event.timestamp_datetime.isoformat() if event.timestamp_datetime else None,
@@ -263,7 +265,7 @@ def read_doc_event(documentId: str, eventId: str, tnt_service: TntService = Depe
 def read_doc_accesses(documentId: str, page_after: Annotated[int, Query(alias="page[after]")] = 1,
                       page_size: Annotated[int, Query(alias="page[size]")] = 10,
                       tnt_service: TntService = Depends()) -> AccessListPublic:
-    accesses_count = tnt_service.countAccesses(document_id=documentId)
+    accesses_count = tnt_service.count_accesses(document_id=documentId)
     n_pages = math.ceil(accesses_count / page_size)
 
     links = PageLinksPublic(first=f"/documents/{documentId}/accesses?page[after]=1&page[size]={page_size}",
@@ -271,7 +273,7 @@ def read_doc_accesses(documentId: str, page_after: Annotated[int, Query(alias="p
                             next=f"/documents/{documentId}/accesses?page[after]={min(page_after + 1, max(n_pages, 1))}&page[size]={page_size}",
                             last=f"/documents/{documentId}/accesses?page[after]={max(n_pages, 1)}&page[size]={page_size}")
 
-    accesses = tnt_service.listAccesses(document_id=documentId, offset=(page_after - 1) * page_size, limit=page_size)
+    accesses = tnt_service.list_accesses(document_id=documentId, offset=(page_after - 1) * page_size, limit=page_size)
 
     return AccessListPublic(
         self=f"/documents/{documentId}/accesses?page[after]={page_after}&page[size]={page_size}&documentId={documentId}",

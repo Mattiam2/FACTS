@@ -23,7 +23,7 @@ def request_vc(subject_did: str, credential_type: Annotated[list[str], Query()] 
     # This is necessary in order to make the simulator testable
     # Otherwise I would need to build TAO API which is out of the scope
     issued = datetime.now()
-    expirationDate = datetime.now() + timedelta(days=10 * 365)
+    expiration_date = datetime.now() + timedelta(days=10 * 365)
     uuid_str = uuid4().urn
 
     credential = VerifiableCredentialPublic(
@@ -32,8 +32,8 @@ def request_vc(subject_did: str, credential_type: Annotated[list[str], Query()] 
         type=credential_type,
         issuanceDate=issued,
         validFrom=issued,
-        validUntil=expirationDate,
-        expirationDate=expirationDate,
+        validUntil=expiration_date,
+        expirationDate=expiration_date,
         issued=issued,
         issuer=settings.ISSUER_DID,
         credentialSubject={'id': subject_did},
@@ -47,7 +47,7 @@ def request_vc(subject_did: str, credential_type: Annotated[list[str], Query()] 
         sub=subject_did,
         iat=int(issued.timestamp()),
         nbf=int(issued.timestamp()),
-        exp=int(expirationDate.timestamp()),
+        exp=int(expiration_date.timestamp()),
         jti=uuid_str,
         vc=credential
     )
@@ -110,7 +110,6 @@ def create_vp(vc_token: str, did: str, private_key: str, verification_id: Option
 @router.get("/sign_transaction")
 def sign_transaction(transaction: str, private_key: str) -> dict:
     client_private_key_bytes = bytes.fromhex(private_key)
-    client_private_key = derive_private_key(int.from_bytes(client_private_key_bytes), SECP256K1())
 
     transaction_dict = json.loads(transaction)
     if "gasLimit" in transaction_dict:

@@ -46,7 +46,7 @@ class Identifier(IdentifierBase, table=True):
     Represents an EBSI Identifier model for storing and managing identifiers.
 
     :ivar did: Unique identifier.
-    :type id: str
+    :type did: str
     :ivar created_at: Datetime when the identifier was created.
     :type created_at: datetime
     """

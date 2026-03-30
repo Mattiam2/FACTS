@@ -7,10 +7,9 @@ class DocumentBase(SQLModel):
     """
     Represents an EBSI Document base schema with metadata and timestamp.
 
+    :ivar id: Unique identifier for the document.
     :ivar metadata_text: The metadata of the document
     :type metadata_text: str
-    :ivar timestamp: The timestamp when the document was recorded.
-    :type timestamp: TimestampPublic
     :ivar creator: Denotes the creator of the document.
     :type creator: str
     """

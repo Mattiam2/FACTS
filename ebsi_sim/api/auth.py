@@ -35,7 +35,7 @@ def create_token(request: TokenCreate, auth_service: AuthService = Depends(),
     if vp_payload.sub != vp_payload.vp.holder:
         raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="Invalid VP")
 
-    subject_did = didr_service.getDidDocument(vp_payload.sub)
+    subject_did = didr_service.get_did_document(vp_payload.sub)
 
     if request.scope == ScopeEnum.didr_invite and subject_did:
         raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="DID is already registered")

@@ -4,7 +4,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, HTTPException, Depends
 from fastapi import Query
-from starlette.status import HTTP_403_FORBIDDEN
+from starlette.status import HTTP_403_FORBIDDEN, HTTP_404_NOT_FOUND
 from web3 import Web3
 
 from ebsi_sim.schemas import IdentifierListPublic, IdentifierPublic, IdentifierItemPublic, JsonRpcCreate, JsonRpcPublic, \
@@ -57,7 +57,9 @@ def rpc(current_user: Annotated[User, Depends(get_current_user)], payload: JsonR
         if subject_did is not None and subject_did != current_user.sub:
             if payload.method == "insertDidDocument":
                 raise HTTPException(status_code=HTTP_403_FORBIDDEN, detail="Forbidden DID")
-            sub_identifier = didr_service.getDidDocument(subject_did)
+            sub_identifier = didr_service.get_did_document(subject_did)
+            if not sub_identifier:
+                raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Subject identifier not found in DID Register")
             controllers = sub_identifier.controllers
             if current_user.sub not in [c.did for c in controllers]:
                 raise HTTPException(status_code=HTTP_403_FORBIDDEN, detail="Forbidden DID")
@@ -81,7 +83,7 @@ def rpc(current_user: Annotated[User, Depends(get_current_user)], payload: JsonR
 def read_identifiers(page_after: Annotated[int, Query(alias="page[after]")] = 1,
                      page_size: Annotated[int, Query(alias="page[size]")] = 10,
                      controller: str | None = None, didr_service: DidrService = Depends()) -> IdentifierListPublic:
-    dids_count = didr_service.countDidDocuments(controller=controller)
+    dids_count = didr_service.count_did_documents(controller=controller)
     n_pages = math.ceil(dids_count / page_size)
 
     links = PageLinksPublic(first=f"/identifiers?page[after]=1&page[size]={page_size}",
@@ -89,7 +91,7 @@ def read_identifiers(page_after: Annotated[int, Query(alias="page[after]")] = 1,
                             next=f"/identifiers?page[after]={min(page_after + 1, max(n_pages, 1))}&page[size]={page_size}",
                             last=f"/identifiers?page[after]={max(n_pages, 1)}&page[size]={page_size}")
 
-    dids = didr_service.listDidDocuments(controller=controller, offset=(page_after - 1) * page_size, limit=page_size)
+    dids = didr_service.list_did_documents(controller=controller, offset=(page_after - 1) * page_size, limit=page_size)
     items = []
     for d in dids:
         items.append(IdentifierItemPublic(did=d.did, href=f"/identifiers/{d.did}"))
@@ -105,7 +107,9 @@ def read_identifiers(page_after: Annotated[int, Query(alias="page[after]")] = 1,
 
 @router.get("/identifiers/{did}", description="Gets the identifier corresponding to the DID.")
 def read_identifier(did: str, valid_at=None, didr_service: DidrService = Depends()) -> IdentifierPublic:
-    identifier = didr_service.getDidDocument(did)
+    identifier = didr_service.get_did_document(did)
+    if not identifier:
+        raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Identifier not found")
     did_controllers = identifier.controllers
     vmethods = identifier.verification_methods
     vrelationships = identifier.verification_relationships
@@ -125,7 +129,7 @@ def read_identifier(did: str, valid_at=None, didr_service: DidrService = Depends
 
 @router.post("/identifiers/{did}/actions", description="Performs an action on the identifier corresponding to the DID.")
 def post_action_identifier(did: str, payload: JsonRpcCreate, didr_service: DidrService = Depends()) -> JsonRpcPublic:
-    vmethods = didr_service.listVerificationMethods(did_controller=did)
+    vmethods = didr_service.list_verification_methods(did_controller=did)
 
     return JsonRpcPublic(
         jsonrpc="2.0",

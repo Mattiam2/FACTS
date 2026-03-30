@@ -47,7 +47,7 @@ class AuthService:
             raise AuthServiceException("Can't create access token")
 
         expires_in = 7200
-        iat = math.floor(datetime.utcnow().timestamp())
+        iat = math.floor(datetime.now().timestamp())
         exp = iat + expires_in
 
         payload = {
@@ -75,7 +75,7 @@ class AuthService:
         kid = jwk_pub_key["kid"]
 
         expires_in = 7200
-        iat = math.floor(datetime.utcnow().timestamp())
+        iat = math.floor(datetime.now().timestamp())
         exp = iat + expires_in
 
         payload = {

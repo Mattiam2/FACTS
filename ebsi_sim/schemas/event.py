@@ -16,8 +16,8 @@ class EventBase(SQLModel):
     :type sender: str
     :ivar origin: Origin or source of the event.
     :type origin: str
-    :ivar hash: Unique hash value representing the event.
-    :type hash: str
+    :ivar id: Unique hash value representing the event.
+    :type id: str
     :ivar external_hash: External hash value associated with the event
     :type external_hash: str, optional
     """

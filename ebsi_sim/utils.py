@@ -65,7 +65,7 @@ vp_scheme = APIKeyHeader(name="Authorization", auto_error=False)
 def get_current_user(token: Annotated[str, Depends(vp_scheme)]):
     user = None
     try:
-        user = jwt.decode(token, settings.AUTH_PUBLIC_KEY, algorithms=["ES256"],
+        user: dict = jwt.decode(token, settings.AUTH_PUBLIC_KEY, algorithms=["ES256"],
                           options={'verify_exp': False, "verify_aud": False})
     except jwt.exceptions.DecodeError as e:
         pass

@@ -43,9 +43,9 @@ class DidrService:
         return self.verification_method_repository.list(offset=offset, limit=limit, order_by=order_by, **filters)
 
     def insert_did_document(self, *, did: str, base_document: str, v_method_id: str, public_key: bytes | str, is_secp256k1: bool,
-                          notBefore: int, notAfter: int):
-        date_not_before = datetime.fromtimestamp(notBefore)
-        date_not_after = datetime.fromtimestamp(notAfter)
+                          not_before: int, not_after: int):
+        date_not_before = datetime.fromtimestamp(not_before)
+        date_not_after = datetime.fromtimestamp(not_after)
 
         self.identifier_repository.create(did=did, context=base_document)
         self.identifier_controller_repository.create(identifier_did=did, did_controller=did)
@@ -81,7 +81,7 @@ class DidrService:
     def add_verification_method(self, *, did: str, v_method_id: str, public_key: bytes | str, is_secp256k1: bool):
         full_vmethod_id = f"{did}#{v_method_id}"
         if isinstance(public_key, bytes):
-            publicKey = "0x" + public_key.hex()
+            public_key = "0x" + public_key.hex()
         self.verification_method_repository.create(id=full_vmethod_id, did_controller=did,
                                                    type="JsonWebKey2020",
                                                    public_key=public_key, issecp256k1=is_secp256k1)
@@ -102,6 +102,8 @@ class DidrService:
 
         full_vmethod_id = f"{did}#{v_method_id}"
         vmethod = self.verification_method_repository.get(id=full_vmethod_id)
+        if not vmethod:
+            raise DidrServiceException("Verification method not found")
         self.verification_method_repository.update(id=vmethod.id, notafter=not_after_date)
 
     def expire_verification_method(self, *, did: str, v_method_id: str, not_after: int):
@@ -111,4 +113,6 @@ class DidrService:
 
         full_vmethod_id = f"{did}#{v_method_id}"
         vmethod = self.verification_method_repository.get(id=full_vmethod_id)
+        if not vmethod:
+            raise DidrServiceException("Verification method not found")
         self.verification_method_repository.update(id=vmethod.id, notafter=not_after_date)
