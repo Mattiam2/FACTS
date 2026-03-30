@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlmodel import Field, Relationship
+from sqlmodel import Field, Relationship, func
 
 from ebsi_sim.schemas.access import AccessBase
 from ebsi_sim.schemas.document import DocumentBase
@@ -52,7 +52,7 @@ class Document(DocumentBase, table=True):
 
     id: str = Field(default=None, primary_key=True)
     metadata_text: str = Field(schema_extra={'serialization_alias': 'metadata'})
-    timestamp_datetime: datetime
+    timestamp_datetime: datetime = Field(default=func.now())
     timestamp_source: str
     timestamp_proof: str
     creator: str
@@ -77,7 +77,7 @@ class Event(EventBase, table=True):
 
     id: str = Field(schema_extra={'serialization_alias': 'hash'}, primary_key=True)
     document_id: str = Field(foreign_key="public.documents.id")
-    timestamp_datetime: datetime
+    timestamp_datetime: datetime = Field(default=func.now())
     timestamp_source: str
     timestamp_proof: str
 

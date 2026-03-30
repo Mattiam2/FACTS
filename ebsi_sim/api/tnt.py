@@ -11,6 +11,7 @@ from web3 import Web3
 from ebsi_sim.schemas import AccessListPublic, DocumentItemPublic, DocumentListPublic, DocumentPublic, EventItemPublic, \
     EventListPublic, EventPublic, JsonRpcCreate, JsonRpcPublic, PageLinksPublic, TimestampPublic, VersionEnum, \
     PermissionEnum
+from ebsi_sim.schemas.event import EventParams
 from ebsi_sim.services.tnt import TntService
 from ebsi_sim.utils import User, get_current_user, check_scopes, build_unsigned_transaction, exec_signed_transaction, \
     booleanize
@@ -93,14 +94,25 @@ def rpc(current_user: Annotated[User, Depends(get_current_user)], payload: JsonR
                                     detail="revokedByAccount is not the same as the creator")
 
         if payload.method == "writeEvent":
-            params = {'from': params['from'], 'eventParams': params['eventParams'][0]}
-            document = tnt_service.getDocument(params['eventParams']['documentHash'])
+            event_params = EventParams(**params['eventParams'][0])
+            timestamp = int.from_bytes(bytes.fromhex(params['timestamp'].replace('0x',''))) if 'timestamp' in params else None
+            timestamp_proof = bytes.fromhex(params['timestampProof'].replace('0x', '')) if 'timestampProof' in params else None
+            params = {'from': params['from'], 'eventParams': event_params}
+            if timestamp:
+                params['timestamp'] = timestamp
+            if timestamp_proof:
+                params['timestampProof'] = timestamp_proof
+            document = tnt_service.getDocument(event_params['documentHash'])
             user_accesses = [access for access in document.accesses if
                              access.subject == current_user.sub and access.permission == PermissionEnum.write]
             if document is None:
                 raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Document not found")
             if document.creator != current_user.sub and len(user_accesses) == 0:
                 raise HTTPException(status_code=HTTP_403_FORBIDDEN, detail="Permission not granted")
+            sender = event_params['sender'].decode('utf-8') if isinstance(event_params['sender'], bytes) else bytes.fromhex(event_params['sender'].replace('0x','')).decode('utf-8')
+            if sender != current_user.sub:
+                raise HTTPException(status_code=HTTP_403_FORBIDDEN, detail="Sender is not the same as the subject")
+
 
         json_rpc_result = build_unsigned_transaction(eth_contract, register_address, payload.method, params)
 

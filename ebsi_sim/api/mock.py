@@ -5,7 +5,7 @@ from uuid import uuid4
 
 import jwt
 from cryptography.hazmat.primitives.asymmetric.ec import derive_private_key, SECP256K1
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Query, HTTPException
 
 from ebsi_sim.api.didr import w3
 from ebsi_sim.core.config import settings
@@ -115,7 +115,12 @@ def sign_transaction(transaction: str, private_key: str) -> dict:
     transaction_dict = json.loads(transaction)
     if "gasLimit" in transaction_dict:
         transaction_dict.pop("gasLimit")
-    signed_transaction = w3.eth.account.sign_transaction(transaction_dict, client_private_key_bytes)
+
+    try:
+        signed_transaction = w3.eth.account.sign_transaction(transaction_dict, client_private_key_bytes)
+    except Exception as e:
+        print(e)
+        raise HTTPException(status_code=400, detail=f'Invalid transaction: {e}')
 
     data_out = {
         "protocol": "eth",

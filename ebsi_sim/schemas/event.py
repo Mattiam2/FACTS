@@ -1,4 +1,7 @@
+from dataclasses import dataclass
+
 from sqlmodel import SQLModel, Field
+from typing_extensions import TypedDict
 
 from ebsi_sim.schemas.shared import TimestampPublic, PageLinksPublic
 
@@ -72,3 +75,11 @@ class EventPublic(EventBase):
     """
 
     timestamp: TimestampPublic
+
+@dataclass
+class EventParams(TypedDict):
+    documentHash: bytes | str
+    externalHash: str
+    sender: bytes | str
+    origin: str
+    metadata: str

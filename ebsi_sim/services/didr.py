@@ -78,8 +78,10 @@ class DidrService:
         if len(controllers) == 1:
             self.identifier_controller_repository.delete(id=controllers[0].id)
 
-    def addVerificationMethod(self, *, did: str, vMethodId: str, publicKey: str, isSecp256k1: bool):
+    def addVerificationMethod(self, *, did: str, vMethodId: str, publicKey: bytes | str, isSecp256k1: bool):
         full_vmethod_id = f"{did}#{vMethodId}"
+        if isinstance(publicKey, bytes):
+            publicKey = "0x" + publicKey.hex()
         self.verification_method_repository.create(id=full_vmethod_id, did_controller=did,
                                                    type="JsonWebKey2020",
                                                    public_key=publicKey, issecp256k1=isSecp256k1)
