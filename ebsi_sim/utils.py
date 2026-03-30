@@ -25,6 +25,11 @@ class User(SQLModel):
     scopes: list[str]
     sub: str
 
+def to_snakecase(text: str) -> str:
+    if text.islower() or not text:
+        return text
+    return text[0].lower() + ''.join('_' + x.lower() if x.isupper() else x for x in text[1:])
+
 
 def pem_to_jwk(pem_public_key: str) -> dict:
     public_key_obj = load_pem_public_key(pem_public_key.encode(), backend=default_backend())
@@ -99,7 +104,7 @@ def build_unsigned_transaction(eth_contract, register_address: str, method: str,
     if 'from' in params_comparison:
         params_comparison.pop('from')
 
-    candidate_function: BaseContractFunction = next(
+    candidate_function: BaseContractFunction | None = next(
         (tmp_fn for tmp_fn in abi_functions if set(tmp_fn.argument_names) == set(params_comparison.keys())), None)
 
     if not candidate_function:
@@ -136,9 +141,11 @@ def exec_signed_transaction(current_user: User, eth_contract, register_address, 
         raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="Invalid transaction")
 
     try:
-        function = getattr(service, func_obj.fn_name)
+        function = getattr(service, to_snakecase(func_obj.fn_name))
 
-        func_result = function(**params)
+        params_snakecase = {to_snakecase(k): v for k, v in params.items()}
+
+        func_result = function(**params_snakecase)
         return '0xe670ec64341771606e55d6b4ca35a1a6b75ee3d5145a99d05921026d1527331'
     except Exception as e:
         raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="Invalid transaction")

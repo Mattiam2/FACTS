@@ -1,7 +1,6 @@
 from typing import Callable, Awaitable
 
 from fastapi import FastAPI, Request, Response
-from sqlalchemy.exc import SQLAlchemyError
 from sqlmodel import Session
 
 from ebsi_sim.api.auth import router as authapp

@@ -4,7 +4,7 @@ from datetime import datetime
 from uuid import uuid4
 
 import jwt
-from cryptography.hazmat.primitives.asymmetric.ec import SECP256K1, EllipticCurvePublicKey, SECP256R1
+from cryptography.hazmat.primitives.asymmetric.ec import SECP256K1, EllipticCurvePublicKey
 from fastapi import Depends
 from jsonpath_ng import parse
 from jsonschema import validate
