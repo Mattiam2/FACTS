@@ -6,8 +6,8 @@ from uuid import uuid4
 import jwt
 from cryptography.hazmat.primitives.asymmetric.ec import derive_private_key, SECP256K1
 from fastapi import APIRouter, Query, HTTPException
+from web3 import Web3
 
-from ebsi_sim.api.didr import w3
 from ebsi_sim.core.config import settings
 from ebsi_sim.schemas.verifiable_credential import VerifiableCredentialPublic, VerifiableCredentialPayload
 from ebsi_sim.schemas.verifiable_presentation import VerifiablePresentationPayload, VerifiablePresentationPublic
@@ -116,7 +116,7 @@ def sign_transaction(transaction: str, private_key: str) -> dict:
         transaction_dict.pop("gasLimit")
 
     try:
-        signed_transaction = w3.eth.account.sign_transaction(transaction_dict, client_private_key_bytes)
+        signed_transaction = Web3().eth.account.sign_transaction(transaction_dict, client_private_key_bytes)
     except Exception as e:
         print(e)
         raise HTTPException(status_code=400, detail=f'Invalid transaction: {e}')

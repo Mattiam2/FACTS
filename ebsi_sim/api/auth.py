@@ -22,7 +22,9 @@ def create_token(request: TokenCreate, auth_service: AuthService = Depends(),
         raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="Invalid presentation definition")
 
     check_signature = (request.scope != ScopeEnum.didr_invite)
-    vp_decoded = auth_service.decode_and_check_signature(request.vp_token, "authentication", credential_algos=['ES256', 'ES256K'], check_signature=check_signature)
+    vp_decoded = auth_service.decode_and_check_signature(request.vp_token, "authentication",
+                                                         credential_algos=['ES256', 'ES256K'],
+                                                         check_signature=check_signature)
 
     vp_payload = VerifiablePresentationPayload(**vp_decoded)
 
@@ -45,7 +47,8 @@ def create_token(request: TokenCreate, auth_service: AuthService = Depends(),
     if request.scope == ScopeEnum.tnt_create and not subject_did.tnt_authorized:
         raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="DID not authorized to this scope")
 
-    credentials_required = ("input_descriptors" in presentation_definition and len(presentation_definition["input_descriptors"]) > 0)
+    credentials_required = ("input_descriptors" in presentation_definition and len(
+        presentation_definition["input_descriptors"]) > 0)
 
     credential_subject = vp_payload.sub
     credential_issuer = vp_payload.iss

@@ -4,73 +4,21 @@ from typing import Annotated
 
 from fastapi import APIRouter, HTTPException, Depends
 from fastapi import Query
-from starlette.status import HTTP_403_FORBIDDEN, HTTP_404_NOT_FOUND
-from web3 import Web3
+from starlette.status import HTTP_404_NOT_FOUND
 
 from ebsi_sim.schemas import IdentifierListPublic, IdentifierPublic, IdentifierItemPublic, JsonRpcCreate, JsonRpcPublic, \
     PageLinksPublic
 from ebsi_sim.services.didr import DidrService
-from ebsi_sim.utils import get_current_user, User, check_scopes, build_unsigned_transaction, exec_signed_transaction
-
-w3 = Web3()
+from ebsi_sim.utils import get_current_user, User
 
 router = APIRouter(prefix="/did-registry", tags=["did-registry"])
 
-didr_abi = json.load(open("ebsi_sim/includes/abi_didr.json", "r"))
-
-register_address = "0x823BBc0ceE3dE3B61AcfA0CEedb951AB9a013F05"
-
-eth_contract = w3.eth.contract(
-    abi=didr_abi
-)
 
 @router.post("/jsonrpc",
              description="The JSON-RPC API provides methods assisting the construction of blockchain transactions and interaction with the ledger, i.e. write operation on ledger.")
 def rpc(current_user: Annotated[User, Depends(get_current_user)], payload: JsonRpcCreate,
         didr_service: DidrService = Depends()) -> JsonRpcPublic:
-
-    is_authorized = check_scopes(current_user, payload.method, {
-        "insertDidDocument": ["didr_invite", "didr_write"],
-        "updateBaseDocument": ["didr_write"],
-        "addService": ["didr_write"],
-        "revokeService": ["didr_write"],
-        "addController": ["didr_write"],
-        "revokeController": ["didr_write"],
-        "addVerificationMethod": ["didr_write"],
-        "addVerificationRelationship": ["didr_write"],
-        "revokeVerificationMethod": ["didr_write"],
-        "expireVerificationMethod": ["didr_write"],
-        "rollVerificationMethod": ["didr_write"],
-        "sendSignedTransaction": ["didr_invite", "didr_write"]
-    })
-
-    if not is_authorized:
-        raise HTTPException(status_code=HTTP_403_FORBIDDEN, detail="Forbidden method")
-
-    json_rpc_result = None
-    params = payload.params[0]
-    if payload.method in ("insertDidDocument", "updateBaseDocument", "addService", "revokeService", "addController",
-                          "revokeController", "addVerificationMethod", "addVerificationRelationship",
-                          "revokeVerificationMethod", "expireVerificationMethod", "rollVerificationMethod"):
-
-        subject_did = params.get("did")
-        if subject_did is not None and subject_did != current_user.sub:
-            if payload.method == "insertDidDocument":
-                raise HTTPException(status_code=HTTP_403_FORBIDDEN, detail="Forbidden DID")
-            sub_identifier = didr_service.get_did_document(subject_did)
-            if not sub_identifier:
-                raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Subject identifier not found in DID Register")
-            controllers = sub_identifier.controllers
-            if current_user.sub not in [c.did for c in controllers]:
-                raise HTTPException(status_code=HTTP_403_FORBIDDEN, detail="Forbidden DID")
-
-        json_rpc_result = build_unsigned_transaction(eth_contract, register_address, payload.method, params)
-
-    elif payload.method == "sendSignedTransaction":
-
-        json_rpc_result = exec_signed_transaction(current_user, eth_contract, register_address, didr_service,
-                                                  params['unsignedTransaction'],
-                                                  params['signedRawTransaction'])
+    json_rpc_result = didr_service.handle_rpc(current_user, payload)
 
     return JsonRpcPublic(
         jsonrpc="2.0",
@@ -129,4 +77,5 @@ def read_identifier(did: str, valid_at=None, didr_service: DidrService = Depends
 
 @router.get("/abi")
 def abi():
+    didr_abi = json.load(open("ebsi_sim/includes/abi_didr.json", "r"))
     return didr_abi

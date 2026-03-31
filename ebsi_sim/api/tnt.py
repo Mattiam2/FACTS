@@ -5,125 +5,23 @@ from typing import Annotated
 from fastapi import Query
 from fastapi import Response, APIRouter, Depends, HTTPException
 from starlette.status import HTTP_204_NO_CONTENT, HTTP_400_BAD_REQUEST, HTTP_404_NOT_FOUND, \
-    HTTP_500_INTERNAL_SERVER_ERROR, HTTP_403_FORBIDDEN
+    HTTP_500_INTERNAL_SERVER_ERROR
 from web3 import Web3
 
 from ebsi_sim.schemas import AccessListPublic, DocumentItemPublic, DocumentListPublic, DocumentPublic, EventItemPublic, \
-    EventListPublic, EventPublic, JsonRpcCreate, JsonRpcPublic, PageLinksPublic, TimestampPublic, VersionEnum, \
-    PermissionEnum
-from ebsi_sim.schemas.event import EventParams
+    EventListPublic, EventPublic, JsonRpcCreate, JsonRpcPublic, PageLinksPublic, TimestampPublic, VersionEnum
 from ebsi_sim.services.tnt import TntService
-from ebsi_sim.utils import User, get_current_user, check_scopes, build_unsigned_transaction, exec_signed_transaction, \
-    booleanize
+from ebsi_sim.utils import User, get_current_user
 
 w3 = Web3()
 router = APIRouter(prefix="/track-and-trace", tags=["track-and-trace"])
-
-tnt_abi = json.load(open("ebsi_sim/includes/abi_tnt.json", "r"))
-
-register_address = "0x823BBc0ceE3dE3B61AcfA0CEedb951AB9a013F05"
-
-eth_contract = w3.eth.contract(
-    abi=tnt_abi
-)
 
 
 @router.post("/jsonrpc",
              description="The JSON-RPC API provides methods assisting the construction of blockchain transactions and interaction with the ledger, i.e. write operation on ledger.")
 def rpc(current_user: Annotated[User, Depends(get_current_user)], payload: JsonRpcCreate,
         tnt_service: TntService = Depends()) -> JsonRpcPublic:
-    is_authorized = check_scopes(current_user, payload.method, {
-        "authoriseDid": ["tnt_authorise"],
-        "createDocument": ["tnt_create"],
-        "removeDocument": ["tnt_write"],
-        "grantAccess": ["tnt_write"],
-        "revokeAccess": ["tnt_write"],
-        "writeEvent": ["tnt_write"],
-        "sendSignedTransaction": ["tnt_authorise", "tnt_create", "tnt_write"]
-    })
-
-    if not is_authorized:
-        raise HTTPException(status_code=HTTP_403_FORBIDDEN, detail="Forbidden method")
-
-    params = payload.params[0]
-    if payload.method in ("authoriseDid", "createDocument", "removeDocument", "grantAccess", "revokeAccess",
-                          "writeEvent"):
-
-        if payload.method == "authoriseDid":
-            params['whiteList'] = booleanize(params['whiteList'])
-
-        if payload.method == "createDocument":
-            if "didEbsiCreator" in params and current_user.sub != params['didEbsiCreator']:
-                raise HTTPException(status_code=HTTP_403_FORBIDDEN,
-                                    detail="didEbsiCreator is not the same as the subject")
-
-        if payload.method == "removeDocument":
-            document = tnt_service.get_document(params['eventParams'][0]['documentHash'])
-            if document.creator != current_user.sub:
-                raise HTTPException(status_code=HTTP_403_FORBIDDEN,
-                                    detail="Document creator is not the same as the subject")
-
-        if payload.method == "grantAccess":
-            if "grantedByAccount" in params and current_user.sub != params['grantedByAccount']:
-                raise HTTPException(status_code=HTTP_403_FORBIDDEN,
-                                    detail="grantedByAccount is not the same as the subject")
-            user_accesses = tnt_service.list_accesses(subject=params['grantedByAccount'],
-                                                     document_id=params['documentHash'])
-            document = tnt_service.get_document(params['documentHash'])
-            if document is None:
-                raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Document not found")
-            if document.creator != params['grantedByAccount']:
-                if params['permission'] != PermissionEnum.write:
-                    raise HTTPException(status_code=HTTP_403_FORBIDDEN,
-                                        detail="grantedByAccount is not the same as the creator")
-                else:
-                    is_delegated = bool(
-                        [access for access in user_accesses if access.permission == PermissionEnum.delegate])
-                    if not is_delegated:
-                        raise HTTPException(status_code=HTTP_403_FORBIDDEN, detail="Permission not granted")
-
-        if payload.method == 'revokeAccess':
-            if "revokedByAccount" in params and current_user.sub != params['revokedByAccount']:
-                raise HTTPException(status_code=HTTP_403_FORBIDDEN,
-                                    detail="revokedByAccount is not the same as the subject")
-            document = tnt_service.get_document(params['documentHash'])
-            if document is None:
-                raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Document not found")
-            if document.creator != params['revokedByAccount']:
-                raise HTTPException(status_code=HTTP_403_FORBIDDEN,
-                                    detail="revokedByAccount is not the same as the creator")
-
-        if payload.method == "writeEvent":
-            event_params = EventParams(**params['eventParams'][0])
-            timestamp = int.from_bytes(bytes.fromhex(params['timestamp'].replace('0x',''))) if 'timestamp' in params else None
-            timestamp_proof = bytes.fromhex(params['timestampProof'].replace('0x', '')) if 'timestampProof' in params else None
-            params = {'from': params['from'], 'eventParams': event_params}
-            if timestamp:
-                params['timestamp'] = timestamp
-            if timestamp_proof:
-                params['timestampProof'] = timestamp_proof
-            document = tnt_service.get_document(event_params['documentHash'])
-            user_accesses = [access for access in document.accesses if
-                             access.subject == current_user.sub and access.permission == PermissionEnum.write]
-            if document is None:
-                raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Document not found")
-            if document.creator != current_user.sub and len(user_accesses) == 0:
-                raise HTTPException(status_code=HTTP_403_FORBIDDEN, detail="Permission not granted")
-            sender = event_params['sender'].decode('utf-8') if isinstance(event_params['sender'], bytes) else bytes.fromhex(event_params['sender'].replace('0x','')).decode('utf-8')
-            if sender != current_user.sub:
-                raise HTTPException(status_code=HTTP_403_FORBIDDEN, detail="Sender is not the same as the subject")
-
-
-        json_rpc_result = build_unsigned_transaction(eth_contract, register_address, payload.method, params)
-
-    elif payload.method == "sendSignedTransaction":
-
-        json_rpc_result = exec_signed_transaction(current_user, eth_contract, register_address, tnt_service,
-                                                  params['unsignedTransaction'],
-                                                  params['signedRawTransaction'])
-
-    else:
-        raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="Invalid method")
+    json_rpc_result = tnt_service.handle_rpc(current_user, payload)
 
     return JsonRpcPublic(
         jsonrpc="2.0",
@@ -286,4 +184,5 @@ def read_doc_accesses(documentId: str, page_after: Annotated[int, Query(alias="p
 
 @router.get("/abi")
 def abi():
+    tnt_abi = json.load(open("ebsi_sim/includes/abi_tnt.json", "r"))
     return tnt_abi

@@ -1,10 +1,16 @@
+import json
 from datetime import datetime
 
 from fastapi import Depends
+from web3 import Web3
+from web3.contract import Contract
 
+from ebsi_sim.core.config import settings
 from ebsi_sim.models.didr import Identifier, VerificationMethod
 from ebsi_sim.repositories.didr import IdentifierRepository, IdentifierControllerRepository, \
     VerificationMethodRepository, VerificationRelationshipRepository
+from ebsi_sim.schemas import JsonRpcCreate
+from ebsi_sim.utils import User, check_scopes, build_unsigned_transaction, exec_signed_transaction
 
 
 class DidrServiceException(Exception):
@@ -12,6 +18,7 @@ class DidrServiceException(Exception):
 
 
 class DidrService:
+    eth_contract: type[Contract]
     identifier_repository: IdentifierRepository
     identifier_controller_repository: IdentifierControllerRepository
     verification_method_repository: VerificationMethodRepository
@@ -25,6 +32,9 @@ class DidrService:
         self.identifier_controller_repository = identifier_controller_repository
         self.verification_method_repository = verification_method_repository
         self.verification_relationship_repository = verification_relationship_repository
+
+        didr_abi = json.load(open("ebsi_sim/includes/abi_didr.json", "r"))
+        self.eth_contract = Web3().eth.contract(abi=didr_abi)
 
     def get_did_document(self, did: str) -> Identifier | None:
         return self.identifier_repository.get(did)
@@ -116,3 +126,52 @@ class DidrService:
         if not vmethod:
             raise DidrServiceException("Verification method not found")
         self.verification_method_repository.update(id=vmethod.id, notafter=not_after_date)
+
+    def _check_scope(self, current_user: User, method: str):
+        is_authorized = check_scopes(current_user, method, {
+            "insertDidDocument": ["didr_invite", "didr_write"],
+            "updateBaseDocument": ["didr_write"],
+            "addService": ["didr_write"],
+            "revokeService": ["didr_write"],
+            "addController": ["didr_write"],
+            "revokeController": ["didr_write"],
+            "addVerificationMethod": ["didr_write"],
+            "addVerificationRelationship": ["didr_write"],
+            "revokeVerificationMethod": ["didr_write"],
+            "expireVerificationMethod": ["didr_write"],
+            "rollVerificationMethod": ["didr_write"],
+            "sendSignedTransaction": ["didr_invite", "didr_write"]
+        })
+        if not is_authorized:
+            raise DidrServiceException("Forbidden method")
+
+    def _check_did_access(self, current_user: User, payload: JsonRpcCreate):
+        method = payload.method
+        subject_did: str | None = payload.params[0].get("did", None) if len(payload.params) > 0 else None
+        if method not in ("insertDidDocument", "updateBaseDocument", "addService", "revokeService", "addController",
+                              "revokeController", "addVerificationMethod", "addVerificationRelationship",
+                              "revokeVerificationMethod", "expireVerificationMethod", "rollVerificationMethod"):
+            raise DidrServiceException("Method not allowed")
+
+        if subject_did is not None and subject_did != current_user.sub:
+            subject_did: str
+            if method == "insertDidDocument":
+                raise DidrServiceException("Forbidden DID")
+            sub_identifier = self.get_did_document(subject_did)
+            if not sub_identifier:
+                raise DidrServiceException("Subject identifier not found in DID Register")
+            controllers = sub_identifier.controllers
+            if current_user.sub not in [c.did for c in controllers]:
+                raise DidrServiceException("Forbidden DID")
+
+    def handle_rpc(self, current_user: User, payload: JsonRpcCreate):
+        params = payload.params[0] if len(payload.params) > 0 else {}
+        self._check_scope(current_user, payload.method)
+        if payload.method != "sendSignedTransaction":
+            self._check_did_access(current_user, payload)
+            json_rpc_result = build_unsigned_transaction(self.eth_contract, settings.ETH_ADDRESS, payload.method, params)
+        else:
+            json_rpc_result = exec_signed_transaction(current_user, self.eth_contract, settings.ETH_ADDRESS, self,
+                                                      params['unsignedTransaction'],
+                                                      params['signedRawTransaction'])
+        return json_rpc_result
