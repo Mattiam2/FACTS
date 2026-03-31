@@ -127,16 +127,6 @@ def read_identifier(did: str, valid_at=None, didr_service: DidrService = Depends
     )
 
 
-@router.post("/identifiers/{did}/actions", description="Performs an action on the identifier corresponding to the DID.")
-def post_action_identifier(did: str, payload: JsonRpcCreate, didr_service: DidrService = Depends()) -> JsonRpcPublic:
-    vmethods = didr_service.list_verification_methods(did_controller=did)
-
-    return JsonRpcPublic(
-        jsonrpc="2.0",
-        id=payload.id,
-        result=(len(vmethods) > 0))
-
-
 @router.get("/abi")
-def abi() -> dict:
+def abi():
     return didr_abi

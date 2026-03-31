@@ -256,7 +256,7 @@ def read_doc_event(documentId: str, eventId: str, tnt_service: TntService = Depe
         proof=event.timestamp_proof
     )
 
-    event_public = EventPublic(**event.dict(), timestamp=timestamp)
+    event_public = EventPublic(**event.model_dump(), timestamp=timestamp)
 
     return event_public
 
@@ -285,5 +285,5 @@ def read_doc_accesses(documentId: str, page_after: Annotated[int, Query(alias="p
 
 
 @router.get("/abi")
-def abi() -> dict:
+def abi():
     return tnt_abi
