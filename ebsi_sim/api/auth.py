@@ -1,11 +1,7 @@
-import json
-
-from fastapi import APIRouter, HTTPException, Depends
-from starlette.status import HTTP_400_BAD_REQUEST
+from fastapi import APIRouter, Depends
 
 from ebsi_sim.core.config import settings
 from ebsi_sim.schemas import ScopeEnum, TokenCreate, TokenBase
-from ebsi_sim.schemas.verifiable_presentation import VerifiablePresentationPayload
 from ebsi_sim.services.auth import AuthService
 from ebsi_sim.services.didr import DidrService
 from ebsi_sim.utils import pem_to_jwk
@@ -14,60 +10,19 @@ router = APIRouter(prefix="/authorisation", tags=["authorisation"])
 
 
 @router.post("/token", description="Create an access token given a Verifiable Presentation (VP) token.")
-def create_token(request: TokenCreate, auth_service: AuthService = Depends(),
+def create_token(payload: TokenCreate, auth_service: AuthService = Depends(),
                  didr_service: DidrService = Depends()) -> TokenBase:
-    presentation_definition = AuthService.load_presentation(scope=request.scope)
+    presentation_definition = auth_service.load_presentation(scope=payload.scope)
 
-    if request.presentation_submission.definition_id != presentation_definition["id"]:
-        raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="Invalid presentation definition")
-
-    check_signature = (request.scope != ScopeEnum.didr_invite)
-    vp_decoded = auth_service.decode_and_check_signature(request.vp_token, "authentication",
-                                                         credential_algos=['ES256', 'ES256K'],
-                                                         check_signature=check_signature)
-
-    vp_payload = VerifiablePresentationPayload(**vp_decoded)
-
-    if vp_payload.sub is None:
-        raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="Invalid VP")
-
-    if vp_payload.vp is None or vp_payload.vp.holder is None:
-        raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="Invalid VP")
-
-    if vp_payload.sub != vp_payload.vp.holder:
-        raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="Invalid VP")
+    vp_payload = auth_service.get_verifiable_presentation(payload)
 
     subject_did = didr_service.get_did_document(vp_payload.sub)
+    auth_service.check_scope_constraints(payload, subject_did)
 
-    if request.scope == ScopeEnum.didr_invite and subject_did:
-        raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="DID is already registered")
-    elif request.scope != ScopeEnum.didr_invite and not subject_did:
-        raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="DID is not registered")
-
-    if request.scope == ScopeEnum.tnt_create and not subject_did.tnt_authorized:
-        raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="DID not authorized to this scope")
-
-    credentials_required = ("input_descriptors" in presentation_definition and len(
-        presentation_definition["input_descriptors"]) > 0)
-
-    credential_subject = vp_payload.sub
-    credential_issuer = vp_payload.iss
-    if credentials_required:
-        credentials = auth_service.extract_and_validate_credentials(vp_payload, request.presentation_submission,
-                                                                    presentation_definition)
-
-        if not credentials or len(credentials) == 0:
-            raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="Invalid credentials")
-        else:
-            credential_subject = credentials[0].sub
-            credential_issuer = credentials[0].iss
-
-    access_token = AuthService.create_access_token(request.scope, credential_subject)
-
-    id_token = AuthService.create_id_token(subject=credential_subject, issuer=credential_issuer)
-
+    access_token, id_token = auth_service.create_token(vp_payload, payload.scope, payload.presentation_submission,
+                                                       presentation_definition)
     return TokenBase(access_token=access_token, id_token=id_token, expires_in=7200, token_type="Bearer",
-                     scope=request.scope.value)
+                     scope=payload.scope.value)
 
 
 @router.get("/.well-known/openid-configuration", description="OpenID Connect Discovery 1.0 endpoint.")
@@ -159,29 +114,5 @@ def read_jwks() -> dict:
 
 @router.get("/presentation-definitions", description="Presentation Definition endpoint.")
 def read_presentation_definitions(scope: ScopeEnum) -> dict:
-    path = None
-    match scope:
-        case scope.tir_write:
-            path = f"ebsi_sim/includes/presentation_tir_write.json"
-        case scope.tnt_write:
-            path = f"ebsi_sim/includes/presentation_tnt_write.json"
-        case scope.tpr_write:
-            path = f"ebsi_sim/includes/presentation_tpr_write.json"
-        case scope.didr_invite:
-            path = f"ebsi_sim/includes/presentation_didr_invite.json"
-        case scope.didr_write:
-            path = f"ebsi_sim/includes/presentation_didr_write.json"
-        case scope.timestamp_write:
-            path = f"ebsi_sim/includes/presentation_timestamp_write.json"
-        case scope.tir_invite:
-            path = f"ebsi_sim/includes/presentation_tir_invite.json"
-        case scope.tnt_authorise:
-            path = f"ebsi_sim/includes/presentation_tnt_authorise.json"
-        case scope.tnt_create:
-            path = f"ebsi_sim/includes/presentation_tnt_create.json"
-        case scope.tsr_write:
-            path = f"ebsi_sim/includes/presentation_tsr_write.json"
-        case _:
-            raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="Invalid scope")
-
-    return json.load(open(path, "r"))
+    presentation_definition = AuthService.load_presentation(scope=scope)
+    return presentation_definition
