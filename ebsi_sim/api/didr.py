@@ -14,10 +14,17 @@ from ebsi_sim.utils import get_current_user, User
 router = APIRouter(prefix="/did-registry", tags=["did-registry"])
 
 
-@router.post("/jsonrpc",
-             description="The JSON-RPC API provides methods assisting the construction of blockchain transactions and interaction with the ledger, i.e. write operation on ledger.")
+@router.post("/jsonrpc", summary="JSON-RPC API",
+             description="The JSON-RPC API provides methods assisting the construction of blockchain transactions and interaction with the ledger, i.e. write operation on ledger.",
+             responses={
+                 200: {"description": "Response"},
+                 400: {"description": "Bad request"}
+             })
 def rpc(current_user: Annotated[User, Depends(get_current_user)], payload: JsonRpcCreate,
         didr_service: DidrService = Depends()) -> JsonRpcPublic:
+    """
+    The JSON-RPC API provides methods assisting the construction of blockchain transactions and interaction with the ledger, i.e. write operation on ledger.
+    """
     json_rpc_result = didr_service.handle_rpc(current_user, payload)
 
     return JsonRpcPublic(
@@ -27,10 +34,18 @@ def rpc(current_user: Annotated[User, Depends(get_current_user)], payload: JsonR
     )
 
 
-@router.get("/identifiers", description="Returns a list of identifiers.")
+@router.get("/identifiers", summary="List identifiers", description="Returns a list of identifiers.",
+            responses={
+                200: {"description": "Success"},
+                400: {"description": "Bad Request Error"},
+                500: {"description": "Internal Server Error"}
+            })
 def read_identifiers(page_after: Annotated[int, Query(alias="page[after]")] = 1,
                      page_size: Annotated[int, Query(alias="page[size]")] = 10,
                      controller: str | None = None, didr_service: DidrService = Depends()) -> IdentifierListPublic:
+    """
+    Returns a list of identifiers.
+    """
     dids_count = didr_service.count_did_documents(controller=controller)
     n_pages = math.ceil(dids_count / page_size)
 
@@ -53,8 +68,17 @@ def read_identifiers(page_after: Annotated[int, Query(alias="page[after]")] = 1,
     )
 
 
-@router.get("/identifiers/{did}", description="Gets the identifier corresponding to the DID.")
+@router.get("/identifiers/{did}", summary="Get a DID document", description="Returns the DID document corresponding to the DID.",
+            responses={
+                200: {"description": "Success. A user wallet gets DID resolution."},
+                400: {"description": "Bad Request"},
+                404: {"description": "Not found"},
+                500: {"description": "Internal Server Error"}
+            })
 def read_identifier(did: str, valid_at=None, didr_service: DidrService = Depends()) -> IdentifierPublic:
+    """
+    Returns the DID document corresponding to the DID.
+    """
     identifier = didr_service.get_did_document(did)
     if not identifier:
         raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Identifier not found")
@@ -75,7 +99,13 @@ def read_identifier(did: str, valid_at=None, didr_service: DidrService = Depends
     )
 
 
-@router.get("/abi")
+@router.get("/abi", summary="Get ABI", description="Returns the ABI of DID Registry SC v3.",
+            responses={
+                200: {"description": "Success"}
+            })
 def abi():
+    """
+    Returns the ABI of DID Registry SC v3.
+    """
     didr_abi = json.load(open("ebsi_sim/includes/abi_didr.json", "r"))
     return didr_abi

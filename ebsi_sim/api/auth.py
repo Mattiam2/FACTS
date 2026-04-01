@@ -9,9 +9,18 @@ from ebsi_sim.utils import pem_to_jwk
 router = APIRouter(prefix="/authorisation", tags=["authorisation"])
 
 
-@router.post("/token", description="Create an access token given a Verifiable Presentation (VP) token.")
+@router.post("/token", summary="Token Endpoint",
+             description="Users receive access tokens after they present a valid EBSI Verifiable Credential and prove ownership over their DID.",
+             responses={
+                 200: {"description": "Success"},
+                 400: {"description": "Bad Request"},
+                 500: {"description": "Internal Server Error"}
+             })
 def create_token(payload: TokenCreate, auth_service: AuthService = Depends(),
                  didr_service: DidrService = Depends()) -> TokenBase:
+    """
+    Users receive access tokens after they present a valid EBSI Verifiable Credential and prove ownership over their DID.
+    """
     presentation_definition = auth_service.load_presentation(scope=payload.scope)
 
     vp_payload = auth_service.get_verifiable_presentation(payload)
@@ -25,8 +34,16 @@ def create_token(payload: TokenCreate, auth_service: AuthService = Depends(),
                      scope=payload.scope.value)
 
 
-@router.get("/.well-known/openid-configuration", description="OpenID Connect Discovery 1.0 endpoint.")
+@router.get("/.well-known/openid-configuration", summary="OpenID Provider Metadata",
+            description="Exposes the configuration of the OpenID Provider.",
+            responses={
+                200: {"description": "OpenID Provider Metadata"},
+                500: {"description": "Internal Server Error"}
+            })
 def openid_configuration() -> dict:
+    """
+    Exposes the configuration of the OpenID Provider.
+    """
     return {
         "issuer": "https://api-pilot.ebsi.eu/authorisation/v4",
         "authorization_endpoint": "https://api-pilot.ebsi.eu/authorisation/v4/authorize",
@@ -103,8 +120,16 @@ def openid_configuration() -> dict:
     }
 
 
-@router.get("/jwks", description="JSON Web Key Set (JWK Set) endpoint.")
+@router.get("/jwks", summary="OpenID Provider's public keys",
+            description="Exposes the public keys of the Authorisation Service in JSON Web Key Set (JWKS) format.",
+            responses={
+                200: {"description": "JSON Web Key Set"},
+                500: {"description": "Internal Server Error"}
+            })
 def read_jwks() -> dict:
+    """
+    Exposes the public keys of the Authorisation Service in JSON Web Key Set (JWKS) format.
+    """
     return {
         "keys": [
             pem_to_jwk(settings.AUTH_PUBLIC_KEY)
@@ -112,7 +137,16 @@ def read_jwks() -> dict:
     }
 
 
-@router.get("/presentation-definitions", description="Presentation Definition endpoint.")
+@router.get("/presentation-definitions", summary="Presentation definition requirements",
+            description="Retrieves the presentation definition requirements associated with various OpenID Connect (OIDC) scopes.",
+            responses={
+                200: {"description": "Success"},
+                400: {"description": "Bad Request"},
+                500: {"description": "Internal Server Error"}
+            })
 def read_presentation_definitions(scope: ScopeEnum) -> dict:
+    """
+    Retrieves the presentation definition requirements associated with various OpenID Connect (OIDC) scopes.
+    """
     presentation_definition = AuthService.load_presentation(scope=scope)
     return presentation_definition

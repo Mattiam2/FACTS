@@ -17,10 +17,18 @@ w3 = Web3()
 router = APIRouter(prefix="/track-and-trace", tags=["track-and-trace"])
 
 
-@router.post("/jsonrpc",
-             description="The JSON-RPC API provides methods assisting the construction of blockchain transactions and interaction with the ledger, i.e. write operation on ledger.")
+@router.post("/jsonrpc", summary="JSON-RPC API",
+             description="The JSON-RPC API provides methods assisting the construction of blockchain transactions and interaction with the ledger, i.e. write operation on ledger.",
+             responses={
+                 200: {"description": "Response"},
+                 400: {"description": "Bad request"}
+             })
 def rpc(current_user: Annotated[User, Depends(get_current_user)], payload: JsonRpcCreate,
         tnt_service: TntService = Depends()) -> JsonRpcPublic:
+    """
+    The JSON-RPC API provides methods assisting the construction of blockchain transactions and
+    interaction with the ledger, i.e. write operation on ledger.
+    """
     json_rpc_result = tnt_service.handle_rpc(current_user, payload)
 
     return JsonRpcPublic(
@@ -30,14 +38,18 @@ def rpc(current_user: Annotated[User, Depends(get_current_user)], payload: JsonR
     )
 
 
-@router.head("/accesses", description="Checks if the DID is included in the allowlist of TnT Document creators or not.",
+@router.head("/accesses", summary="Check access",
+             description="Checks if the DID is included in the allowlist of TnT Document creators or not.",
              responses={
-                 HTTP_204_NO_CONTENT: {"description": "Success"},
-                 HTTP_400_BAD_REQUEST: {"description": "Bad Request Error"},
-                 HTTP_404_NOT_FOUND: {"description": "DID not found in the allowlist"},
-                 HTTP_500_INTERNAL_SERVER_ERROR: {"description": "Internal Server Error"},
+                 204: {"description": "Success"},
+                 400: {"description": "Bad Request Error"},
+                 404: {"description": "DID not found in the allowlist"},
+                 500: {"description": "Internal Server Error"},
              })
 def check_access(creator: Annotated[str, Query()], tnt_service: TntService = Depends()):
+    """
+    Checks if the DID is included in the allowlist of TnT Document creators or not.
+    """
     creator_access = tnt_service.list_accesses(subject=creator)
 
     if not creator_access:
@@ -46,10 +58,19 @@ def check_access(creator: Annotated[str, Query()], tnt_service: TntService = Dep
     return Response(status_code=HTTP_204_NO_CONTENT)
 
 
-@router.get("/accesses", description="Get accesses filtered by subject.")
+@router.get("/accesses", summary="Get accesses", description="Get accesses filtered by subject.",
+            responses={
+                200: {"description": "Success"},
+                400: {"description": "Bad Request"},
+                404: {"description": "Not found"},
+                500: {"description": "Internal Server Error"}
+            })
 def read_subject_accesses(subject: str, page_after: Annotated[int, Query(alias="page[after]")] = 1,
                           page_size: Annotated[int, Query(alias="page[size]")] = 10,
                           tnt_service: TntService = Depends()) -> AccessListPublic:
+    """
+    Get accesses filtered by subject.
+    """
     accesses_count = tnt_service.count_accesses(subject=subject)
     n_pages = math.ceil(accesses_count / page_size)
 
@@ -69,10 +90,18 @@ def read_subject_accesses(subject: str, page_after: Annotated[int, Query(alias="
     )
 
 
-@router.get("/documents", description="Returns a list of documents.")
+@router.get("/documents", summary="List documents", description="Returns a list of documents.",
+            responses={
+                200: {"description": "Success"},
+                400: {"description": "Bad Request Error"},
+                500: {"description": "Internal Server Error"}
+            })
 def read_docs(page_after: Annotated[int, Query(alias="page[after]")] = 1,
               page_size: Annotated[int, Query(alias="page[size]")] = 10,
               tnt_service: TntService = Depends()) -> DocumentListPublic:
+    """
+    Returns a list of documents.
+    """
     docs_count = tnt_service.count_documents()
     n_pages = math.ceil(docs_count / page_size)
 
@@ -95,9 +124,18 @@ def read_docs(page_after: Annotated[int, Query(alias="page[after]")] = 1,
     )
 
 
-@router.get("/documents/{documentId}", description="Gets the document corresponding to the ID.")
+@router.get("/documents/{documentId}", summary="Get a document", description="Gets the document corresponding to the ID.",
+            responses={
+                200: {"description": "Success"},
+                400: {"description": "Bad Request"},
+                404: {"description": "Not found"},
+                500: {"description": "Internal Server Error"}
+            })
 def read_doc(documentId: str, version: VersionEnum = VersionEnum.latest,
              tnt_service: TntService = Depends()) -> DocumentPublic:
+    """
+    Gets the document corresponding to the ID.
+    """
     doc = tnt_service.get_document(documentId)
 
     timestamp = TimestampPublic(
@@ -113,10 +151,19 @@ def read_doc(documentId: str, version: VersionEnum = VersionEnum.latest,
     )
 
 
-@router.get("/documents/{documentId}/events", description="Returns a list of events.")
+@router.get("/documents/{documentId}/events", summary="List events", description="Returns a list of events.",
+            responses={
+                200: {"description": "Success"},
+                400: {"description": "Bad Request Error"},
+                404: {"description": "Not found"},
+                500: {"description": "Internal Server Error"}
+            })
 def read_doc_events(documentId: str, page_after: Annotated[int, Query(alias="page[after]")] = 1,
                     page_size: Annotated[int, Query(alias="page[size]")] = 10,
                     tnt_service: TntService = Depends()) -> EventListPublic:
+    """
+    Returns a list of events.
+    """
     events_count = tnt_service.count_events(document_id=documentId)
     n_pages = math.ceil(events_count / page_size)
 
@@ -140,9 +187,18 @@ def read_doc_events(documentId: str, page_after: Annotated[int, Query(alias="pag
     )
 
 
-@router.get("/documents/{documentId}/events/{eventId}",
-            description="Gets the event corresponding to the document ID and event ID.")
+@router.get("/documents/{documentId}/events/{eventId}", summary="Get an event",
+            description="Gets the event corresponding to the document ID and event ID.",
+            responses={
+                200: {"description": "Success"},
+                400: {"description": "Bad Request Error"},
+                404: {"description": "Not found"},
+                500: {"description": "Internal Server Error"}
+            })
 def read_doc_event(documentId: str, eventId: str, tnt_service: TntService = Depends()) -> EventPublic:
+    """
+    Gets the event corresponding to the document ID and event ID.
+    """
     events = tnt_service.list_events(document_id=documentId, id=eventId)
     if not events:
         raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Event not found")
@@ -159,10 +215,19 @@ def read_doc_event(documentId: str, eventId: str, tnt_service: TntService = Depe
     return event_public
 
 
-@router.get("/documents/{documentId}/accesses", description="Returns a list of accesses related to the document.")
+@router.get("/documents/{documentId}/accesses", summary="List accesses", description="Returns a list of accesses related to the document.",
+            responses={
+                200: {"description": "Success"},
+                400: {"description": "Bad Request Error"},
+                404: {"description": "Not found"},
+                500: {"description": "Internal Server Error"}
+            })
 def read_doc_accesses(documentId: str, page_after: Annotated[int, Query(alias="page[after]")] = 1,
                       page_size: Annotated[int, Query(alias="page[size]")] = 10,
                       tnt_service: TntService = Depends()) -> AccessListPublic:
+    """
+    Returns a list of accesses related to the document.
+    """
     accesses_count = tnt_service.count_accesses(document_id=documentId)
     n_pages = math.ceil(accesses_count / page_size)
 
@@ -182,7 +247,13 @@ def read_doc_accesses(documentId: str, page_after: Annotated[int, Query(alias="p
     )
 
 
-@router.get("/abi")
+@router.get("/abi", summary="Get ABI", description="Returns the ABI of Track and Trace SC v1.",
+            responses={
+                200: {"description": "Success"}
+            })
 def abi():
+    """
+    Returns the ABI of Track and Trace SC v1.
+    """
     tnt_abi = json.load(open("ebsi_sim/includes/abi_tnt.json", "r"))
     return tnt_abi
