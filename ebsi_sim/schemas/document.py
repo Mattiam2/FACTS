@@ -3,33 +3,18 @@ from sqlmodel import SQLModel, Field
 from ebsi_sim.schemas.shared import TimestampPublic, PageLinksPublic
 
 
-class DocumentBase(SQLModel):
-    """
-    Represents an EBSI Document base schema with metadata and timestamp.
-
-    :ivar id: Unique identifier for the document.
-    :ivar metadata_text: The metadata of the document
-    :type metadata_text: str
-    :ivar creator: Denotes the creator of the document.
-    :type creator: str
-    """
-    id: str
-    metadata_text: str
-    creator: str
-
-
 class DocumentItemPublic(SQLModel):
     """
     Represents an EBSI Document list item with metadata and hyperlink.
 
-    :ivar documentId: Unique identifier for the document.
-    :type documentId: str
+    :ivar document_id: Unique identifier for the document.
+    :type document_id: str
     :ivar href: Hyperlink to access or reference the document.
     :type href: str
     """
 
-    documentId: str
-    href: str
+    document_id: str = Field(schema_extra={'serialization_alias': 'documentId'}, description="Document ID")
+    href: str = Field(description="Link to the resource")
 
 
 class DocumentListPublic(SQLModel):
@@ -51,11 +36,11 @@ class DocumentListPublic(SQLModel):
     :type links: PageLinksPublic
     """
 
-    self: str
-    items: list[DocumentItemPublic]
-    total: int
-    pageSize: int
-    links: PageLinksPublic
+    self: str = Field(description="Absolute path to the collection (consult)")
+    items: list[DocumentItemPublic] = Field(description="List of documents")
+    total: int = Field(description="Total number of items across all pages.")
+    pageSize: int = Field(description="Maximum number of items per page. For the last page, its value should be independent of the number of actually returned items.")
+    links: PageLinksPublic = Field(description="Links model used for pagination")
 
 
 class DocumentPublic(SQLModel):
@@ -73,6 +58,6 @@ class DocumentPublic(SQLModel):
     :type creator: str
     """
 
-    metadata_text: str = Field(schema_extra={'serialization_alias': 'metadata'})
-    timestamp: TimestampPublic
-    creator: str
+    metadata_text: str = Field(schema_extra={'serialization_alias': 'metadata'}, description="Document's metadata")
+    timestamp: TimestampPublic = Field(description="Document's metadata")
+    creator: str = Field(description="The `did:key` or `did:ebsi` that created the document")

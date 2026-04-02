@@ -2,10 +2,9 @@ import json
 import math
 from typing import Annotated
 
-from fastapi import Query
+from fastapi import Query, Path
 from fastapi import Response, APIRouter, Depends, HTTPException
-from starlette.status import HTTP_204_NO_CONTENT, HTTP_400_BAD_REQUEST, HTTP_404_NOT_FOUND, \
-    HTTP_500_INTERNAL_SERVER_ERROR
+from starlette.status import HTTP_204_NO_CONTENT, HTTP_404_NOT_FOUND
 from web3 import Web3
 
 from ebsi_sim.schemas import AccessListPublic, DocumentItemPublic, DocumentListPublic, DocumentPublic, EventItemPublic, \
@@ -46,7 +45,7 @@ def rpc(current_user: Annotated[User, Depends(get_current_user)], payload: JsonR
                  404: {"description": "DID not found in the allowlist"},
                  500: {"description": "Internal Server Error"},
              })
-def check_access(creator: Annotated[str, Query()], tnt_service: TntService = Depends()):
+def check_access(creator: Annotated[str, Query(description="DID to check")], tnt_service: TntService = Depends()):
     """
     Checks if the DID is included in the allowlist of TnT Document creators or not.
     """
@@ -65,8 +64,11 @@ def check_access(creator: Annotated[str, Query()], tnt_service: TntService = Dep
                 404: {"description": "Not found"},
                 500: {"description": "Internal Server Error"}
             })
-def read_subject_accesses(subject: str, page_after: Annotated[int, Query(alias="page[after]")] = 1,
-                          page_size: Annotated[int, Query(alias="page[size]")] = 10,
+def read_subject_accesses(subject: Annotated[str, Query(description="Subject DID")],
+                          page_after: Annotated[int, Query(alias="page[after]",
+                                                           description="Cursor that points to the end of the page of data that has been returned.")] = 1,
+                          page_size: Annotated[int, Query(alias="page[size]",
+                                                          description="Defines the maximum number of objects that may be returned.")] = 10,
                           tnt_service: TntService = Depends()) -> AccessListPublic:
     """
     Get accesses filtered by subject.
@@ -85,7 +87,7 @@ def read_subject_accesses(subject: str, page_after: Annotated[int, Query(alias="
         self=f"/accesses?page[after]={page_after}&page[size]={page_size}&subject={subject}",
         items=accesses,
         total=accesses_count,
-        pageSize=page_size,
+        page_size=page_size,
         links=links
     )
 
@@ -96,8 +98,10 @@ def read_subject_accesses(subject: str, page_after: Annotated[int, Query(alias="
                 400: {"description": "Bad Request Error"},
                 500: {"description": "Internal Server Error"}
             })
-def read_docs(page_after: Annotated[int, Query(alias="page[after]")] = 1,
-              page_size: Annotated[int, Query(alias="page[size]")] = 10,
+def read_docs(page_after: Annotated[int, Query(alias="page[after]",
+                                               description="Cursor that points to the end of the page of data that has been returned.")] = 1,
+              page_size: Annotated[int, Query(alias="page[size]",
+                                              description="Defines the maximum number of objects that may be returned.")] = 10,
               tnt_service: TntService = Depends()) -> DocumentListPublic:
     """
     Returns a list of documents.
@@ -113,30 +117,33 @@ def read_docs(page_after: Annotated[int, Query(alias="page[after]")] = 1,
     docs = tnt_service.list_documents(offset=(page_after - 1) * page_size, limit=page_size)
     items = []
     for doc in docs:
-        items.append(DocumentItemPublic(documentId=doc.id, href=f"/documents/{doc.id}"))
+        items.append(DocumentItemPublic(document_id=doc.id, href=f"/documents/{doc.id}"))
 
     return DocumentListPublic(
         self=f"/documents?page[after]={page_after}&page[size]={page_size}",
         items=items,
         total=docs_count,
-        pageSize=page_size,
+        page_size=page_size,
         links=links
     )
 
 
-@router.get("/documents/{documentId}", summary="Get a document", description="Gets the document corresponding to the ID.",
+@router.get("/documents/{document_id}", summary="Get a document",
+            description="Gets the document corresponding to the ID.",
             responses={
                 200: {"description": "Success"},
                 400: {"description": "Bad Request"},
                 404: {"description": "Not found"},
                 500: {"description": "Internal Server Error"}
             })
-def read_doc(documentId: str, version: VersionEnum = VersionEnum.latest,
+def read_doc(document_id: Annotated[str, Path(description="The 32-bytes ID of the document, encoded in hexadecimal.")],
+             version: Annotated[VersionEnum, Query(
+                 description="Version of the endpoint to use. Defaults to the latest version.")] = VersionEnum.latest,
              tnt_service: TntService = Depends()) -> DocumentPublic:
     """
     Gets the document corresponding to the ID.
     """
-    doc = tnt_service.get_document(documentId)
+    doc = tnt_service.get_document(document_id)
 
     timestamp = TimestampPublic(
         datetime=doc.timestamp_datetime.isoformat() if doc.timestamp_datetime else None,
@@ -151,43 +158,47 @@ def read_doc(documentId: str, version: VersionEnum = VersionEnum.latest,
     )
 
 
-@router.get("/documents/{documentId}/events", summary="List events", description="Returns a list of events.",
+@router.get("/documents/{document_id}/events", summary="List events", description="Returns a list of events.",
             responses={
                 200: {"description": "Success"},
                 400: {"description": "Bad Request Error"},
                 404: {"description": "Not found"},
                 500: {"description": "Internal Server Error"}
             })
-def read_doc_events(documentId: str, page_after: Annotated[int, Query(alias="page[after]")] = 1,
-                    page_size: Annotated[int, Query(alias="page[size]")] = 10,
-                    tnt_service: TntService = Depends()) -> EventListPublic:
+def read_doc_events(
+        document_id: Annotated[str, Path(description="The 32-bytes ID of the document, encoded in hexadecimal.")],
+        page_after: Annotated[int, Query(alias="page[after]",
+                                         description="Cursor that points to the end of the page of data that has been returned.")] = 1,
+        page_size: Annotated[int, Query(alias="page[size]",
+                                        description="Defines the maximum number of objects that may be returned.")] = 10,
+        tnt_service: TntService = Depends()) -> EventListPublic:
     """
     Returns a list of events.
     """
-    events_count = tnt_service.count_events(document_id=documentId)
+    events_count = tnt_service.count_events(document_id=document_id)
     n_pages = math.ceil(events_count / page_size)
 
-    links = PageLinksPublic(first=f"/documents/{documentId}/events?page[after]=1&page[size]={page_size}",
-                            prev=f"/documents/{documentId}/events?page[after]={max(1, page_after - 1)}&page[size]={page_size}",
-                            next=f"/documents/{documentId}/events?page[after]={min(page_after + 1, max(n_pages, 1))}&page[size]={page_size}",
-                            last=f"/documents/{documentId}/events?page[after]={max(n_pages, 1)}&page[size]={page_size}")
+    links = PageLinksPublic(first=f"/documents/{document_id}/events?page[after]=1&page[size]={page_size}",
+                            prev=f"/documents/{document_id}/events?page[after]={max(1, page_after - 1)}&page[size]={page_size}",
+                            next=f"/documents/{document_id}/events?page[after]={min(page_after + 1, max(n_pages, 1))}&page[size]={page_size}",
+                            last=f"/documents/{document_id}/events?page[after]={max(n_pages, 1)}&page[size]={page_size}")
 
-    events = tnt_service.list_events(offset=(page_after - 1) * page_size, limit=page_size, document_id=documentId)
+    events = tnt_service.list_events(offset=(page_after - 1) * page_size, limit=page_size, document_id=document_id)
 
     items = []
     for event in events:
-        items.append(EventItemPublic(eventId=event.id, href=f"/documents/{documentId}/events/{event.id}"))
+        items.append(EventItemPublic(eventId=event.id, href=f"/documents/{document_id}/events/{event.id}"))
 
     return EventListPublic(
-        self=f"/documents/{documentId}/events?page[after]={page_after}&page[size]={page_size}",
+        self=f"/documents/{document_id}/events?page[after]={page_after}&page[size]={page_size}",
         items=items,
         total=events_count,
-        pageSize=page_size,
+        page_size=page_size,
         links=links
     )
 
 
-@router.get("/documents/{documentId}/events/{eventId}", summary="Get an event",
+@router.get("/documents/{document_id}/events/{event_id}", summary="Get an event",
             description="Gets the event corresponding to the document ID and event ID.",
             responses={
                 200: {"description": "Success"},
@@ -195,11 +206,14 @@ def read_doc_events(documentId: str, page_after: Annotated[int, Query(alias="pag
                 404: {"description": "Not found"},
                 500: {"description": "Internal Server Error"}
             })
-def read_doc_event(documentId: str, eventId: str, tnt_service: TntService = Depends()) -> EventPublic:
+def read_doc_event(
+        document_id: Annotated[str, Path(description="The 32-bytes ID of the document, encoded in hexadecimal.")],
+        event_id: Annotated[str, Path(description="The 32-bytes ID of the event, encoded in hexadecimal.")],
+        tnt_service: TntService = Depends()) -> EventPublic:
     """
     Gets the event corresponding to the document ID and event ID.
     """
-    events = tnt_service.list_events(document_id=documentId, id=eventId)
+    events = tnt_service.list_events(document_id=document_id, id=event_id)
     if not events:
         raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Event not found")
     event = events[0]
@@ -215,34 +229,36 @@ def read_doc_event(documentId: str, eventId: str, tnt_service: TntService = Depe
     return event_public
 
 
-@router.get("/documents/{documentId}/accesses", summary="List accesses", description="Returns a list of accesses related to the document.",
+@router.get("/documents/{document_id}/accesses", summary="List accesses",
+            description="Returns a list of accesses related to the document.",
             responses={
                 200: {"description": "Success"},
                 400: {"description": "Bad Request Error"},
                 404: {"description": "Not found"},
                 500: {"description": "Internal Server Error"}
             })
-def read_doc_accesses(documentId: str, page_after: Annotated[int, Query(alias="page[after]")] = 1,
-                      page_size: Annotated[int, Query(alias="page[size]")] = 10,
+def read_doc_accesses(document_id: Annotated[str, Path(description="The 32-bytes ID of the document, encoded in hexadecimal.")],
+                      page_after: Annotated[int, Query(alias="page[after]", description="Cursor that points to the end of the page of data that has been returned.")] = 1,
+                      page_size: Annotated[int, Query(alias="page[size]", description="Defines the maximum number of objects that may be returned.")] = 10,
                       tnt_service: TntService = Depends()) -> AccessListPublic:
     """
     Returns a list of accesses related to the document.
     """
-    accesses_count = tnt_service.count_accesses(document_id=documentId)
+    accesses_count = tnt_service.count_accesses(document_id=document_id)
     n_pages = math.ceil(accesses_count / page_size)
 
-    links = PageLinksPublic(first=f"/documents/{documentId}/accesses?page[after]=1&page[size]={page_size}",
-                            prev=f"/documents/{documentId}/accesses?page[after]={max(1, page_after - 1)}&page[size]={page_size}",
-                            next=f"/documents/{documentId}/accesses?page[after]={min(page_after + 1, max(n_pages, 1))}&page[size]={page_size}",
-                            last=f"/documents/{documentId}/accesses?page[after]={max(n_pages, 1)}&page[size]={page_size}")
+    links = PageLinksPublic(first=f"/documents/{document_id}/accesses?page[after]=1&page[size]={page_size}",
+                            prev=f"/documents/{document_id}/accesses?page[after]={max(1, page_after - 1)}&page[size]={page_size}",
+                            next=f"/documents/{document_id}/accesses?page[after]={min(page_after + 1, max(n_pages, 1))}&page[size]={page_size}",
+                            last=f"/documents/{document_id}/accesses?page[after]={max(n_pages, 1)}&page[size]={page_size}")
 
-    accesses = tnt_service.list_accesses(document_id=documentId, offset=(page_after - 1) * page_size, limit=page_size)
+    accesses = tnt_service.list_accesses(document_id=document_id, offset=(page_after - 1) * page_size, limit=page_size)
 
     return AccessListPublic(
-        self=f"/documents/{documentId}/accesses?page[after]={page_after}&page[size]={page_size}&documentId={documentId}",
+        self=f"/documents/{document_id}/accesses?page[after]={page_after}&page[size]={page_size}&documentId={document_id}",
         items=accesses,
         total=accesses_count,
-        pageSize=page_size,
+        page_size=page_size,
         links=links
     )
 

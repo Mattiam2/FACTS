@@ -11,7 +11,7 @@ class IdentifierBase(SQLModel):
     :ivar did: A unique record id = DID User
     :type did: str
     """
-    did: str
+    did: str = Field(description="A unique record id = DID User")
 
 
 class IdentifierPublic(IdentifierBase):
@@ -32,7 +32,7 @@ class IdentifierItemPublic(IdentifierBase):
     :ivar href: URL of the resource representing the identifier.
     :type href: str
     """
-    href: str
+    href: str = Field(description="Link to the resource")
 
 
 class IdentifierListPublic(SQLModel):
@@ -54,8 +54,9 @@ class IdentifierListPublic(SQLModel):
     :type links: PageLinksPublic
     """
 
-    self: str
-    items: list[IdentifierItemPublic]
-    total: int
-    pageSize: int
-    links: PageLinksPublic
+    self: str = Field(description="Filter by controller DID.")
+    items: list[IdentifierItemPublic] = Field(description="List of identifier.")
+    total: int = Field(description="Total number of items across all pages.")
+    pageSize: int = Field(
+        description="Maximum number of items per page. For the last page, its value should be independent of the number of actually returned items.")
+    links: PageLinksPublic = Field(description="Links model used for pagination")

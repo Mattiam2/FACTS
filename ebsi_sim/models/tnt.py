@@ -1,9 +1,8 @@
 from datetime import datetime
 
-from sqlmodel import Field, Relationship, func
+from sqlmodel import Field, Relationship, func, SQLModel
 
 from ebsi_sim.schemas.access import AccessBase
-from ebsi_sim.schemas.document import DocumentBase
 from ebsi_sim.schemas.event import EventBase
 
 
@@ -26,7 +25,7 @@ class Access(AccessBase, table=True):
     document: "Document" = Relationship(back_populates="accesses")
 
 
-class Document(DocumentBase, table=True):
+class Document(SQLModel, table=True):
     """
     Represents an EBSI Document model for storing and managing documents.
 

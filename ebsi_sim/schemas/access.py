@@ -17,9 +17,9 @@ class AccessBase(SQLModel):
                       permission levels.
     :type permission: PermissionEnum
     """
-    subject: str
-    granted_by: str = Field(schema_extra={'serialization_alias': 'grantedBy'})
-    permission: PermissionEnum
+    subject: str = Field(description="Subject")
+    granted_by: str = Field(schema_extra={'serialization_alias': 'grantedBy'}, description="DID that granted the access")
+    permission: PermissionEnum = Field(description="Type of permission")
 
 
 class AccessItemPublic(AccessBase):
@@ -29,7 +29,7 @@ class AccessItemPublic(AccessBase):
     :ivar document_id: Identifier for the associated document.
     :type document_id: str
     """
-    document_id: str = Field(schema_extra={'serialization_alias': 'documentId'})
+    document_id: str = Field(schema_extra={'serialization_alias': 'documentId'}, description="Document ID")
 
 
 class AccessListPublic(SQLModel):
@@ -45,14 +45,14 @@ class AccessListPublic(SQLModel):
     :type items: list[AccessItemPublic]
     :ivar total: The total number of items in the list.
     :type total: int
-    :ivar pageSize: The number of items per page in the current list.
-    :type pageSize: int
+    :ivar page_size: The number of items per page in the current list.
+    :type page_size: int
     :ivar links: An instance of PageLinksPublic containing links for pagination and navigation.
     :type links: PageLinksPublic
     """
 
-    self: str
-    items: list[AccessItemPublic]
-    total: int
-    pageSize: int
-    links: PageLinksPublic
+    self: str = Field(description="Absolute path to the collection (consult)")
+    items: list[AccessItemPublic] = Field(description="List of accesses")
+    total: int = Field(description="Total number of items across all pages.")
+    page_size: int = Field(schema_extra={'serialization_alias': 'pageSize'}, description="Maximum number of items per page. For the last page, its value should be independent of the number of actually returned items.")
+    links: PageLinksPublic = Field(description="Links model used for pagination")

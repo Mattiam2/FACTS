@@ -4,6 +4,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, HTTPException, Depends
 from fastapi import Query
+from fastapi.params import Path
 from starlette.status import HTTP_404_NOT_FOUND
 
 from ebsi_sim.schemas import IdentifierListPublic, IdentifierPublic, IdentifierItemPublic, JsonRpcCreate, JsonRpcPublic, \
@@ -40,9 +41,12 @@ def rpc(current_user: Annotated[User, Depends(get_current_user)], payload: JsonR
                 400: {"description": "Bad Request Error"},
                 500: {"description": "Internal Server Error"}
             })
-def read_identifiers(page_after: Annotated[int, Query(alias="page[after]")] = 1,
-                     page_size: Annotated[int, Query(alias="page[size]")] = 10,
-                     controller: str | None = None, didr_service: DidrService = Depends()) -> IdentifierListPublic:
+def read_identifiers(page_after: Annotated[int, Query(alias="page[after]",
+                                                      description="Cursor that points to the end of the page of data that has been returned.")] = 1,
+                     page_size: Annotated[int, Query(alias="page[size]",
+                                                     description="Defines the maximum number of objects that may be returned.")] = 10,
+                     controller: Annotated[str | None, Query(description="Filter by controller DID.")] = None,
+                     didr_service: DidrService = Depends()) -> IdentifierListPublic:
     """
     Returns a list of identifiers.
     """
@@ -63,19 +67,24 @@ def read_identifiers(page_after: Annotated[int, Query(alias="page[after]")] = 1,
         self=f"/identifiers?page[after]={page_after}&page[size]={page_size}",
         items=items,
         total=dids_count,
-        pageSize=page_size,
+        page_size=page_size,
         links=links
     )
 
 
-@router.get("/identifiers/{did}", summary="Get a DID document", description="Returns the DID document corresponding to the DID.",
+@router.get("/identifiers/{did}", summary="Get a DID document",
+            description="Returns the DID document corresponding to the DID.",
             responses={
                 200: {"description": "Success. A user wallet gets DID resolution."},
                 400: {"description": "Bad Request"},
                 404: {"description": "Not found"},
                 500: {"description": "Internal Server Error"}
             })
-def read_identifier(did: str, valid_at=None, didr_service: DidrService = Depends()) -> IdentifierPublic:
+def read_identifier(did: Annotated[str, Path(description="A DID to be resolved.")],
+                    valid_at: Annotated[str, Query(
+                        alias="valid-at",
+                        description="This option is used to get a the version in the past of a DID document. It must be a date in ISO-8601 format")] = None,
+                    didr_service: DidrService = Depends()) -> IdentifierPublic:
     """
     Returns the DID document corresponding to the DID.
     """

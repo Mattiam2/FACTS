@@ -1,6 +1,6 @@
 from enum import Enum
 
-from sqlmodel import SQLModel
+from sqlmodel import SQLModel, Field
 
 
 class TimestampPublic(SQLModel):
@@ -18,9 +18,9 @@ class TimestampPublic(SQLModel):
     :type proof: str
     """
 
-    datetime: str | None = None
-    source: str | None = None
-    proof: str | None = None
+    datetime: str | None = Field(None, description="The date and time, optionally from transaction input")
+    source: str | None = Field(None, description="Defines how the datetime was resolved, enumerated options are 'block' and 'external'")
+    proof: str | None = Field(None, description="Proof of the source. Either a block number or a hash of timestamp certificate")
 
 
 class PageLinksPublic(SQLModel):
@@ -37,10 +37,10 @@ class PageLinksPublic(SQLModel):
     :type last: str
     """
 
-    first: str
-    prev: str
-    next: str
-    last: str
+    first: str = Field(description="URI of the first page")
+    prev: str = Field(description="URI of the previous page")
+    next: str = Field(description="URI of the next page")
+    last: str = Field(description="URI of the last page")
 
 
 class VersionEnum(str, Enum):
