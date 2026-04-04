@@ -6,6 +6,7 @@ from web3 import Web3
 from web3.contract import Contract
 
 from ebsi_sim.core.config import settings
+from ebsi_sim.core.exceptions import AuthError, NotFoundError, RequestError
 from ebsi_sim.models.didr import Identifier, VerificationMethod
 from ebsi_sim.repositories.didr import IdentifierRepository, IdentifierControllerRepository, \
     VerificationMethodRepository, VerificationRelationshipRepository
@@ -13,9 +14,17 @@ from ebsi_sim.schemas import JsonRpcCreate
 from ebsi_sim.utils import User, check_scopes, build_unsigned_transaction, exec_signed_transaction
 
 
-class DidrServiceException(Exception):
+class DidrServiceError(Exception):
     pass
 
+class DidrServiceAuthError(DidrServiceError, AuthError):
+    pass
+
+class DidrServiceNotFoundError(DidrServiceError, NotFoundError):
+    pass
+
+class DidrServiceRequestError(DidrServiceError, RequestError):
+    pass
 
 class DidrService:
     eth_contract: type[Contract]
@@ -108,23 +117,23 @@ class DidrService:
     def revoke_verification_method(self, *, did: str, v_method_id: str, not_after: int):
         not_after_date = datetime.fromtimestamp(not_after)
         if not_after_date >= datetime.now():
-            raise DidrServiceException("Cannot revoke a method with date in the future")
+            raise DidrServiceRequestError("Cannot revoke a method with date in the future")
 
         full_vmethod_id = f"{did}#{v_method_id}"
         vmethod = self.verification_method_repository.get(id=full_vmethod_id)
         if not vmethod:
-            raise DidrServiceException("Verification method not found")
+            raise DidrServiceNotFoundError("Verification method not found")
         self.verification_method_repository.update(id=vmethod.id, notafter=not_after_date)
 
     def expire_verification_method(self, *, did: str, v_method_id: str, not_after: int):
         not_after_date = datetime.fromtimestamp(not_after)
         if not_after_date < datetime.now():
-            raise DidrServiceException("Cannot set expiration of a method with date in the past")
+            raise DidrServiceRequestError("Cannot set expiration of a method with date in the past")
 
         full_vmethod_id = f"{did}#{v_method_id}"
         vmethod = self.verification_method_repository.get(id=full_vmethod_id)
         if not vmethod:
-            raise DidrServiceException("Verification method not found")
+            raise DidrServiceNotFoundError("Verification method not found")
         self.verification_method_repository.update(id=vmethod.id, notafter=not_after_date)
 
     def _check_scope(self, current_user: User, method: str):
@@ -143,7 +152,7 @@ class DidrService:
             "sendSignedTransaction": ["didr_invite", "didr_write"]
         })
         if not is_authorized:
-            raise DidrServiceException("Forbidden method")
+            raise DidrServiceAuthError("Forbidden method")
 
     def _check_did_access(self, current_user: User, payload: JsonRpcCreate):
         method = payload.method
@@ -151,27 +160,33 @@ class DidrService:
         if method not in ("insertDidDocument", "updateBaseDocument", "addService", "revokeService", "addController",
                               "revokeController", "addVerificationMethod", "addVerificationRelationship",
                               "revokeVerificationMethod", "expireVerificationMethod", "rollVerificationMethod"):
-            raise DidrServiceException("Method not allowed")
+            raise DidrServiceRequestError("Method not allowed")
 
         if subject_did is not None and subject_did != current_user.sub:
             subject_did: str
             if method == "insertDidDocument":
-                raise DidrServiceException("Forbidden DID")
+                raise DidrServiceAuthError("Forbidden DID")
             sub_identifier = self.get_did_document(subject_did)
             if not sub_identifier:
-                raise DidrServiceException("Subject identifier not found in DID Register")
+                raise DidrServiceRequestError("Subject identifier not found in DID Register")
             controllers = sub_identifier.controllers
             if current_user.sub not in [c.did for c in controllers]:
-                raise DidrServiceException("Forbidden DID")
+                raise DidrServiceAuthError("Forbidden DID")
 
     def handle_rpc(self, current_user: User, payload: JsonRpcCreate):
-        params = payload.params[0] if len(payload.params) > 0 else {}
-        self._check_scope(current_user, payload.method)
-        if payload.method != "sendSignedTransaction":
-            self._check_did_access(current_user, payload)
-            json_rpc_result = build_unsigned_transaction(self.eth_contract, settings.ETH_ADDRESS, payload.method, params)
+        try:
+            params = payload.params[0] if len(payload.params) > 0 else {}
+            self._check_scope(current_user, payload.method)
+            if payload.method != "sendSignedTransaction":
+                self._check_did_access(current_user, payload)
+                json_rpc_result = build_unsigned_transaction(self.eth_contract, settings.ETH_ADDRESS, payload.method, params)
+            else:
+                json_rpc_result = exec_signed_transaction(current_user, self.eth_contract, settings.ETH_ADDRESS, self,
+                                                          params['unsignedTransaction'],
+                                                          params['signedRawTransaction'])
+        except DidrServiceError:
+            raise
+        except Exception:
+            raise DidrServiceError("Internal error")
         else:
-            json_rpc_result = exec_signed_transaction(current_user, self.eth_contract, settings.ETH_ADDRESS, self,
-                                                      params['unsignedTransaction'],
-                                                      params['signedRawTransaction'])
-        return json_rpc_result
+            return json_rpc_result

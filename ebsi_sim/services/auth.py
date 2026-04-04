@@ -12,6 +12,7 @@ from jwt import get_unverified_header
 from jwt.algorithms import ECAlgorithm
 
 from ebsi_sim.core.config import settings
+from ebsi_sim.core.exceptions import AuthError, NotFoundError, RequestError
 from ebsi_sim.models.didr import Identifier
 from ebsi_sim.repositories.didr import IdentifierRepository, VerificationMethodRepository, \
     VerificationRelationshipRepository
@@ -22,9 +23,17 @@ from ebsi_sim.schemas.verifiable_presentation import VerifiablePresentationPaylo
 from ebsi_sim.utils import pem_to_jwk
 
 
-class AuthServiceException(Exception):
+class AuthServiceError(Exception):
     pass
 
+class AuthServiceAuthError(AuthServiceError, AuthError):
+    pass
+
+class AuthServiceNotFoundError(AuthServiceError, NotFoundError):
+    pass
+
+class AuthServiceRequestError(AuthServiceError, RequestError):
+    pass
 
 class AuthService:
     identifier_repository: IdentifierRepository
@@ -45,7 +54,7 @@ class AuthService:
         kid = jwk_pub_key["kid"] if "kid" in jwk_pub_key else None
 
         if not kid:
-            raise AuthServiceException("Can't create access token")
+            raise AuthServiceError("Can't create access token")
 
         expires_in = 7200
         iat = math.floor(datetime.now().timestamp())
@@ -121,7 +130,7 @@ class AuthService:
             case ScopeEnum.tsr_write:
                 path = f"ebsi_sim/includes/presentation_tsr_write.json"
             case _:
-                raise AuthServiceException("Invalid scope")
+                raise AuthServiceError("Invalid scope")
         presentation_definition = json.load(open(path, "r"))
         return presentation_definition
 
@@ -132,12 +141,12 @@ class AuthService:
             vmethod_id = token_header.get("kid")
 
             if vmethod_id is None:
-                raise AuthServiceException("No verification method id found in token header")
+                raise AuthServiceError("No verification method id found in token header")
 
             vmethod = self.verification_method_repository.get(vmethod_id)
 
             if vmethod is None:
-                raise AuthServiceException("Verification method not found")
+                raise AuthServiceError("Verification method not found")
 
             vmethod_public_key_bytes = bytes.fromhex(vmethod.public_key.replace("0x", ""))
             if vmethod.issecp256k1:
@@ -154,20 +163,20 @@ class AuthService:
 
             vmethod_issuer = decoded_token["iss"]
             if vmethod_issuer is None:
-                raise AuthServiceException("No issuer found in token")
+                raise AuthServiceError("No issuer found in token")
 
             if vmethod.did_controller != vmethod_issuer:
-                raise AuthServiceException("Verification method is not owned by the issuer")
+                raise AuthServiceError("Verification method is not owned by the issuer")
 
             if vmethod.notafter < datetime.now():
-                raise AuthServiceException("Verification method is expired")
+                raise AuthServiceError("Verification method is expired")
 
             vrels = self.verification_relationship_repository.list(identifier_did=vmethod_issuer,
                                                                    name=relationship_type,
                                                                    vmethodid=vmethod_id)
 
             if vrels is None or len(vrels) == 0:
-                raise AuthServiceException("Verification method not valid for this operation")
+                raise AuthServiceError("Verification method not valid for this operation")
 
         else:
             decoded_token = jwt.decode(token,
@@ -187,14 +196,14 @@ class AuthService:
         if "id" in input_descriptor and input_descriptor["id"] == credential_id:
             if "format" not in input_descriptor or "constraints" not in input_descriptor or "fields" not in \
                     input_descriptor["constraints"]:
-                raise AuthServiceException("Missing format or constraints in input descriptor")
+                raise AuthServiceError("Missing format or constraints in input descriptor")
             descriptor_algos.update(input_descriptor["format"])
             descriptor_constraints.extend(input_descriptor["constraints"]["fields"])
         else:
-            raise AuthServiceException("Mismatch between presentation definition and input descriptor")
+            raise AuthServiceRequestError("Mismatch between presentation definition id and input descriptor id")
 
         if "alg" not in descriptor_algos[credential_format]:
-            raise AuthServiceException("Missing alg in format")
+            raise AuthServiceRequestError("Missing alg in format")
         credential_algo = descriptor_algos[credential_format]["alg"]
 
         jsonpath_expr = parse(credential_path)
@@ -209,14 +218,14 @@ class AuthService:
         if not submission.path_nested:
             for constraint in descriptor_constraints:
                 if "path" not in constraint or "filter" not in constraint:
-                    raise AuthServiceException("Missing path or filter in constraint")
+                    raise AuthServiceRequestError("Missing path or filter in constraint")
                 for const_path in constraint["path"]:
                     jsonpath_expr = parse(const_path)
                     try:
                         match_field = jsonpath_expr.find(decoded_payload)[0]
                         validate(match_field.value, constraint["filter"])
                     except Exception as e:
-                        raise AuthServiceException("VP token is not valid")
+                        raise AuthServiceRequestError("Presentation definition constraints violated in payload")
             credential = VerifiableCredentialPayload(**decoded_payload)
             return credential
         else:
@@ -233,18 +242,18 @@ class AuthService:
                 for descriptor_map in presentation_submission.descriptor_map:
                     if "id" in input_descriptor and descriptor_map.id == input_descriptor["id"]:
                         if vp_decoded.vp is None or vp_decoded.vp.holder is None:
-                            raise AuthServiceException("Invalid VP")
+                            raise AuthServiceError("Invalid VP")
                         cred: VerifiableCredentialPayload = self.find_credential(vp_decoded, descriptor_map,
                                                                                  presentation_definition["format"],
                                                                                  input_descriptor)
                         if cred.sub is None:
-                            raise AuthServiceException("Invalid VC")
+                            raise AuthServiceRequestError("Invalid credential: missing subject")
                         if cred.sub != vp_decoded.vp.holder:
-                            raise AuthServiceException("Credential subject mismatch with holder")
+                            raise AuthServiceRequestError("Invalid credential: credential subject mismatch with holder")
                         found_input = True
                         credentials.append(cred)
                 if not found_input:
-                    raise AuthServiceException("Invalid presentation")
+                    raise AuthServiceRequestError("Invalid presentation")
 
         return credentials
 
@@ -257,31 +266,31 @@ class AuthService:
         vp_payload = VerifiablePresentationPayload(**vp_decoded)
 
         if vp_payload.sub is None:
-            raise AuthServiceException("Invalid VP")
+            raise AuthServiceRequestError("Invalid VP: missing subject")
 
         if vp_payload.vp is None or vp_payload.vp.holder is None:
-            raise AuthServiceException("Invalid VP")
+            raise AuthServiceRequestError("Invalid VP: missing holder")
 
         if vp_payload.sub != vp_payload.vp.holder:
-            raise AuthServiceException("Invalid VP")
+            raise AuthServiceRequestError("Invalid VP: VP Subject mismatch with holder")
 
         return vp_payload
 
     @staticmethod
     def check_scope_constraints(payload: TokenCreate, subject_did: Identifier | None = None):
         if payload.scope == ScopeEnum.didr_invite and subject_did:
-            raise AuthServiceException("DID is already registered")
+            raise AuthServiceRequestError("DID is already registered")
         elif payload.scope != ScopeEnum.didr_invite and not subject_did:
-            raise AuthServiceException("DID is not registered")
+            raise AuthServiceRequestError("DID is not registered")
         elif payload.scope == ScopeEnum.tnt_create and not subject_did.tnt_authorized:
-            raise AuthServiceException("DID not authorized to this scope")
+            raise AuthServiceAuthError("DID not authorized to this scope")
 
     def create_token(self, vp_payload: VerifiablePresentationPayload, scope: ScopeEnum,
                              presentation_submission: PresentationSubmission,
                              presentation_definition: dict):
 
         if presentation_submission.definition_id != presentation_definition["id"]:
-            raise AuthServiceException("Invalid presentation definition")
+            raise AuthServiceRequestError("Invalid presentation definition")
 
         credentials_required = ("input_descriptors" in presentation_definition and len(
             presentation_definition["input_descriptors"]) > 0)
@@ -293,7 +302,7 @@ class AuthService:
                                                                 presentation_definition)
 
             if not credentials or len(credentials) == 0:
-                raise AuthServiceException("Invalid credentials")
+                raise AuthServiceAuthError("Invalid credentials")
             else:
                 credential_subject = credentials[0].sub
                 credential_issuer = credentials[0].iss
