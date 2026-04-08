@@ -26,4 +26,5 @@ class Settings(BaseSettings):
     ISSUER_ASSERTION_PRIVATE_KEY: str = b"-----BEGIN PRIVATE KEY-----\nMIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQgg1Z50fbmQc4S4YeX\n9es9TX39qsVXz8Ze3frlwTnhwhShRANCAASuC7p9UvNnyUTFqpdwh5n5gLIvU/ak\nWCNXc/i06Ls55c3YkHBYPN+hjL2A9pCFZ/fVnJgktMGEVXt4dYgp9zc8\n-----END PRIVATE KEY-----\n"
     ISSUER_ASSERTION_VMETHOD_ID: str = 'did:ebsi:zE971oT9esuKdcHspKdfAXg#pjyiTxPXALmmH4/ZBxgoUSibpzzKCntMXlzyPGYzupI'
 
+
 settings = Settings()

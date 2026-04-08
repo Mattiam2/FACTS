@@ -24,9 +24,11 @@ class EventBase(SQLModel):
 
     metadata_text: str = Field(schema_extra={'serialization_alias': 'metadata'}, description="Event's metadata")
     sender: str = Field(description="The `did:key` or `did:ebsi` that created the event")
-    origin: str = Field(description="Most of the times empty field, while it may be a string containing company name, while it can also point into an Event. All assumed relations are external to the SC.")
+    origin: str = Field(
+        description="Most of the times empty field, while it may be a string containing company name, while it can also point into an Event. All assumed relations are external to the SC.")
     id: str = Field(schema_extra={'serialization_alias': 'hash'}, description="Event hash")
-    external_hash: str | None = Field(None, schema_extra={'serialization_alias': 'externalHash'}, description="Externally generated hash")
+    external_hash: str | None = Field(None, schema_extra={'serialization_alias': 'externalHash'},
+                                      description="Externally generated hash")
 
 
 class EventItemPublic(SQLModel):
@@ -62,7 +64,8 @@ class EventListPublic(SQLModel):
     self: str = Field(description="Absolute path to the collection (consult)")
     items: list[EventItemPublic] = Field(description="List of events")
     total: int = Field(description="Total number of items across all pages.")
-    page_size: int = Field(schema_extra={'serialization_alias': 'page_size'}, description="Maximum number of items per page. For the last page, its value should be independent of the number of actually returned items.")
+    page_size: int = Field(schema_extra={'serialization_alias': 'pageSize'},
+                           description="Maximum number of items per page. For the last page, its value should be independent of the number of actually returned items.")
     links: PageLinksPublic = Field(description="Links model used for pagination")
 
 
@@ -75,6 +78,7 @@ class EventPublic(EventBase):
     """
 
     timestamp: TimestampPublic = Field(description="Timestamp object")
+
 
 @dataclass
 class EventParams(TypedDict):

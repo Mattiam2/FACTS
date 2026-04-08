@@ -18,7 +18,8 @@ class AccessBase(SQLModel):
     :type permission: PermissionEnum
     """
     subject: str = Field(description="Subject")
-    granted_by: str = Field(schema_extra={'serialization_alias': 'grantedBy'}, description="DID that granted the access")
+    granted_by: str = Field(schema_extra={'serialization_alias': 'grantedBy'},
+                            description="DID that granted the access")
     permission: PermissionEnum = Field(description="Type of permission")
 
 
@@ -54,5 +55,6 @@ class AccessListPublic(SQLModel):
     self: str = Field(description="Absolute path to the collection (consult)")
     items: list[AccessItemPublic] = Field(description="List of accesses")
     total: int = Field(description="Total number of items across all pages.")
-    page_size: int = Field(schema_extra={'serialization_alias': 'pageSize'}, description="Maximum number of items per page. For the last page, its value should be independent of the number of actually returned items.")
+    page_size: int = Field(schema_extra={'serialization_alias': 'pageSize'},
+                           description="Maximum number of items per page. For the last page, its value should be independent of the number of actually returned items.")
     links: PageLinksPublic = Field(description="Links model used for pagination")

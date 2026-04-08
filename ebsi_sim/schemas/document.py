@@ -30,8 +30,8 @@ class DocumentListPublic(SQLModel):
     :type items: list[DocumentItemPublic]
     :ivar total: Total number of document items available across all pages.
     :type total: int
-    :ivar pageSize: Number of document items displayed per page.
-    :type pageSize: int
+    :ivar page_size: Number of document items displayed per page.
+    :type page_size: int
     :ivar links: Navigation links for the paginated document list.
     :type links: PageLinksPublic
     """
@@ -39,7 +39,8 @@ class DocumentListPublic(SQLModel):
     self: str = Field(description="Absolute path to the collection (consult)")
     items: list[DocumentItemPublic] = Field(description="List of documents")
     total: int = Field(description="Total number of items across all pages.")
-    pageSize: int = Field(description="Maximum number of items per page. For the last page, its value should be independent of the number of actually returned items.")
+    page_size: int = Field(schema_extra={'serialization_alias': 'pageSize'},
+                           description="Maximum number of items per page. For the last page, its value should be independent of the number of actually returned items.")
     links: PageLinksPublic = Field(description="Links model used for pagination")
 
 

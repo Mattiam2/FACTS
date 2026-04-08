@@ -6,7 +6,7 @@ from web3 import Web3
 from web3.contract import Contract
 
 from ebsi_sim.core.config import settings
-from ebsi_sim.core.exceptions import AuthError, NotFoundError, RequestError
+from ebsi_sim.core.exceptions import AuthError, NotFoundError, RequestError, EBSIError
 from ebsi_sim.models.didr import Identifier, VerificationMethod
 from ebsi_sim.repositories.didr import IdentifierRepository, IdentifierControllerRepository, \
     VerificationMethodRepository, VerificationRelationshipRepository
@@ -14,17 +14,33 @@ from ebsi_sim.schemas import JsonRpcCreate
 from ebsi_sim.utils import User, check_scopes, build_unsigned_transaction, exec_signed_transaction
 
 
-class DidrServiceError(Exception):
+class DidrServiceError(EBSIError):
+    """
+    Represents an error specific to DIDR service operations (Status Code: 500).
+    """
     pass
+
 
 class DidrServiceAuthError(DidrServiceError, AuthError):
+    """
+    Represents an DIDR service authentication error (Status Code: 401).
+    """
     pass
+
 
 class DidrServiceNotFoundError(DidrServiceError, NotFoundError):
+    """
+    Represents an error raised when a specific resource is not found (Status Code: 404).
+    """
     pass
 
+
 class DidrServiceRequestError(DidrServiceError, RequestError):
+    """
+    Represents an error that occurs during an DIDR service request.
+    """
     pass
+
 
 class DidrService:
     eth_contract: type[Contract]
@@ -32,6 +48,7 @@ class DidrService:
     identifier_controller_repository: IdentifierControllerRepository
     verification_method_repository: VerificationMethodRepository
     verification_relationship_repository: VerificationRelationshipRepository
+    didr_abi: dict
 
     def __init__(self, identifier_repository: IdentifierRepository = Depends(),
                  identifier_controller_repository: IdentifierControllerRepository = Depends(),
@@ -42,8 +59,8 @@ class DidrService:
         self.verification_method_repository = verification_method_repository
         self.verification_relationship_repository = verification_relationship_repository
 
-        didr_abi = json.load(open("ebsi_sim/includes/abi_didr.json", "r"))
-        self.eth_contract = Web3().eth.contract(abi=didr_abi)
+        self.didr_abi = json.load(open("ebsi_sim/includes/abi_didr.json", "r"))
+        self.eth_contract = Web3().eth.contract(abi=self.didr_abi)
 
     def get_did_document(self, did: str) -> Identifier | None:
         return self.identifier_repository.get(did)
@@ -58,11 +75,13 @@ class DidrService:
     def get_verification_method(self, v_method_id: str) -> VerificationMethod | None:
         return self.verification_method_repository.get(v_method_id)
 
-    def list_verification_methods(self, *, offset=None, limit=None, order_by=None, **filters) -> list[VerificationMethod]:
+    def list_verification_methods(self, *, offset=None, limit=None, order_by=None, **filters) -> list[
+        VerificationMethod]:
         return self.verification_method_repository.list(offset=offset, limit=limit, order_by=order_by, **filters)
 
-    def insert_did_document(self, *, did: str, base_document: str, v_method_id: str, public_key: bytes | str, is_secp256k1: bool,
-                          not_before: int, not_after: int):
+    def insert_did_document(self, *, did: str, base_document: str, v_method_id: str, public_key: bytes | str,
+                            is_secp256k1: bool,
+                            not_before: int, not_after: int):
         date_not_before = datetime.fromtimestamp(not_before)
         date_not_after = datetime.fromtimestamp(not_after)
 
@@ -76,7 +95,8 @@ class DidrService:
 
         self.verification_method_repository.create(id=full_vmethod_id, did_controller=did,
                                                    type="JsonWebKey2020",
-                                                   public_key=public_key, issecp256k1=is_secp256k1, notafter=date_not_after)
+                                                   public_key=public_key, issecp256k1=is_secp256k1,
+                                                   notafter=date_not_after)
 
         self.verification_relationship_repository.create(identifier_did=did, name="capabilityInvocation",
                                                          vmethodid=full_vmethod_id, notbefore=date_not_before,
@@ -158,8 +178,8 @@ class DidrService:
         method = payload.method
         subject_did: str | None = payload.params[0].get("did", None) if len(payload.params) > 0 else None
         if method not in ("insertDidDocument", "updateBaseDocument", "addService", "revokeService", "addController",
-                              "revokeController", "addVerificationMethod", "addVerificationRelationship",
-                              "revokeVerificationMethod", "expireVerificationMethod", "rollVerificationMethod"):
+                          "revokeController", "addVerificationMethod", "addVerificationRelationship",
+                          "revokeVerificationMethod", "expireVerificationMethod", "rollVerificationMethod"):
             raise DidrServiceRequestError("Method not allowed")
 
         if subject_did is not None and subject_did != current_user.sub:
@@ -173,18 +193,22 @@ class DidrService:
             if current_user.sub not in [c.did for c in controllers]:
                 raise DidrServiceAuthError("Forbidden DID")
 
+    def get_abi(self):
+        return self.didr_abi
+
     def handle_rpc(self, current_user: User, payload: JsonRpcCreate):
         try:
             params = payload.params[0] if len(payload.params) > 0 else {}
             self._check_scope(current_user, payload.method)
             if payload.method != "sendSignedTransaction":
                 self._check_did_access(current_user, payload)
-                json_rpc_result = build_unsigned_transaction(self.eth_contract, settings.ETH_ADDRESS, payload.method, params)
+                json_rpc_result = build_unsigned_transaction(self.eth_contract, settings.ETH_ADDRESS, payload.method,
+                                                             params)
             else:
                 json_rpc_result = exec_signed_transaction(current_user, self.eth_contract, settings.ETH_ADDRESS, self,
                                                           params['unsignedTransaction'],
                                                           params['signedRawTransaction'])
-        except DidrServiceError:
+        except EBSIError:
             raise
         except Exception:
             raise DidrServiceError("Internal error")

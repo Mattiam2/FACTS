@@ -26,7 +26,8 @@ class PresentationSubmission(SQLModel):
 class TokenCreate(SQLModel):
     grant_type: GrantTypeEnum = Field(description="MUST be set to `vp_token`")
     vp_token: str = Field(description="The Verifiable Presentation Token")
-    presentation_submission: PresentationSubmission = Field(description="Descriptor for the vp_token, linked by presentation_definition.")
+    presentation_submission: PresentationSubmission = Field(
+        description="Descriptor for the vp_token, linked by presentation_definition.")
     scope: ScopeEnum = Field(description="OIDC scope")
 
     model_config = {
@@ -57,15 +58,18 @@ class TokenCreate(SQLModel):
         }
     }
 
+
 class TokenTypeEnum(str, Enum):
     bearer = "Bearer"
+
 
 class TokenBase(SQLModel):
     access_token: str = Field(description="The access token issued by the Authorisation Server in JWS format.")
     token_type: TokenTypeEnum = Field(description="MUST be `Bearer`")
     expires_in: int = Field(description="The lifetime in seconds of the access token.", ge=1)
     scope: ScopeEnum = Field(description="The scope of the access token")
-    id_token: str = Field(description="ID Token value associated with the authenticated session. Presents client's identity. ID Token is issued in a JWS format.")
+    id_token: str = Field(
+        description="ID Token value associated with the authenticated session. Presents client's identity. ID Token is issued in a JWS format.")
 
     model_config = {
         "json_schema_extra": {

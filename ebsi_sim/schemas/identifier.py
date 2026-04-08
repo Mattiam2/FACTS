@@ -48,8 +48,8 @@ class IdentifierListPublic(SQLModel):
     :type items: list[IdentifierItemPublic]
     :ivar total: The total number of items in the list.
     :type total: int
-    :ivar pageSize: The number of items per page in the current list.
-    :type pageSize: int
+    :ivar page_size: The number of items per page in the current list.
+    :type page_size: int
     :ivar links: An instance of PageLinksPublic containing links for pagination and navigation.
     :type links: PageLinksPublic
     """
@@ -57,6 +57,6 @@ class IdentifierListPublic(SQLModel):
     self: str = Field(description="Filter by controller DID.")
     items: list[IdentifierItemPublic] = Field(description="List of identifier.")
     total: int = Field(description="Total number of items across all pages.")
-    pageSize: int = Field(
-        description="Maximum number of items per page. For the last page, its value should be independent of the number of actually returned items.")
+    page_size: int = Field(schema_extra={'serialization_alias': 'pageSize'},
+                           description="Maximum number of items per page. For the last page, its value should be independent of the number of actually returned items.")
     links: PageLinksPublic = Field(description="Links model used for pagination")

@@ -19,8 +19,10 @@ class TimestampPublic(SQLModel):
     """
 
     datetime: str | None = Field(None, description="The date and time, optionally from transaction input")
-    source: str | None = Field(None, description="Defines how the datetime was resolved, enumerated options are 'block' and 'external'")
-    proof: str | None = Field(None, description="Proof of the source. Either a block number or a hash of timestamp certificate")
+    source: str | None = Field(None,
+                               description="Defines how the datetime was resolved, enumerated options are 'block' and 'external'")
+    proof: str | None = Field(None,
+                              description="Proof of the source. Either a block number or a hash of timestamp certificate")
 
 
 class PageLinksPublic(SQLModel):

@@ -10,12 +10,14 @@ class VerificationMethodBase(SQLModel):
     did_controller: str = Field(schema_extra={'serialization_alias': 'controller'})
     public_key: str
 
+
 class VerificationRelationshipNameEnum(str, Enum):
     authentication = "authentication"  # For authenticate the entity itself
     assertionMethod = "assertionMethod"  # For sign and issue a VC
     capabilityInvocation = "capabilityInvocation"
     capabilityDelegation = "capabilityDelegation"
     keyAgreement = "keyAgreement"
+
 
 class VerificationRelationshipBase(SQLModel):
     id: int

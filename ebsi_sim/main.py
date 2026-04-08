@@ -1,23 +1,23 @@
-from datetime import time
 from typing import Callable, Awaitable
 
-from fastapi import FastAPI, Request, Response, HTTPException
+from fastapi import FastAPI, Request, Response
 from sqlmodel import Session
 from starlette.responses import JSONResponse
 
 from ebsi_sim.api.auth import router as authapp
 from ebsi_sim.api.didr import router as didrapp
+from ebsi_sim.api.issuer_mock import router as issuerapp
 from ebsi_sim.api.tnt import router as tntapp
-from ebsi_sim.api.mock import router as utilsapp
+from ebsi_sim.api.wallet_mock import router as walletapp
 from ebsi_sim.core.db import engine, session_ctx
 from ebsi_sim.core.exceptions import EBSIError, RequestError, NotFoundError, AuthError
-from ebsi_sim.services.auth import AuthServiceRequestError
 
 app = FastAPI()
 app.include_router(tntapp)
 app.include_router(didrapp)
 app.include_router(authapp)
-app.include_router(utilsapp)
+app.include_router(walletapp)
+app.include_router(issuerapp)
 
 
 @app.middleware("http")
@@ -46,6 +46,7 @@ async def db_session_handler(request: Request, call_next: Callable[[Request], Aw
             session_ctx.reset(token)
             session.close()
     return response
+
 
 @app.exception_handler(EBSIError)
 async def unicorn_exception_handler(request: Request, exc: EBSIError):

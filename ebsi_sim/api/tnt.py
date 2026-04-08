@@ -1,4 +1,3 @@
-import json
 import math
 from typing import Annotated
 
@@ -7,8 +6,10 @@ from fastapi import Response, APIRouter, Depends, HTTPException
 from starlette.status import HTTP_204_NO_CONTENT, HTTP_404_NOT_FOUND
 from web3 import Web3
 
+from ebsi_sim.core.exceptions import NotFoundError
 from ebsi_sim.schemas import AccessListPublic, DocumentItemPublic, DocumentListPublic, DocumentPublic, EventItemPublic, \
     EventListPublic, EventPublic, JsonRpcCreate, JsonRpcPublic, PageLinksPublic, TimestampPublic, VersionEnum
+from ebsi_sim.services.didr import DidrService
 from ebsi_sim.services.tnt import TntService
 from ebsi_sim.utils import User, get_current_user
 
@@ -25,9 +26,17 @@ router = APIRouter(prefix="/track-and-trace", tags=["track-and-trace"])
 def rpc(current_user: Annotated[User, Depends(get_current_user)], payload: JsonRpcCreate,
         tnt_service: TntService = Depends()) -> JsonRpcPublic:
     """
-    The JSON-RPC API provides methods assisting the construction of blockchain transactions and
-    interaction with the ledger, i.e. write operation on ledger.
+    JSON-RPC API endpoint for simulating handling of blockchain transactions and interaction with the ledger.
+
+    This endpoint processes JSON-RPC requests, providing support for constructing and interacting
+    with ledger
+
+    :param current_user: The authenticated user making the request.
+    :param payload: The JSON-RPC payload containing the request data.
+    :param tnt_service: Dependency-injected TntService for handling JSON-RPC operations.
+    :return: A `JsonRpcPublic` object containing the JSON-RPC 2.0 response.
     """
+
     json_rpc_result = tnt_service.handle_rpc(current_user, payload)
 
     return JsonRpcPublic(
@@ -45,13 +54,14 @@ def rpc(current_user: Annotated[User, Depends(get_current_user)], payload: JsonR
                  404: {"description": "DID not found in the allowlist"},
                  500: {"description": "Internal Server Error"},
              })
-def check_access(creator: Annotated[str, Query(description="DID to check")], tnt_service: TntService = Depends()):
+def check_access(creator: Annotated[str, Query(description="DID to check")], didr_service: DidrService = Depends()):
     """
     Checks if the DID is included in the allowlist of TnT Document creators or not.
+    
     """
-    creator_access = tnt_service.list_accesses(subject=creator)
+    did_creator = didr_service.get_did_document(did=creator)
 
-    if not creator_access:
+    if not did_creator or not did_creator.tnt_authorized:
         raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="DID not found in the allowlist")
 
     return Response(status_code=HTTP_204_NO_CONTENT)
@@ -73,6 +83,9 @@ def read_subject_accesses(subject: Annotated[str, Query(description="Subject DID
     """
     Get accesses filtered by subject.
     """
+    if page_size == 0:
+        page_size = 10
+
     accesses_count = tnt_service.count_accesses(subject=subject)
     n_pages = math.ceil(accesses_count / page_size)
 
@@ -106,6 +119,9 @@ def read_docs(page_after: Annotated[int, Query(alias="page[after]",
     """
     Returns a list of documents.
     """
+    if page_size == 0:
+        page_size = 10
+
     docs_count = tnt_service.count_documents()
     n_pages = math.ceil(docs_count / page_size)
 
@@ -144,6 +160,8 @@ def read_doc(document_id: Annotated[str, Path(description="The 32-bytes ID of th
     Gets the document corresponding to the ID.
     """
     doc = tnt_service.get_document(document_id)
+    if not doc:
+        raise NotFoundError("Document not found")
 
     timestamp = TimestampPublic(
         datetime=doc.timestamp_datetime.isoformat() if doc.timestamp_datetime else None,
@@ -175,6 +193,9 @@ def read_doc_events(
     """
     Returns a list of events.
     """
+    if page_size == 0:
+        page_size = 10
+
     events_count = tnt_service.count_events(document_id=document_id)
     n_pages = math.ceil(events_count / page_size)
 
@@ -187,7 +208,7 @@ def read_doc_events(
 
     items = []
     for event in events:
-        items.append(EventItemPublic(eventId=event.id, href=f"/documents/{document_id}/events/{event.id}"))
+        items.append(EventItemPublic(event_id=event.id, href=f"/documents/{document_id}/events/{event.id}"))
 
     return EventListPublic(
         self=f"/documents/{document_id}/events?page[after]={page_after}&page[size]={page_size}",
@@ -214,8 +235,8 @@ def read_doc_event(
     Gets the event corresponding to the document ID and event ID.
     """
     events = tnt_service.list_events(document_id=document_id, id=event_id)
-    if not events:
-        raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Event not found")
+    if not events or len(events) == 0:
+        raise NotFoundError("Event not found")
     event = events[0]
 
     timestamp = TimestampPublic(
@@ -237,13 +258,19 @@ def read_doc_event(
                 404: {"description": "Not found"},
                 500: {"description": "Internal Server Error"}
             })
-def read_doc_accesses(document_id: Annotated[str, Path(description="The 32-bytes ID of the document, encoded in hexadecimal.")],
-                      page_after: Annotated[int, Query(alias="page[after]", description="Cursor that points to the end of the page of data that has been returned.")] = 1,
-                      page_size: Annotated[int, Query(alias="page[size]", description="Defines the maximum number of objects that may be returned.")] = 10,
-                      tnt_service: TntService = Depends()) -> AccessListPublic:
+def read_doc_accesses(
+        document_id: Annotated[str, Path(description="The 32-bytes ID of the document, encoded in hexadecimal.")],
+        page_after: Annotated[int, Query(alias="page[after]",
+                                         description="Cursor that points to the end of the page of data that has been returned.")] = 1,
+        page_size: Annotated[int, Query(alias="page[size]",
+                                        description="Defines the maximum number of objects that may be returned.")] = 10,
+        tnt_service: TntService = Depends()) -> AccessListPublic:
     """
     Returns a list of accesses related to the document.
     """
+    if page_size == 0:
+        page_size = 10
+
     accesses_count = tnt_service.count_accesses(document_id=document_id)
     n_pages = math.ceil(accesses_count / page_size)
 
@@ -267,9 +294,9 @@ def read_doc_accesses(document_id: Annotated[str, Path(description="The 32-bytes
             responses={
                 200: {"description": "Success"}
             })
-def abi():
+def abi(tnt_service: TntService = Depends()):
     """
     Returns the ABI of Track and Trace SC v1.
     """
-    tnt_abi = json.load(open("ebsi_sim/includes/abi_tnt.json", "r"))
+    tnt_abi = tnt_service.get_abi()
     return tnt_abi

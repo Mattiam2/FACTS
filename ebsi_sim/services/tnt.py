@@ -8,7 +8,7 @@ from web3 import Web3
 from web3.contract import Contract
 
 from ebsi_sim.core.config import settings
-from ebsi_sim.core.exceptions import RequestError, NotFoundError, AuthError
+from ebsi_sim.core.exceptions import RequestError, NotFoundError, AuthError, EBSIError
 from ebsi_sim.repositories.didr import IdentifierRepository
 from ebsi_sim.repositories.tnt import AccessRepository
 from ebsi_sim.repositories.tnt import DocumentRepository
@@ -18,17 +18,33 @@ from ebsi_sim.schemas.event import EventParams
 from ebsi_sim.utils import check_scopes, User, build_unsigned_transaction, exec_signed_transaction, booleanize
 
 
-class TntServiceError(Exception):
+class TntServiceError(EBSIError):
+    """
+    Represents an error specific to TNT service operations (Status Code: 500).
+    """
     pass
+
 
 class TntServiceAuthError(TntServiceError, AuthError):
+    """
+    Represents an TNT service authentication error (Status Code: 401).
+    """
     pass
+
 
 class TntServiceNotFoundError(TntServiceError, NotFoundError):
+    """
+    Represents an error raised when a specific resource is not found (Status Code: 404).
+    """
     pass
 
+
 class TntServiceRequestError(TntServiceError, RequestError):
+    """
+    Represents an error that occurs during an TNT service request.
+    """
     pass
+
 
 class TntService:
     eth_contract: type[Contract]
@@ -36,6 +52,7 @@ class TntService:
     access_repository: AccessRepository
     event_repository: EventRepository
     identifier_repository: IdentifierRepository
+    tnt_abi: dict
 
     def __init__(self, document_repository: DocumentRepository = Depends(),
                  access_repository: AccessRepository = Depends(), event_repository: EventRepository = Depends(),
@@ -45,8 +62,8 @@ class TntService:
         self.event_repository = event_repository
         self.identifier_repository = identifier_repository
 
-        tnt_abi = json.load(open("ebsi_sim/includes/abi_tnt.json", "r"))
-        self.eth_contract = Web3().eth.contract(abi=tnt_abi)
+        self.tnt_abi = json.load(open("ebsi_sim/includes/abi_tnt.json", "r"))
+        self.eth_contract = Web3().eth.contract(abi=self.tnt_abi)
 
     def get_document(self, document_hash: bytes | str):
         if isinstance(document_hash, bytes):
@@ -75,7 +92,7 @@ class TntService:
         self.identifier_repository.update(id=authorised_did, tnt_authorized=white_list)
 
     def create_document(self, *, document_hash: bytes | str, document_metadata: str, did_ebsi_creator: str,
-                       timestamp: int | None = None, timestamp_proof: bytes | str | None = None):
+                        timestamp: int | None = None, timestamp_proof: bytes | str | None = None):
         doc_metadata = bytes.fromhex(document_metadata[2:]).decode('utf-8')
         doc_timestamp_datetime = datetime.fromtimestamp(timestamp) if timestamp else None
         doc_timestamp_proof = timestamp_proof
@@ -96,7 +113,8 @@ class TntService:
             document_hash = "0x" + document_hash.hex()
         self.document_repository.delete(id=document_hash)
 
-    def grant_access(self, *, document_hash: bytes | str, granted_by_account: bytes | str, subject_account: bytes | str, permission: str):
+    def grant_access(self, *, document_hash: bytes | str, granted_by_account: bytes | str, subject_account: bytes | str,
+                     permission: str):
         if isinstance(document_hash, bytes):
             document_hash = "0x" + document_hash.hex()
         if isinstance(granted_by_account, bytes):
@@ -109,7 +127,8 @@ class TntService:
         self.access_repository.create(subject=subject_account, document_id=document_hash, granted_by=granted_by_account,
                                       permission=permission)
 
-    def revoke_access(self, *, document_hash: bytes | str, revoked_by_account: bytes | str, subject_account: bytes | str, permission: str):
+    def revoke_access(self, *, document_hash: bytes | str, revoked_by_account: bytes | str,
+                      subject_account: bytes | str, permission: str):
         if isinstance(document_hash, bytes):
             document_hash = "0x" + document_hash.hex()
         if isinstance(revoked_by_account, bytes):
@@ -117,19 +136,23 @@ class TntService:
         if isinstance(subject_account, bytes):
             subject_account = "0x" + subject_account.hex()
         permission = "write" if int(permission, 0) else "delegate"
-        revoked_access = self.access_repository.list(subject=subject_account, document_id=document_hash, permission=permission)[
+        revoked_access = \
+        self.access_repository.list(subject=subject_account, document_id=document_hash, permission=permission)[
             0]
         self.access_repository.delete(id=revoked_access.id)
 
-
-    def write_event(self, *, event_params: EventParams, timestamp: int | None = None, timestamp_proof: bytes | str | None = None):
-        doc_id = "0x" + event_params['documentHash'].hex() if isinstance(event_params['documentHash'], bytes) else event_params['documentHash']
+    def write_event(self, *, event_params: EventParams, timestamp: int | None = None,
+                    timestamp_proof: bytes | str | None = None):
+        doc_id = "0x" + event_params['documentHash'].hex() if isinstance(event_params['documentHash'], bytes) else \
+        event_params['documentHash']
         external_hash = event_params['externalHash']
-        sender = event_params['sender'].decode('utf-8') if isinstance(event_params['sender'], bytes) else event_params['sender']
+        sender = event_params['sender'].decode('utf-8') if isinstance(event_params['sender'], bytes) else event_params[
+            'sender']
         origin = event_params['origin']
         metadata = event_params['metadata']
         event_timestamp_datetime = datetime.fromtimestamp(timestamp) if timestamp else None
-        event_timestamp_proof = "0x" + timestamp_proof.hex() if timestamp_proof and isinstance(timestamp_proof, bytes) else timestamp_proof
+        event_timestamp_proof = "0x" + timestamp_proof.hex() if timestamp_proof and isinstance(timestamp_proof,
+                                                                                               bytes) else timestamp_proof
         raw_id = f"{doc_id}{external_hash}{sender}{time.time_ns()}"
         event_id = "0x" + hashlib.sha256(raw_id.encode()).hexdigest()
         self.event_repository.create(id=event_id, document_id=doc_id, metadata_text=metadata, sender=sender,
@@ -176,7 +199,7 @@ class TntService:
             if "grantedByAccount" in params and current_user.sub != params['grantedByAccount']:
                 raise TntServiceRequestError("grantedByAccount is not the same as the subject")
             user_accesses = self.list_accesses(subject=params['grantedByAccount'],
-                                                     document_id=params['documentHash'])
+                                               document_id=params['documentHash'])
             document = self.get_document(params['documentHash'])
             if document is None:
                 raise TntServiceNotFoundError("Document not found")
@@ -200,8 +223,10 @@ class TntService:
 
         if payload.method == "writeEvent":
             event_params = EventParams(**params['eventParams'][0])
-            timestamp = int.from_bytes(bytes.fromhex(params['timestamp'].replace('0x',''))) if 'timestamp' in params else None
-            timestamp_proof = bytes.fromhex(params['timestampProof'].replace('0x', '')) if 'timestampProof' in params else None
+            timestamp = int.from_bytes(
+                bytes.fromhex(params['timestamp'].replace('0x', ''))) if 'timestamp' in params else None
+            timestamp_proof = bytes.fromhex(
+                params['timestampProof'].replace('0x', '')) if 'timestampProof' in params else None
             params = {'from': params['from'], 'eventParams': event_params}
             if timestamp:
                 params['timestamp'] = timestamp
@@ -214,10 +239,15 @@ class TntService:
                 raise TntServiceRequestError("Document not found")
             if document.creator != current_user.sub and len(user_accesses) == 0:
                 raise TntServiceAuthError("Permission not granted")
-            sender = event_params['sender'].decode('utf-8') if isinstance(event_params['sender'], bytes) else bytes.fromhex(event_params['sender'].replace('0x','')).decode('utf-8')
+            sender = event_params['sender'].decode('utf-8') if isinstance(event_params['sender'],
+                                                                          bytes) else bytes.fromhex(
+                event_params['sender'].replace('0x', '')).decode('utf-8')
             if sender != current_user.sub:
                 raise TntServiceRequestError("Sender is not the same as the subject")
         return params
+
+    def get_abi(self):
+        return self.tnt_abi
 
     def handle_rpc(self, current_user: User, payload: JsonRpcCreate):
         try:
@@ -226,7 +256,8 @@ class TntService:
             if payload.method != "sendSignedTransaction":
                 self._check_did_access(current_user, payload)
                 params = self._check_method_conditions(current_user, payload)
-                json_rpc_result = build_unsigned_transaction(self.eth_contract, settings.ETH_ADDRESS, payload.method, params)
+                json_rpc_result = build_unsigned_transaction(self.eth_contract, settings.ETH_ADDRESS, payload.method,
+                                                             params)
             else:
                 json_rpc_result = exec_signed_transaction(current_user, self.eth_contract, settings.ETH_ADDRESS, self,
                                                           params['unsignedTransaction'],

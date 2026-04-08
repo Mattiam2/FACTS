@@ -9,15 +9,14 @@ from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives.serialization import load_pem_public_key
 from eth_account import Account
 from eth_account._utils.legacy_transactions import Transaction
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends
 from fastapi.security import OAuth2PasswordBearer, APIKeyHeader
 from jwcrypto import jwk
 from sqlmodel import SQLModel
-from starlette.status import HTTP_400_BAD_REQUEST
 from web3.contract.base_contract import BaseContractFunction
 
 from ebsi_sim.core.config import settings
-from ebsi_sim.core.exceptions import RequestError, ServerError, AuthError
+from ebsi_sim.core.exceptions import RequestError, AuthError, EBSIError
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/authorisation/token")
 
@@ -26,6 +25,7 @@ class User(SQLModel):
     scopes: list[str]
     sub: str
 
+
 def to_snakecase(text: str) -> str:
     if text.islower() or not text:
         return text
@@ -33,31 +33,34 @@ def to_snakecase(text: str) -> str:
 
 
 def pem_to_jwk(pem_public_key: str) -> dict:
-    public_key_obj = load_pem_public_key(pem_public_key.encode(), backend=default_backend())
-    jwk_key = jwk.JWK.from_pyca(public_key_obj)
-    jwk_dict = json.loads(jwk_key.export_public())
+    try:
+        public_key_obj = load_pem_public_key(pem_public_key.encode(), backend=default_backend())
+        jwk_key = jwk.JWK.from_pyca(public_key_obj)
+        jwk_dict = json.loads(jwk_key.export_public())
 
-    # Calculate thumbprint for KID
-    # RFC 7638: JWK Thumbprint
-    required_members = {
-        'crv': jwk_dict.get('crv'),
-        'kty': jwk_dict.get('kty'),
-        'x': jwk_dict.get('x'),
-        'y': jwk_dict.get('y')
-    }
+        # Calculate thumbprint for KID
+        # RFC 7638: JWK Thumbprint
+        required_members = {
+            'crv': jwk_dict.get('crv'),
+            'kty': jwk_dict.get('kty'),
+            'x': jwk_dict.get('x'),
+            'y': jwk_dict.get('y')
+        }
 
-    # Create canonical JSON representation (sorted keys, no whitespace)
-    canonical_json = json.dumps(required_members, sort_keys=True, separators=(',', ':'))
+        # Create canonical JSON representation (sorted keys, no whitespace)
+        canonical_json = json.dumps(required_members, sort_keys=True, separators=(',', ':'))
 
-    # Calculate SHA-256 hash
-    hash_bytes = hashlib.sha256(canonical_json.encode('utf-8')).digest()
+        # Calculate SHA-256 hash
+        hash_bytes = hashlib.sha256(canonical_json.encode('utf-8')).digest()
 
-    # Base64url encode (without padding)
-    kid = base64.urlsafe_b64encode(hash_bytes).decode('utf-8').rstrip('=')
+        # Base64url encode (without padding)
+        kid = base64.urlsafe_b64encode(hash_bytes).decode('utf-8').rstrip('=')
 
-    jwk_dict['kid'] = kid
-
-    return jwk_dict
+        jwk_dict['kid'] = kid
+    except Exception:
+        raise EBSIError(f"Error getting JWK")
+    else:
+        return jwk_dict
 
 
 vp_scheme = APIKeyHeader(name="Authorization", auto_error=False)
@@ -67,7 +70,7 @@ def get_current_user(token: Annotated[str, Depends(vp_scheme)]):
     user = None
     try:
         user: dict = jwt.decode(token, settings.AUTH_PUBLIC_KEY, algorithms=["ES256"],
-                          options={'verify_exp': True, "verify_aud": False})
+                                options={'verify_exp': True, "verify_aud": False})
     except jwt.ExpiredSignatureError:
         raise AuthError("Token expired")
     except jwt.exceptions.DecodeError:
@@ -118,17 +121,18 @@ def build_unsigned_transaction(eth_contract, register_address: str, method: str,
 
     try:
         unsigned_transaction = candidate_function(**abi_args).build_transaction({"from": params['from'],
-                                                                                      "to": register_address,
-                                                                                      "nonce": 0xb1d3,
-                                                                                      "chainId": 1234,
-                                                                                      "gas": 0,
-                                                                                      "gasPrice": 0})
+                                                                                 "to": register_address,
+                                                                                 "nonce": 0xb1d3,
+                                                                                 "chainId": 1234,
+                                                                                 "gas": 0,
+                                                                                 "gasPrice": 0})
     except Exception:
-        raise ServerError("Internal error while building transaction")
+        raise EBSIError("Internal error while building transaction")
     return unsigned_transaction
 
 
-def exec_signed_transaction(current_user: User, eth_contract, register_address, service, unsigned_transaction, signed_transaction):
+def exec_signed_transaction(current_user: User, eth_contract, register_address, service, unsigned_transaction,
+                            signed_transaction):
     decoded_transaction: Transaction = rlp.decode(bytes.fromhex(signed_transaction), Transaction)
     decoded_transaction_data = decoded_transaction['data']
     if decoded_transaction['data'] != bytes.fromhex(unsigned_transaction['data'].replace("0x", "")):
@@ -158,4 +162,4 @@ def exec_signed_transaction(current_user: User, eth_contract, register_address, 
     except AttributeError:
         raise RequestError("Invalid transaction")
     except Exception as e:
-        raise ServerError("Internal error while executing transaction")
+        raise EBSIError("Internal error while executing transaction")

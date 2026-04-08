@@ -1,4 +1,3 @@
-import json
 import math
 from typing import Annotated
 
@@ -50,6 +49,9 @@ def read_identifiers(page_after: Annotated[int, Query(alias="page[after]",
     """
     Returns a list of identifiers.
     """
+    if page_size == 0:
+        page_size = 10
+
     dids_count = didr_service.count_did_documents(controller=controller)
     n_pages = math.ceil(dids_count / page_size)
 
@@ -112,9 +114,9 @@ def read_identifier(did: Annotated[str, Path(description="A DID to be resolved."
             responses={
                 200: {"description": "Success"}
             })
-def abi():
+def abi(didr_service: DidrService = Depends()):
     """
     Returns the ABI of DID Registry SC v3.
     """
-    didr_abi = json.load(open("ebsi_sim/includes/abi_didr.json", "r"))
+    didr_abi = didr_service.get_abi()
     return didr_abi

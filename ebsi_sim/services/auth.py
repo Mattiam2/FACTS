@@ -12,7 +12,7 @@ from jwt import get_unverified_header
 from jwt.algorithms import ECAlgorithm
 
 from ebsi_sim.core.config import settings
-from ebsi_sim.core.exceptions import AuthError, NotFoundError, RequestError
+from ebsi_sim.core.exceptions import AuthError, NotFoundError, RequestError, EBSIError
 from ebsi_sim.models.didr import Identifier
 from ebsi_sim.repositories.didr import IdentifierRepository, VerificationMethodRepository, \
     VerificationRelationshipRepository
@@ -23,17 +23,33 @@ from ebsi_sim.schemas.verifiable_presentation import VerifiablePresentationPaylo
 from ebsi_sim.utils import pem_to_jwk
 
 
-class AuthServiceError(Exception):
+class AuthServiceError(EBSIError):
+    """
+    Represents an error specific to AUTH service operations (Status Code: 500).
+    """
     pass
+
 
 class AuthServiceAuthError(AuthServiceError, AuthError):
+    """
+    Represents an AUTH service authentication error (Status Code: 401).
+    """
     pass
+
 
 class AuthServiceNotFoundError(AuthServiceError, NotFoundError):
+    """
+    Represents an error raised when a specific resource is not found (Status Code: 404).
+    """
     pass
 
+
 class AuthServiceRequestError(AuthServiceError, RequestError):
+    """
+    Represents an error that occurs during an AUTH service request.
+    """
     pass
+
 
 class AuthService:
     identifier_repository: IdentifierRepository
@@ -131,7 +147,10 @@ class AuthService:
                 path = f"ebsi_sim/includes/presentation_tsr_write.json"
             case _:
                 raise AuthServiceError("Invalid scope")
-        presentation_definition = json.load(open(path, "r"))
+        try:
+            presentation_definition = json.load(open(path, "r"))
+        except Exception as e:
+            raise AuthServiceError(f"Error loading presentation definition: {e}")
         return presentation_definition
 
     def decode_and_check_signature(self, token: str, relationship_type: str, credential_algos=None,
@@ -224,7 +243,7 @@ class AuthService:
                     try:
                         match_field = jsonpath_expr.find(decoded_payload)[0]
                         validate(match_field.value, constraint["filter"])
-                    except Exception as e:
+                    except Exception:
                         raise AuthServiceRequestError("Presentation definition constraints violated in payload")
             credential = VerifiableCredentialPayload(**decoded_payload)
             return credential
@@ -258,23 +277,28 @@ class AuthService:
         return credentials
 
     def get_verifiable_presentation(self, payload: TokenCreate):
-        check_signature = (payload.scope != ScopeEnum.didr_invite)
-        vp_decoded = self.decode_and_check_signature(payload.vp_token, "authentication",
-                                                     credential_algos=['ES256', 'ES256K'],
-                                                     check_signature=check_signature)
+        try:
+            check_signature = (payload.scope != ScopeEnum.didr_invite)
+            vp_decoded = self.decode_and_check_signature(payload.vp_token, "authentication",
+                                                         credential_algos=['ES256', 'ES256K'],
+                                                         check_signature=check_signature)
 
-        vp_payload = VerifiablePresentationPayload(**vp_decoded)
+            vp_payload = VerifiablePresentationPayload(**vp_decoded)
 
-        if vp_payload.sub is None:
-            raise AuthServiceRequestError("Invalid VP: missing subject")
+            if vp_payload.sub is None:
+                raise AuthServiceRequestError("Invalid VP: missing subject")
 
-        if vp_payload.vp is None or vp_payload.vp.holder is None:
-            raise AuthServiceRequestError("Invalid VP: missing holder")
+            if vp_payload.vp is None or vp_payload.vp.holder is None:
+                raise AuthServiceRequestError("Invalid VP: missing holder")
 
-        if vp_payload.sub != vp_payload.vp.holder:
-            raise AuthServiceRequestError("Invalid VP: VP Subject mismatch with holder")
-
-        return vp_payload
+            if vp_payload.sub != vp_payload.vp.holder:
+                raise AuthServiceRequestError("Invalid VP: VP Subject mismatch with holder")
+        except EBSIError:
+            raise
+        except Exception:
+            raise EBSIError(f"Error decoding VP")
+        else:
+            return vp_payload
 
     @staticmethod
     def check_scope_constraints(payload: TokenCreate, subject_did: Identifier | None = None):
@@ -286,29 +310,33 @@ class AuthService:
             raise AuthServiceAuthError("DID not authorized to this scope")
 
     def create_token(self, vp_payload: VerifiablePresentationPayload, scope: ScopeEnum,
-                             presentation_submission: PresentationSubmission,
-                             presentation_definition: dict):
+                     presentation_submission: PresentationSubmission,
+                     presentation_definition: dict):
+        try:
+            if presentation_submission.definition_id != presentation_definition["id"]:
+                raise AuthServiceRequestError("Invalid presentation definition")
 
-        if presentation_submission.definition_id != presentation_definition["id"]:
-            raise AuthServiceRequestError("Invalid presentation definition")
+            credentials_required = ("input_descriptors" in presentation_definition and len(
+                presentation_definition["input_descriptors"]) > 0)
 
-        credentials_required = ("input_descriptors" in presentation_definition and len(
-            presentation_definition["input_descriptors"]) > 0)
+            credential_subject = vp_payload.sub
+            credential_issuer = vp_payload.iss
+            if credentials_required:
+                credentials = self.extract_and_validate_credentials(vp_payload, presentation_submission,
+                                                                    presentation_definition)
 
-        credential_subject = vp_payload.sub
-        credential_issuer = vp_payload.iss
-        if credentials_required:
-            credentials = self.extract_and_validate_credentials(vp_payload, presentation_submission,
-                                                                presentation_definition)
+                if not credentials or len(credentials) == 0:
+                    raise AuthServiceAuthError("Invalid credentials")
+                else:
+                    credential_subject = credentials[0].sub
+                    credential_issuer = credentials[0].iss
 
-            if not credentials or len(credentials) == 0:
-                raise AuthServiceAuthError("Invalid credentials")
-            else:
-                credential_subject = credentials[0].sub
-                credential_issuer = credentials[0].iss
+            access_token = AuthService.generate_access_token(scope, credential_subject)
 
-        access_token = AuthService.generate_access_token(scope, credential_subject)
-
-        id_token = AuthService.generate_id_token(subject=credential_subject, issuer=credential_issuer)
-
-        return access_token, id_token
+            id_token = AuthService.generate_id_token(subject=credential_subject, issuer=credential_issuer)
+        except EBSIError:
+            raise
+        except Exception as e:
+            raise EBSIError(f"Error creating access token")
+        else:
+            return access_token, id_token
