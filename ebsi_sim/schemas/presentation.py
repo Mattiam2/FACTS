@@ -2,6 +2,9 @@ from enum import Enum
 
 
 class ScopeEnum(str, Enum):
+    """
+    Enumeration of scopes.
+    """
     didr_write = "openid didr_write"
     didr_invite = "openid didr_invite"
     tir_write = "openid tir_write"

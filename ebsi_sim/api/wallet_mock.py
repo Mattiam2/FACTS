@@ -1,11 +1,11 @@
 import json
 from datetime import datetime, timedelta
-from typing import Optional
+from typing import Optional, Annotated
 from uuid import uuid4
 
 import jwt
 from cryptography.hazmat.primitives.asymmetric.ec import derive_private_key, SECP256K1
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Query
 from web3 import Web3
 
 from ebsi_sim.core.config import settings
@@ -19,17 +19,6 @@ def create_vp(vc_token: str, did: str, private_key: str, verification_id: Option
     """
     Generate a Verifiable Presentation JWT based on the provided Verifiable Credential token,
     holder's DID, and private key. Optionally, include a verification ID in the JWT headers.
-
-    :param vc_token: The Verifiable Credential token to include in the Verifiable Presentation.
-    :type vc_token: str
-    :param did: The Decentralized Identifier (DID) of the holder of the Verifiable Presentation.
-    :type did: str
-    :param private_key: The private key of the holder for signing the JWT.
-    :type private_key: str
-    :param verification_id: The optional identifier for verification to include in the JWT header.
-    :type verification_id: Optional[str]
-    :return: A signed JSON Web Token (JWT) string representing the Verifiable Presentation.
-    :rtype: str
     """
     uuid_str = uuid4().urn
 
@@ -71,22 +60,13 @@ def create_vp(vc_token: str, did: str, private_key: str, verification_id: Option
 
 
 @router.get("/sign_transaction")
-def sign_transaction(transaction: str, private_key: str) -> dict:
+def sign_transaction(transaction: Annotated[str, Query(description="ETH transaction to sign")], private_key: Annotated[
+    str, Query(description="Private Key that will be use to sign the transaction")]) -> dict:
     """
     Signs an Ethereum transaction using a provided private key and returns a structured
     dictionary with the signed transaction details.
-
-    :param transaction: A JSON string representing the unsigned Ethereum transaction.
-    :param private_key: A hexadecimal string representing the private key used to sign
-        the transaction.
-    :return: A dictionary containing the protocol, the unsigned transaction, the
-        components of the signed transaction (r, s, v), and the raw signed transaction in
-        hexadecimal format.
-
-    :raises HTTPException: If the transaction is invalid or signing fails due to an
-        exception.
     """
-    client_private_key_bytes = bytes.fromhex(private_key)
+    client_private_key_bytes = bytes.fromhex(private_key.replace("0x", ""))
 
     transaction_dict = json.loads(transaction)
     if "gasLimit" in transaction_dict:

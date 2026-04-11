@@ -63,7 +63,7 @@ class BaseRepository(Repository[T]):
         """
         return db.session.get(self.model, id)
 
-    def list(self, *, offset=0, limit=100, order_by=None, **filters: Any) -> list[T]:
+    def list(self, *, offset: int = 0, limit: int = 100, order_by: str | None = None, **filters: Any) -> list[T]:
         """
         Fetches a list of records from the database based on the specified parameters. The method
         retrieves records starting from the given offset, limits the total number of records
@@ -118,7 +118,7 @@ class BaseRepository(Repository[T]):
             db.session.flush()
         return obj
 
-    def update(self, *, commit=True, id: Any, **data: Any) -> T:
+    def update(self, *, commit=False, id: Any, **data: Any) -> T:
         """
         Update an existing object in the database. This method retrieves the object by its
         identifier, updates its attributes with provided data, and either commits or
@@ -147,7 +147,7 @@ class BaseRepository(Repository[T]):
             db.session.flush()
         return obj
 
-    def delete(self, *, commit=True, id: Any) -> None:
+    def delete(self, *, commit=False, id: Any) -> None:
         """
         Deletes an object from the database using its identifier. If the identifier does not
         correspond to any existing object, the function exits without performing any operation.

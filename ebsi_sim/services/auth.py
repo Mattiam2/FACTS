@@ -64,7 +64,21 @@ class AuthService:
         self.verification_relationship_repository = verification_relationship_repository
 
     @staticmethod
-    def generate_access_token(scope: ScopeEnum, subject: str):
+    def generate_access_token(scope: ScopeEnum, subject: str) -> str:
+        """
+        Generates a JWT access token with the specified scope and subject.
+
+        :param scope: The scope of the access token.
+        :type scope: ScopeEnum
+        :param subject: The subject of the token (DID)
+        :type subject: str
+        :return: The signed JWT access token as a JWT string.
+        :rtype: str
+        :raises AuthServiceError: If the public key does not include a valid
+            Key ID (`kid`).
+        """
+
+        # Authorisation Service Public Key
         pem_pub_key = settings.AUTH_PUBLIC_KEY
         jwk_pub_key = pem_to_jwk(pem_pub_key)
         kid = jwk_pub_key["kid"] if "kid" in jwk_pub_key else None
@@ -95,10 +109,27 @@ class AuthService:
         return jwt.encode(payload, private_key, algorithm=algorithm, headers=headers)
 
     @staticmethod
-    def generate_id_token(subject: str, issuer: str):
+    def generate_id_token(subject: str, issuer: str) -> str:
+        """
+        Generates a JWT ID token with the specified subject and issuer.
+
+        :param subject: The unique identifier of the subject for whom the token is being
+            generated.
+        :type subject: str
+        :param issuer: The identifier of the entity that is issuing the token, typically
+            the client or organization initiating the request.
+        :type issuer: str
+        :return: A signed JWT ID token containing the encoded claims and additional headers.
+        :rtype: str
+        :raises AuthServiceError: If the public key does not include a valid
+            Key ID (`kid`).
+        """
         pem_pub_key = settings.AUTH_PUBLIC_KEY
         jwk_pub_key = pem_to_jwk(pem_pub_key)
-        kid = jwk_pub_key["kid"]
+        kid = jwk_pub_key["kid"] if "kid" in jwk_pub_key else None
+
+        if not kid:
+            raise AuthServiceError("Can't create ID token")
 
         expires_in = 7200
         iat = math.floor(datetime.now().timestamp())
@@ -123,7 +154,18 @@ class AuthService:
         return jwt.encode(payload, private_key, algorithm=algorithm, headers=headers)
 
     @staticmethod
-    def load_presentation(scope: ScopeEnum):
+    def load_presentation(scope: ScopeEnum) -> dict:
+        """
+        Loads a JSON-formatted presentation definition based on the provided scope.
+
+        :param scope: The specific scope used to determine the presentation definition
+                      to load.
+        :type scope: ScopeEnum
+        :return: The loaded presentation definition.
+        :rtype: dict
+        :raises AuthServiceError: If the scope is invalid or there is an error loading
+                                   the presentation definition file.
+        """
         match scope:
             case ScopeEnum.tir_write:
                 path = f"ebsi_sim/includes/presentation_tir_write.json"
@@ -155,6 +197,21 @@ class AuthService:
 
     def decode_and_check_signature(self, token: str, relationship_type: str, credential_algos=None,
                                    check_signature=True) -> dict:
+        """
+        Decodes a given token, optionally verifies its signature and checks its validity based on the
+        verification method and relationships.
+
+        :param token: The JWT token to be decoded and verified.
+        :type token: str
+        :param relationship_type: The type of relationship to check the verification method against.
+        :type relationship_type: str
+        :param credential_algos: The set of supported algorithms for verifying the signature. Defaults to None.
+        :type credential_algos: list, optional
+        :param check_signature: Indicates whether to verify the token's signature. Defaults to True.
+        :type check_signature: bool
+        :returns: A dictionary containing the decoded contents of the token.
+        :rtype: dict
+        """
         if check_signature:
             token_header = get_unverified_header(token)
             vmethod_id = token_header.get("kid")
@@ -205,6 +262,30 @@ class AuthService:
 
     def find_credential(self, vp_payload: VerifiablePresentationPayload, submission: PresentationDescriptor, vp_formats,
                         input_descriptor) -> VerifiableCredentialPayload:
+        """
+        Finds and validates a credential inside a Verifiable Presentation Payload based on a provided
+        presentation submission descriptor and input descriptor. The function decodes and validates
+        credentials against defined constraints in the input descriptor.
+
+        :param vp_payload: The Verifiable Presentation Payload object containing the data to be validated.
+        :type vp_payload: VerifiablePresentationPayload
+        :param submission: The Presentation Descriptor describing the credential and its location.
+        :type submission: PresentationDescriptor
+        :param vp_formats: A dictionary containing format definitions used for validating credentials.
+        :type vp_formats: dict
+        :param input_descriptor: The credential input descriptor containing constraints and format
+            definitions required for the credential validation.
+        :type input_descriptor: dict
+        :return: A valid Verifiable Credential payload that matches the input descriptor and passes
+            all defined constraints.
+        :rtype: VerifiableCredentialPayload
+
+        :raises AuthServiceError: Raised when required format or constraints are missing in the
+            input descriptor.
+        :raises AuthServiceRequestError: Raised when there is a mismatch between the presentation
+            definition ID and the input descriptor ID, or when required fields for validation
+            (such as algorithm or constraints) are missing or violated.
+        """
         credential_id = submission.id
         credential_path = submission.path
         credential_format = submission.format
@@ -276,7 +357,19 @@ class AuthService:
 
         return credentials
 
-    def get_verifiable_presentation(self, payload: TokenCreate):
+    def get_verifiable_presentation(self, payload: TokenCreate) -> VerifiablePresentationPayload:
+        """
+        Decodes and validates a Verifiable Presentation (VP) from the given payload. It checks the signature
+        of the presentation, and verifies key attributes such as subject and holder for correctness.
+
+        :param payload: The token creation payload that contains the verifiable presentation token.
+        :type payload: TokenCreate
+        :return: A decoded and validated VerifiablePresentationPayload object.
+        :rtype: VerifiablePresentationPayload
+        :raises AuthServiceRequestError: If the VP token is invalid or the subject/holder attributes are
+            incorrect or inconsistent.
+        :raises EBSIError: If there is an issue decoding or processing the VP token.
+        """
         try:
             check_signature = (payload.scope != ScopeEnum.didr_invite)
             vp_decoded = self.decode_and_check_signature(payload.vp_token, "authentication",
@@ -301,7 +394,26 @@ class AuthService:
             return vp_payload
 
     @staticmethod
-    def check_scope_constraints(payload: TokenCreate, subject_did: Identifier | None = None):
+    def check_scope_constraints(payload: TokenCreate, subject_did: Identifier | None = None) -> None:
+        """
+        Check if the provided payload's scope and the respective constraints are valid with respect to the
+        subject DID.
+
+        :param payload: The token payload to validate
+        :type payload: TokenCreate
+
+        :param subject_did: The subject DID for which the validation is being
+            performed. This can be `None` if no subject DID is associated.
+        :type subject_did: Identifier | None
+
+        :return: None. The method raises exceptions if constraints are violated.
+        :rtype: None
+
+        :raises AuthServiceRequestError: When the scope is `didr_invite` and the `subject_did` is already
+            registered, or when the scope is not `didr_invite` and no `subject_did` is provided.
+        :raises AuthServiceAuthError: When the scope is `tnt_create` and the `subject_did` is not
+            authorized for the specified scope.
+        """
         if payload.scope == ScopeEnum.didr_invite and subject_did:
             raise AuthServiceRequestError("DID is already registered")
         elif payload.scope != ScopeEnum.didr_invite and not subject_did:
@@ -311,7 +423,31 @@ class AuthService:
 
     def create_token(self, vp_payload: VerifiablePresentationPayload, scope: ScopeEnum,
                      presentation_submission: PresentationSubmission,
-                     presentation_definition: dict):
+                     presentation_definition: dict) -> tuple[str, str]:
+        """
+        Generates an access token and an ID token based on the provided Verifiable Presentation payload,
+        scope, presentation submission, and presentation definition. This function validates the
+        presentation definition, extracts credentials if required, and ensures the correctness of the
+        subject and issuer information before generating the tokens.
+
+        :param vp_payload: A Verifiable Presentation payload containing the subject and issuer data to
+            be used in token generation.
+        :type vp_payload: VerifiablePresentationPayload
+        :param scope: Scope of the token request specifying the level of access required.
+        :type scope: ScopeEnum
+        :param presentation_submission: The presentation submission object containing data used to validate
+            and extract credentials from the payload.
+        :type presentation_submission: PresentationSubmission
+        :param presentation_definition: A dictionary outlining the presentation definition used for
+            validation of the input descriptors and alignment with the presentation submission.
+        :type presentation_definition: dict
+        :return: A tuple containing the generated access token and ID token.
+        :rtype: tuple
+        :raises AuthServiceRequestError: If the presentation definition does not match the ID in
+            the presentation submission.
+        :raises AuthServiceAuthError: If the credentials are invalid, missing, or extraction fails.
+        :raises AuthServiceError: If other unexpected errors occur during token generation.
+        """
         try:
             if presentation_submission.definition_id != presentation_definition["id"]:
                 raise AuthServiceRequestError("Invalid presentation definition")
@@ -337,6 +473,6 @@ class AuthService:
         except EBSIError:
             raise
         except Exception as e:
-            raise EBSIError(f"Error creating access token")
+            raise AuthServiceError(f"Error creating access token")
         else:
             return access_token, id_token

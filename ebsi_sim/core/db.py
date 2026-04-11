@@ -10,6 +10,14 @@ session_ctx = ContextVar("session_ctx", default=None)
 
 
 class SessionLocal:
+    """
+    The SessionLocal class provides access to a session instance.
+
+    It is designed to handle session interactions in a thread-safe manner using context-local storage.
+
+    :ivar session: Retrieves or assigns the current session instance.
+    :type session: Session | None
+    """
 
     @property
     def session(self) -> Session | None:

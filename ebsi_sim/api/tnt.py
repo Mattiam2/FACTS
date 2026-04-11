@@ -26,15 +26,7 @@ router = APIRouter(prefix="/track-and-trace", tags=["track-and-trace"])
 def rpc(current_user: Annotated[User, Depends(get_current_user)], payload: JsonRpcCreate,
         tnt_service: TntService = Depends()) -> JsonRpcPublic:
     """
-    JSON-RPC API endpoint for simulating handling of blockchain transactions and interaction with the ledger.
-
-    This endpoint processes JSON-RPC requests, providing support for constructing and interacting
-    with ledger
-
-    :param current_user: The authenticated user making the request.
-    :param payload: The JSON-RPC payload containing the request data.
-    :param tnt_service: Dependency-injected TntService for handling JSON-RPC operations.
-    :return: A `JsonRpcPublic` object containing the JSON-RPC 2.0 response.
+    JSON-RPC API endpoint for simulating the handling of blockchain transactions and interaction with the ledger.
     """
 
     json_rpc_result = tnt_service.handle_rpc(current_user, payload)
@@ -57,7 +49,6 @@ def rpc(current_user: Annotated[User, Depends(get_current_user)], payload: JsonR
 def check_access(creator: Annotated[str, Query(description="DID to check")], didr_service: DidrService = Depends()):
     """
     Checks if the DID is included in the allowlist of TnT Document creators or not.
-    
     """
     did_creator = didr_service.get_did_document(did=creator)
 

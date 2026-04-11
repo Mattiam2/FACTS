@@ -82,6 +82,21 @@ class EventPublic(EventBase):
 
 @dataclass
 class EventParams(TypedDict):
+    """
+    Represents the parameters for an event.
+
+    :ivar documentHash: The hash of the associated document. This could be in bytes or
+        string format.
+    :type documentHash: bytes | str
+    :ivar externalHash: An external generated hash of the event.
+    :type externalHash: str
+    :ivar sender: The sender's did. This could be in bytes or string format.
+    :type sender: bytes | str
+    :ivar origin: The origin of the event in string format.
+    :type origin: str
+    :ivar metadata: Additional metadata associated with the event in string format.
+    :type metadata: str
+    """
     documentHash: bytes | str
     externalHash: str
     sender: bytes | str

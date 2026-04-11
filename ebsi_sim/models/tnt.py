@@ -14,6 +14,8 @@ class Access(AccessBase, table=True):
     :type id: int
     :ivar document_id: Identifier of the associated document.
     :type document_id: str
+    :ivar document: The associated document entity.
+    :type document: Document
     """
 
     __tablename__ = "accesses"
@@ -44,6 +46,10 @@ class Document(SQLModel, table=True):
     :type timestamp_proof: str
     :ivar creator: The creator of the document.
     :type creator: str
+    :ivar events: A list of associated event entities with the document.
+    :type events: list[Event]
+    :ivar accesses: A list of associated access entities with the document.
+    :type accesses: list[Access]
     """
 
     __tablename__ = "documents"
@@ -65,10 +71,17 @@ class Event(EventBase, table=True):
     Represents an EBSI Event model for storing and managing events.
 
     :ivar id: Unique identifier for the event.
+    :type id: str
     :ivar document_id: Identifier for the associated document.
+    :type document_id: str
     :ivar timestamp_datetime: The datetime when the event occurred.
+    :type timestamp_datetime: datetime
     :ivar timestamp_source: The source from which the timestamp was obtained.
+    :type timestamp_source: str
     :ivar timestamp_proof: Evidence or proof supporting the event's timestamp.
+    :type timestamp_proof: str
+    :ivar document: The associated document entity.
+    :type document: Document
     """
 
     __tablename__ = "events"

@@ -13,23 +13,12 @@ router = APIRouter(prefix="/issue-mock", tags=["issuer mock"])
 
 
 @router.get("/request_vc")
-def request_vc(subject_did: str, credential_type: Annotated[list[str], Query()] = None) -> str:
+def request_vc(subject_did: Annotated[str, Query(description="DID Subject of the request")], credential_type: Annotated[list[str], Query()] = None) -> str:
     """
     Handles the issuance of a Verifiable Credential (VC) simulating an Issuer.
     This endpoint generates a credential containing information about the subject,
     its issuance and expiration, with the required cryptographic signing to ensure
     the credential's validity.
-
-    :param subject_did: The decentralized identifier (DID) of the subject to whom the Verifiable
-                        Credential will be issued.
-    :type subject_did: str
-
-    :param credential_type: A list of strings representing the types of the Verifiable Credential to
-                            be issued. If not provided, an empty list will be used as the default.
-    :type credential_type: list[str] | None
-
-    :return: A signed Verifiable Credential in JWT format.
-    :rtype: str
     """
     if credential_type is None:
         credential_type = []
