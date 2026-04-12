@@ -136,11 +136,11 @@ def build_unsigned_transaction(eth_contract, register_address: str, method: str,
 
 
 def exec_signed_transaction(current_user: User, eth_contract, register_address, service, unsigned_transaction,
-                            signed_transaction):
+                            signed_transaction) -> str:
     """
     Execute a simulated Ethereum transaction and perform necessary validation checks.
 
-    :param current_user: The current user attempting to execute the transaction.
+    :param current_user: The user making the request.
     :type current_user: User
     :param eth_contract: The Ethereum smart contract instance to decode the transaction input.
     :type eth_contract: Any
@@ -179,14 +179,14 @@ def exec_signed_transaction(current_user: User, eth_contract, register_address, 
     try:
         # Searches for the function in the service
         function = getattr(service, to_snakecase(func_obj.fn_name))
-
         params_snakecase = {to_snakecase(k): v for k, v in params.items()}
 
-        func_result = function(**params_snakecase)
-
-        # Mock return value confirming the transaction was executed
-        return '0xe670ec64341771606e55d6b4ca35a1a6b75ee3d5145a99d05921026d1527331'
+        # Execute the function with the decoded parameters
+        function(**params_snakecase)
     except AttributeError:
         raise RequestError("Invalid transaction")
     except Exception as e:
         raise EBSIError("Internal error while executing transaction")
+    else:
+        # Mock return value confirming the transaction was executed
+        return '0xe670ec64341771606e55d6b4ca35a1a6b75ee3d5145a99d05921026d1527331'

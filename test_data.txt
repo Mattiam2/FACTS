@@ -16,7 +16,7 @@ TESTER ACCESS & ID TOKEN:
 ETH PRIVATE KEY: 0x0a30a737e618bd00bfc0113f2a26bbf14c0b9dc5697de8e9ef65e9b7310ae8f7
 ETH ADDRESS: 0xaB6415d6A931A84Dfc02FFD551C4876048c39A92
 
-TESET DID: did:ebsi:4324f244324324
+TESET DID: did:ebsi:z95paQoBwGAqnnu4RKTmCtT
 
 TESTER INSERT-DID-DOCUMENT:
 {
@@ -25,7 +25,7 @@ TESTER INSERT-DID-DOCUMENT:
   "params": [
     {
       "from": "0xaB6415d6A931A84Dfc02FFD551C4876048c39A92",
-      "did": "did:ebsi:4324f244324324",
+      "did": "did:ebsi:z95paQoBwGAqnnu4RKTmCtT",
       "baseDocument": "{\"@context\":[\"https://www.w3.org/ns/did/v1\",\"https://w3id.org/security/suites/jws-2020/v1\"]}",
       "vMethodId": "axZAOKbj-YyMiIN2CRLCwPjSCgMwhBwCVNgEbOl3QJY",
       "publicKey": "0x0441ffbbe8f6fd93da9fad0114e96861801e87e1f5c53f617467a16a329c74f818226a24dbb1241422ab7faa764175fa710a57d5d52b33958efd37447e5826ea33",
@@ -33,7 +33,7 @@ TESTER INSERT-DID-DOCUMENT:
       "notBefore": 1774707573,
       "notAfter": 2090326773
     }
-  ],
+  ]
   "id": 474
 }
 

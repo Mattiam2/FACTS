@@ -1,5 +1,3 @@
-from typing import Any
-
 from sqlmodel import select, func, literal
 
 from ebsi_sim.core.db import db
@@ -19,10 +17,11 @@ class IdentifierRepository(BaseRepository[Identifier]):
         """
         Counts identifiers based on the given filters and an optional controller.
 
-        :param controller: Optional string representing a specific controller to filter identifiers.
+        :param controller: A controller identifier used to filter the results. If
+            provided, only records matching the controller will be returned.
         :type controller: str | None
         :param filters: Key-value pairs representing filter criteria to apply.
-        :type filters: dict
+        :type filters: Any
         :return: The count of identifiers that match the specified filters and controller.
         :rtype: int
         """
@@ -55,7 +54,7 @@ class IdentifierRepository(BaseRepository[Identifier]):
             provided, only records matching the controller will be returned.
         :type controller: str | None
         :param filters: Key-value pairs representing filter criteria to apply.
-        :type filters: dict
+        :type filters: Any
         :return: A list of `Identifier` objects satisfying the provided conditions.
         """
         stmt = select(Identifier)

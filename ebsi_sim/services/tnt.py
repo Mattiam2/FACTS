@@ -7,6 +7,7 @@ from fastapi import Depends
 from web3 import Web3
 from web3.contract import Contract
 
+from ebsi_sim.core.auth import check_scopes, User
 from ebsi_sim.core.config import settings
 from ebsi_sim.core.exceptions import RequestError, NotFoundError, AuthError, EBSIError
 from ebsi_sim.repositories.didr import IdentifierRepository
@@ -15,7 +16,6 @@ from ebsi_sim.repositories.tnt import DocumentRepository
 from ebsi_sim.repositories.tnt import EventRepository
 from ebsi_sim.schemas import JsonRpcCreate, PermissionEnum
 from ebsi_sim.schemas.event import EventParams
-from ebsi_sim.core.auth import check_scopes, User
 from ebsi_sim.utils import build_unsigned_transaction, exec_signed_transaction, booleanize
 
 
@@ -70,8 +70,7 @@ class TntService:
         """
         Retrieves a document based on its hash value.
 
-        :param document_hash: The hash of the document to retrieve. This can be
-            either a byte sequence or a string.
+        :param document_hash: The hash of the document to retrieve, as bytes or a hexadecimal string.
         :type document_hash: bytes | str
         :return: The document corresponding to the provided hash.
         :rtype: Any
@@ -85,7 +84,7 @@ class TntService:
         Counts the number of documents based on the provided filters.
 
         :param filters: Key-value pairs representing filter criteria to apply.
-        :type filters: dict
+        :type filters: Any
         :return: The total count of documents matching the filters.
         :rtype: int
         """
@@ -103,7 +102,7 @@ class TntService:
         :param order_by: The field by which to order the results. Default is None.
         :type order_by: str | None
         :param filters: Key-value pairs representing filter criteria to apply.
-        :type filters: dict
+        :type filters: Any
         :return: A list of documents satisfying the specified parameters.
         :rtype: list
         """
@@ -114,7 +113,7 @@ class TntService:
         Counts the number of accesses based on provided filter criteria.
 
         :param filters: Key-value pairs representing filter criteria to apply.
-        :type filters: dict
+        :type filters: Any
         :return: The total count of accesses matching the specified filters.
         :rtype: int
         """
@@ -131,7 +130,7 @@ class TntService:
         :param order_by: The field by which to order the results. Default is None.
         :type order_by: str | None
         :param filters: Key-value pairs representing filter criteria to apply.
-        :type filters: dict
+        :type filters: Any
         :return: A collection of access entries from the access repository.
         :rtype: Any (based on the implementation of `list` in the access repository)
         """
@@ -142,7 +141,7 @@ class TntService:
         Counts the number of events based on the given filters.
 
         :param filters: Key-value pairs representing filter criteria to apply.
-        :type filters: dict
+        :type filters: Any
         :return: The total count of events matching the specified filters.
         :rtype: int
         """
@@ -159,7 +158,7 @@ class TntService:
         :param order_by: The field by which to order the results. Default is None.
         :type order_by: str | None
         :param filters: Key-value pairs representing filter criteria to apply.
-        :type filters: dict
+        :type filters: Any
         :return: A list of fetched event records based on the applied pagination,
             sorting, and filtering criteria.
         """
@@ -171,11 +170,14 @@ class TntService:
 
         :param sender_did: The DID of the sender performing the authorization
                           operation.
+        :type sender_did: str
         :param authorised_did: The DID of the entity being authorised or
                                de-authorised.
+        :type authorised_did: str
         :param white_list: A flag indicating whether the `authorised_did` is to be
                            added (`True`) or removed (`False`) from the authorised
                            list.
+        :type white_list: bool
         :return: None
         """
         self.identifier_repository.update(id=authorised_did, tnt_authorized=white_list)
@@ -185,17 +187,16 @@ class TntService:
         """
         JSON RPC Method: Creates a document in the database with the provided metadata, hash, and optional timestamp information.
 
-        :param document_hash: Hash of the document to be created. The hash can be provided as a string or bytes.
+        :param document_hash: The hash of the document to be created, as bytes or a hexadecimal string.
         :type document_hash: bytes | str
         :param document_metadata: Metadata of the document represented as a string in hexadecimal format. The metadata
             should be decoded before being stored.
         :type document_metadata: str
         :param did_ebsi_creator: DID of the creator in EBSI format as a string.
         :type did_ebsi_creator: str
-        :param timestamp: (Optional) Integer Unix timestamp representing the creation time of the document.
+        :param timestamp: Optional UNIX timestamp representing the creation time of the document.
         :type timestamp: int | None
-        :param timestamp_proof: (Optional) Proof of the timestamp, provided as a string or bytes. If provided, the
-            source will be marked as "external"; otherwise, it defaults to "block".
+        :param timestamp_proof: Optional proof of the timestamp, as bytes or a hexadecimal string.
         :type timestamp_proof: bytes | str | None
         :return: None
         """
@@ -218,10 +219,8 @@ class TntService:
         """
         JSON RPC Method: Removes a document with the given document hash from the repository.
 
-        :param document_hash: The hash of the document to be removed. This can be
-                              provided as a string or bytes.
+        :param document_hash: The hash of the document to be removed, as bytes or a hexadecimal string.
         :type document_hash: bytes | str
-
         :return: None
         """
         if isinstance(document_hash, bytes):
@@ -234,15 +233,15 @@ class TntService:
         JSON RPC Method: Grants access to a specific document by assigning permissions to a subject account. The
         permission type ('write' or 'delegate') is determined based on the provided integer value.
 
-        :param document_hash: The unique identifier for the document, represented as a bytes
-            object or a hexadecimal string.
-        :param granted_by_account: The account address that grants the access, represented as
-            a bytes object or a hexadecimal string.
-        :param subject_account: The account address that will receive the permissions, represented
-            as a bytes object or a hexadecimal string.
-        :param permission: A string representing the permission type for access. If the provided
-            value can be interpreted as an integer, it will be converted into 'write' (non-zero)
+        :param document_hash: The hash of the document, as bytes or a hexadecimal string.
+        :type document_hash: bytes | str
+        :param granted_by_account: The account address that grants the access, as bytes or a hexadecimal string.
+        :type granted_by_account: bytes | str
+        :param subject_account: The account address that will receive the permissions, as bytes or a hexadecimal string.
+        :type subject_account: bytes | str
+        :param permission: Permission type of the access. If the provided value can be interpreted as an integer, it will be converted into 'write' (non-zero)
             or 'delegate' (zero).
+        :type permission: str
         :return: None
         """
         if isinstance(document_hash, bytes):
@@ -262,15 +261,15 @@ class TntService:
         """
         JSON RPC Method: Revokes a specific permission for a subject account on a document.
 
-        :param document_hash: The unique identifier (hash) of the document. This can be
-            provided as either a byte string or a hexadecimal string format.
-        :param revoked_by_account: The account identifier of the entity initiating the
-            revocation, provided as either a byte string or a hexadecimal string format.
-        :param subject_account: The account identifier of the subject whose access is
-            being revoked, provided as either a byte string or a hexadecimal string format.
-        :param permission: The type of access permission being revoked. It determines
-            if the access is 'write' (if the permission evaluates to a truthy integer)
-            or 'delegate' (if the permission evaluates to a falsy integer).
+        :param document_hash: The hash of the document, as bytes or a hexadecimal string.
+        :type document_hash: bytes | str
+        :param revoked_by_account: The account address of the entity initiating the revocation, as bytes or a hexadecimal string.
+        :type revoked_by_account: bytes | str
+        :param subject_account: The account address of the subject whose access is being revoked, as bytes or a hexadecimal string.
+        :type subject_account: bytes | str
+        :param permission: The type of access permission being revoked. If the value is non-zero,
+            it revokes 'write' access; if zero, it revokes 'delegate' access.
+        :type permission: str
         :return: None
         """
         if isinstance(document_hash, bytes):
@@ -281,8 +280,8 @@ class TntService:
             subject_account = "0x" + subject_account.hex()
         permission = "write" if int(permission, 0) else "delegate"
         revoked_access = \
-        self.access_repository.list(subject=subject_account, document_id=document_hash, permission=permission)[
-            0]
+            self.access_repository.list(subject=subject_account, document_id=document_hash, permission=permission)[
+                0]
         self.access_repository.delete(id=revoked_access.id)
 
     def write_event(self, *, event_params: EventParams, timestamp: int | None = None,
@@ -294,15 +293,15 @@ class TntService:
         :param event_params: A dictionary containing the parameters of the event,
             including `documentHash` (bytes or str), `externalHash` (str),
             `sender` (bytes or str), `origin` (str), and `metadata` (str).
-        :param timestamp: An optional timestamp for the event as a UNIX timestamp.
-            If not provided, the timestamp will be set to None.
-        :param timestamp_proof: Optional proof for the timestamp. This can be in bytes
-            or as a hexadecimal string. If bytes are provided, it will be converted to
-            a hexadecimal string before use.
+        :type event_params: EventParams
+        :param timestamp: Optional UNIX timestamp for the event. If not provided, the timestamp will be set to None.
+        :type timestamp: int | None
+        :param timestamp_proof: Optional proof of the timestamp, as bytes or a hexadecimal string.
+        :type timestamp_proof: bytes | str | None
         :return: None
         """
         doc_id = "0x" + event_params['documentHash'].hex() if isinstance(event_params['documentHash'], bytes) else \
-        event_params['documentHash']
+            event_params['documentHash']
         external_hash = event_params['externalHash']
         sender = event_params['sender'].decode('utf-8') if isinstance(event_params['sender'], bytes) else event_params[
             'sender']
@@ -323,9 +322,7 @@ class TntService:
         Checks if the current user has the necessary authorization to perform the
         specified method.
 
-        :param current_user: The user object whose authorization is to be verified.
-            Must provide sufficient privileges based on the method's scope
-            requirements.
+        :param current_user: The user making the request.
         :type current_user: User
         :param method: The name of the method for which the scope check is performed.
         :type method: str
@@ -372,10 +369,9 @@ class TntService:
         Checks constraints based on the provided `payload` method and validates access
         rights or input-related conditions for the operation to proceed.
 
-        :param current_user: The currently authenticated user performing the action.
+        :param current_user: The user making the request.
         :type current_user: User
-        :param payload: The JSON-RPC payload containing method name and parameters for
-                        the requested operation.
+        :param payload: The payload of the JSON-RPC request containing method and parameters.
         :type payload: JsonRpcCreate
         :return: A validated and possibly modified set of parameters based on the
                  operation type.
@@ -468,9 +464,9 @@ class TntService:
         Handles the RPC request by processing the method specified in the payload and taking appropriate actions.
         Supports creating or executing transactions based on the payload details.
 
-        :param current_user: The user initiating the RPC request.
+        :param current_user: The user making the request.
         :type current_user: User
-        :param payload: The JSON-RPC payload containing method details and parameters.
+        :param payload: The payload of the JSON-RPC request containing method and parameters.
         :type payload: JsonRpcCreate
         :return: The result of executing the JSON-RPC call, either an unsigned or a signed transaction.
         :rtype: dict

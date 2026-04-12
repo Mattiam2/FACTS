@@ -24,6 +24,7 @@ class User(SQLModel):
     scopes: list[str]
     sub: str
 
+
 vp_scheme = APIKeyHeader(name="Authorization", auto_error=False)
 
 
@@ -42,7 +43,7 @@ def get_current_user(token: Annotated[str, Depends(vp_scheme)]):
     """
     try:
         user = jwt.decode(token, settings.AUTH_PUBLIC_KEY, algorithms=["ES256"],
-                                options={'verify_exp': True, "verify_aud": False})
+                          options={'verify_exp': True, "verify_aud": False})
     except jwt.ExpiredSignatureError:
         raise AuthError("Token expired")
     except jwt.exceptions.DecodeError:
@@ -55,6 +56,7 @@ def get_current_user(token: Annotated[str, Depends(vp_scheme)]):
     if "scp" in user:
         scopes = user["scp"].split(" ")
     return User(scopes=scopes, sub=user["sub"])
+
 
 def check_scopes(user: User, method: str, method_scopes: dict[str, list[str]]):
     """

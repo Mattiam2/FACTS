@@ -5,13 +5,13 @@ from fastapi import Depends
 from web3 import Web3
 from web3.contract import Contract
 
+from ebsi_sim.core.auth import check_scopes, User
 from ebsi_sim.core.config import settings
 from ebsi_sim.core.exceptions import AuthError, NotFoundError, RequestError, EBSIError
 from ebsi_sim.models.didr import Identifier, VerificationMethod
 from ebsi_sim.repositories.didr import IdentifierRepository, IdentifierControllerRepository, \
     VerificationMethodRepository, VerificationRelationshipRepository
 from ebsi_sim.schemas import JsonRpcCreate
-from ebsi_sim.core.auth import check_scopes, User
 from ebsi_sim.utils import build_unsigned_transaction, exec_signed_transaction
 
 
@@ -83,7 +83,7 @@ class DidrService:
         :param controller: Optional filter specifying the controller of the DID documents.
         :type controller: str | None
         :param filters: Key-value pairs representing filter criteria to apply.
-        :type filters: dict
+        :type filters: Any
         :return: The count of DID documents matching the provided filters.
         :rtype: int
         """
@@ -103,7 +103,7 @@ class DidrService:
         :param controller: Filters the result set by a specific did controller value.
         :type controller: str | None
         :param filters: Key-value pairs representing filter criteria to apply.
-        :type filters: dict
+        :type filters: Any
         :return: A list of DID documents matching the specified criteria.
         :rtype: list
         """
@@ -114,7 +114,7 @@ class DidrService:
         """
         Retrieve a verification method by its unique identifier.
 
-        :param v_method_id: The unique identifier of the verification method to be retrieved.
+        :param v_method_id: The unique identifier of a verification method.
         :type v_method_id: str
         :return: The corresponding VerificationMethod object if found, otherwise None.
         """
@@ -133,7 +133,7 @@ class DidrService:
         :param order_by: The field by which to order the results. Default is None.
         :type order_by: str | None
         :param filters: Key-value pairs representing filter criteria to apply.
-        :type filters: dict
+        :type filters: Any
         :return: A list of `VerificationMethod` objects meeting the query criteria.
         """
         return self.verification_method_repository.list(offset=offset, limit=limit, order_by=order_by, **filters)
@@ -149,15 +149,15 @@ class DidrService:
         :type did: str
         :param base_document: The base context or document structure associated with the DID.
         :type base_document: str
-        :param v_method_id: The identifier for the verification method to be appended to the DID.
+        :param v_method_id: The unique identifier of a verification method.
         :type v_method_id: str
-        :param public_key: The public key in either bytes or hex string format to be associated with the verification method.
+        :param public_key: The public key for the verification method, as bytes or a hexadecimal string.
         :type public_key: bytes | str
-        :param is_secp256k1: Boolean indicating whether the specified public key uses the Secp256k1 cryptographic algorithm.
+        :param is_secp256k1: Bool indicating whether the specified public key uses the Secp256k1 cryptographic curve.
         :type is_secp256k1: bool
-        :param not_before: The UNIX timestamp indicating the start of the validity period of the verification relationship.
+        :param not_before: UNIX timestamp indicating the start of the validity period of the verification relationship.
         :type not_before: int
-        :param not_after: The UNIX timestamp indicating the expiration of the validity period of the verification relationship.
+        :param not_after: UNIX timestamp indicating the expiration of the validity period of the verification relationship.
         :type not_after: int
         :return: None
         """
@@ -193,6 +193,7 @@ class DidrService:
         :type did: str
         :param base_document: A string representing the new base document that
             will replace the existing one for the given DID.
+        :type base_document: str
         :return: None
         """
         self.identifier_repository.update(id=did, context=base_document)
@@ -229,12 +230,11 @@ class DidrService:
 
         :param did: DID to associate with the verification method.
         :type did: str
-        :param v_method_id: The unique identifier for the verification method.
+        :param v_method_id: The unique identifier of a verification method.
         :type v_method_id: str
-        :param public_key: The public key for the verification method. This can be provided as raw bytes or a hexadecimal
-                           string.
+        :param public_key: The public key for the verification method, as bytes or a hexadecimal string.
         :type public_key: bytes | str
-        :param is_secp256k1: Flag to indicate whether the secp256k1 cryptographic curve is used for the verification method.
+        :param is_secp256k1: bool indicating whether the Secp256k1 cryptographic curve is used for the verification method.
         :type is_secp256k1: bool
         :return: None
         """
@@ -253,11 +253,11 @@ class DidrService:
         :type did: str
         :param name: The name of the verification relationship.
         :type name: str
-        :param v_method_id: The identifier of the verification method to be added as part of the relationship.
+        :param v_method_id: The unique identifier of a verification method.
         :type v_method_id: str
-        :param not_before: Unix timestamp indicating the time before which the verification relationship is not valid.
+        :param not_before: UNIX timestamp indicating the start of the validity period of the verification relationship.
         :type not_before: int
-        :param not_after: Unix timestamp indicating the time after which the verification relationship is no longer valid.
+        :param not_after: UNIX timestamp indicating the expiration of the validity period of the verification relationship.
         :type not_after: int
         :return: None
         """
@@ -275,13 +275,11 @@ class DidrService:
 
         :param did: DID associated with the verification method.
         :type did: str
-        :param v_method_id: The unique identifier of the verification method to be revoked.
+        :param v_method_id: The unique identifier of a verification method.
         :type v_method_id: str
-        :param not_after: The timestamp (in seconds since epoch) after which the verification method will
-            no longer be valid. Must refer to a time in the past.
+        :param not_after: UNIX timestamp indicating the expiration of the validity period of the verification method.
         :type not_after: int
         :return: None.
-        :rtype: None
         :raises DidrServiceRequestError: If the `not_after` timestamp is in the future.
         :raises DidrServiceNotFoundError: If the specified verification method does not exist in the
             database.
@@ -300,19 +298,15 @@ class DidrService:
         """
         JSON RPC Method: Sets the expiration date of a verification method identified by its ID.
 
-        :param did: DID of the entity associated with the
-            verification method.
+        :param did: DID of the entity associated with the verification method.
         :type did: str
-        :param v_method_id: Identifier of the specific verification method to be expired.
+        :param v_method_id: The unique identifier of a verification method.
         :type v_method_id: str
-        :param not_after: Unix timestamp indicating the expiration date and time of the
-            verification method. Must not be in the past.
+        :param not_after: UNIX timestamp indicating the expiration of the validity period of the verification method.
         :type not_after: int
         :return: None
-        :raises DidrServiceRequestError: If the provided expiration timestamp is in the
-            past.
-        :raises DidrServiceNotFoundError: If the specified verification method does not
-            exist in the repository.
+        :raises DidrServiceRequestError: If the provided expiration timestamp is in the past.
+        :raises DidrServiceNotFoundError: If the specified verification method does not exist in the repository.
         """
         not_after_date = datetime.fromtimestamp(not_after)
         if not_after_date < datetime.now():
@@ -329,9 +323,7 @@ class DidrService:
         Checks if the current user has the necessary authorization to perform the
         specified method.
 
-        :param current_user: The user object whose authorization is to be verified.
-            Must provide sufficient privileges based on the method's scope
-            requirements.
+        :param current_user: The user making the request.
         :type current_user: User
         :param method: The name of the method for which the scope check is performed.
         :type method: str
@@ -363,10 +355,9 @@ class DidrService:
         against a predefined set of allowed methods. It also ensures that the provided DID matches
         the user's identifier or confirms the user's control rights over the specified DID.
 
-        :param current_user: The user attempting to perform the operation.
+        :param current_user: The user making the request.
         :type current_user: User
-        :param payload: The JSON-RPC payload containing the method to be executed and accompanying
-            parameters.
+        :param payload: The payload of the JSON-RPC request containing method and parameters.
         :type payload: JsonRpcCreate
         :raises DidrServiceRequestError: If the method in the payload is not allowed, or if the
             specified subject DID does not exist in the DID register.
@@ -403,14 +394,14 @@ class DidrService:
         """
         return self.didr_abi
 
-    def handle_rpc(self, current_user: User, payload: JsonRpcCreate) -> dict:
+    def handle_rpc(self, current_user: User, payload: JsonRpcCreate) -> dict | str:
         """
         Handles the RPC request by processing the method specified in the payload and taking appropriate actions.
         Supports creating or executing transactions based on the payload details.
 
-        :param current_user: The user initiating the RPC request.
+        :param current_user: The user making the request.
         :type current_user: User
-        :param payload: The JSON-RPC payload containing method details and parameters.
+        :param payload: The payload of the JSON-RPC request containing method and parameters.
         :type payload: JsonRpcCreate
         :return: The result of executing the JSON-RPC call, either an unsigned or a signed transaction.
         :rtype: dict

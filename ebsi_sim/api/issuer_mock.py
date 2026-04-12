@@ -13,7 +13,8 @@ router = APIRouter(prefix="/issue-mock", tags=["issuer mock"])
 
 
 @router.get("/request_vc")
-def request_vc(subject_did: Annotated[str, Query(description="DID Subject of the request")], credential_type: Annotated[list[str], Query()] = None) -> str:
+def request_vc(subject_did: Annotated[str, Query(description="DID Subject of the request")],
+               credential_type: Annotated[list[str], Query()] = None) -> str:
     """
     Handles the issuance of a Verifiable Credential (VC) simulating an Issuer.
     This endpoint generates a credential containing information about the subject,

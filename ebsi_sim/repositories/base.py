@@ -71,7 +71,7 @@ class BaseRepository(Repository[T]):
         :param order_by: The field by which to order the results. Default is None.
         :type order_by: str | None
         :param filters: Key-value pairs representing filter criteria to apply.
-        :type filters: dict
+        :type filters: Any
         :return: A list of retrieved records of the specified type.
         :rtype: list[T]
         """
@@ -93,7 +93,7 @@ class BaseRepository(Repository[T]):
         :type commit: bool
 
         :param data: Key-value pairs with data to be used to initialize the new object.
-        :type data: dict
+        :type data: Any
         :return: The object created and persisted into the database.
         :rtype: T
         """
@@ -116,7 +116,7 @@ class BaseRepository(Repository[T]):
         :type id: Any
         :param data: Key-value pairs representing the fields and their new values to update
                      on the retrieved object.
-        :type data: dict
+        :type data: Any
         :return: The updated object.
         :rtype: T
         :raises ValueError: If the object with the given identifier is not found in the database.
@@ -136,7 +136,7 @@ class BaseRepository(Repository[T]):
         """
         Deletes an object from the database using its identifier.
 
-        :param commit: Determines whether to commit the deletion immediately.
+        :param commit: Determines whether to commit the deletion immediately. Defaults to False.
         :type commit: bool
         :param id: The identifier of the object to be deleted.
         :type id: Any
@@ -157,7 +157,7 @@ class BaseRepository(Repository[T]):
         filter criteria.
 
         :param filters: Key-value pairs representing filter criteria to apply.
-        :type filters: dict
+        :type filters: Any
         :return: The total number of entries in the database model matching the
             provided filters.
         :rtype: int

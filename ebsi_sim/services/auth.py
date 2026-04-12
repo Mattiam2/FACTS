@@ -398,16 +398,13 @@ class AuthService:
         Check if the provided payload's scope and the respective constraints are valid with respect to the
         subject DID.
 
-        :param payload: The token payload to validate
+        :param payload: The token payload to validate.
         :type payload: TokenCreate
-
         :param subject_did: The subject DID for which the validation is being
             performed. This can be `None` if no subject DID is associated.
         :type subject_did: Identifier | None
-
         :return: None. The method raises exceptions if constraints are violated.
         :rtype: None
-
         :raises AuthServiceRequestError: When the scope is `didr_invite` and the `subject_did` is already
             registered, or when the scope is not `didr_invite` and no `subject_did` is provided.
         :raises AuthServiceAuthError: When the scope is `tnt_create` and the `subject_did` is not
