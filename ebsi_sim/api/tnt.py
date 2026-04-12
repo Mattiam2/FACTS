@@ -11,7 +11,7 @@ from ebsi_sim.schemas import AccessListPublic, DocumentItemPublic, DocumentListP
     EventListPublic, EventPublic, JsonRpcCreate, JsonRpcPublic, PageLinksPublic, TimestampPublic, VersionEnum
 from ebsi_sim.services.didr import DidrService
 from ebsi_sim.services.tnt import TntService
-from ebsi_sim.utils import User, get_current_user
+from ebsi_sim.core.auth import User, get_current_user
 
 w3 = Web3()
 router = APIRouter(prefix="/track-and-trace", tags=["track-and-trace"])

@@ -11,7 +11,8 @@ from ebsi_sim.models.didr import Identifier, VerificationMethod
 from ebsi_sim.repositories.didr import IdentifierRepository, IdentifierControllerRepository, \
     VerificationMethodRepository, VerificationRelationshipRepository
 from ebsi_sim.schemas import JsonRpcCreate
-from ebsi_sim.utils import User, check_scopes, build_unsigned_transaction, exec_signed_transaction
+from ebsi_sim.core.auth import check_scopes, User
+from ebsi_sim.utils import build_unsigned_transaction, exec_signed_transaction
 
 
 class DidrServiceError(EBSIError):
@@ -68,7 +69,8 @@ class DidrService:
         (DID). If the DID is found in the repository, the corresponding identifier
         object is returned. Otherwise, it returns None.
 
-        :param did: A string representing the decentralized identifier to retrieve.
+        :param did: DID of the decentralized identifier to retrieve.
+        :type did: str
         :return: An Identifier object associated with the given DID if it exists,
                  otherwise None.
         """
@@ -79,7 +81,9 @@ class DidrService:
         Counts the number of DID documents based on the provided filters.
 
         :param controller: Optional filter specifying the controller of the DID documents.
-        :param filters: Additional filtering criteria passed as keyword arguments.
+        :type controller: str | None
+        :param filters: Key-value pairs representing filter criteria to apply.
+        :type filters: dict
         :return: The count of DID documents matching the provided filters.
         :rtype: int
         """
@@ -90,14 +94,16 @@ class DidrService:
         """
         Retrieves a list of DID documents based on the provided parameters.
 
-        :param offset: Specifies the number of records to skip before starting to collect
-            the result set.
-        :param limit: Limits the number of records to return in the result set.
-        :param order_by: Specifies the field by which the result set should be ordered. If None,
-            no specific order will be applied.
+        :param offset: The starting position of the records to fetch. Default is 0.
+        :type offset: int
+        :param limit: The maximum number of records to fetch. Default is 100.
+        :type limit: int
+        :param order_by: The field by which to order the results. Default is None.
+        :type order_by: str | None
         :param controller: Filters the result set by a specific did controller value.
-        :param filters: Additional filtering options passed as keyword arguments. These allow
-            further customization of the query for retrieving DID documents.
+        :type controller: str | None
+        :param filters: Key-value pairs representing filter criteria to apply.
+        :type filters: dict
         :return: A list of DID documents matching the specified criteria.
         :rtype: list
         """
@@ -109,6 +115,7 @@ class DidrService:
         Retrieve a verification method by its unique identifier.
 
         :param v_method_id: The unique identifier of the verification method to be retrieved.
+        :type v_method_id: str
         :return: The corresponding VerificationMethod object if found, otherwise None.
         """
         return self.verification_method_repository.get(v_method_id)
@@ -119,10 +126,14 @@ class DidrService:
         """
         Fetch a list of verification methods from the repository filtered by the provided parameters.
 
-        :param offset: The starting point for the result set, used for pagination. Default is 0.
-        :param limit: The maximum number of results to return in the result set. Default is 100.
-        :param order_by: Optional parameter specifying the field to sort the result set by.
-        :param filters: Keyword arguments representing additional filters to apply to the query.
+        :param offset: The starting position of the records to fetch. Default is 0.
+        :type offset: int
+        :param limit: The maximum number of records to fetch. Default is 100.
+        :type limit: int
+        :param order_by: The field by which to order the results. Default is None.
+        :type order_by: str | None
+        :param filters: Key-value pairs representing filter criteria to apply.
+        :type filters: dict
         :return: A list of `VerificationMethod` objects meeting the query criteria.
         """
         return self.verification_method_repository.list(offset=offset, limit=limit, order_by=order_by, **filters)
@@ -179,6 +190,7 @@ class DidrService:
         JSON RPC Method: Updates the base document for a given identifier.
 
         :param did: DID to be updated.
+        :type did: str
         :param base_document: A string representing the new base document that
             will replace the existing one for the given DID.
         :return: None
@@ -190,7 +202,9 @@ class DidrService:
         JSON RPC Method: Adds a controller to the specified DID.
 
         :param did: DID to which the controller will be added.
+        :type did: str
         :param controller: The DID controller that will be associated with the specified DID.
+        :type controller: str
         :return: None
         """
         self.identifier_controller_repository.create(identifier_did=did, did_controller=controller)

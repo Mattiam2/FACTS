@@ -9,12 +9,6 @@ class VerificationMethodBase(SQLModel):
     Represents a base schema for verification methods used in systems requiring
     identity validation.
 
-    This class is designed to represent the foundational attributes of a
-    verification method, which typically includes details about the
-    method's unique identifier, its type, the associated decentralized identifier
-    (DID) controller, and its public key. Instances of this class can be extended
-    to include additional properties specific to a given verification system.
-
     :ivar id: Unique identifier for the verification method.
     :type id: str
     :ivar type: Type or category of the verification method.

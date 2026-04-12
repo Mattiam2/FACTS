@@ -116,8 +116,7 @@ class AuthService:
         :param subject: The unique identifier of the subject for whom the token is being
             generated.
         :type subject: str
-        :param issuer: The identifier of the entity that is issuing the token, typically
-            the client or organization initiating the request.
+        :param issuer: The identifier of the entity that is issuing the token.
         :type issuer: str
         :return: A signed JWT ID token containing the encoded claims and additional headers.
         :rtype: str

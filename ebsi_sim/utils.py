@@ -1,38 +1,61 @@
 import base64
 import hashlib
 import json
-from typing import Annotated, Any
+from typing import Any
 
-import jwt
 import rlp
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives.serialization import load_pem_public_key
 from eth_account import Account
 from eth_account._utils.legacy_transactions import Transaction
-from fastapi import Depends
-from fastapi.security import OAuth2PasswordBearer, APIKeyHeader
 from jwcrypto import jwk
-from sqlmodel import SQLModel
 from web3.contract.base_contract import BaseContractFunction
 
-from ebsi_sim.core.config import settings
-from ebsi_sim.core.exceptions import RequestError, AuthError, EBSIError
-
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/authorisation/token")
-
-
-class User(SQLModel):
-    scopes: list[str]
-    sub: str
+from ebsi_sim.core.auth import User
+from ebsi_sim.core.exceptions import RequestError, EBSIError
 
 
 def to_snakecase(text: str) -> str:
+    """
+    Converts a given string from CamelCase to snake_case format.
+
+    :param text: The input string to be converted from CamelCase to snake_case.
+    :type text: str
+    :return: The input string converted to snake_case format.
+    :rtype: str
+    """
     if text.islower() or not text:
         return text
     return text[0].lower() + ''.join('_' + x.lower() if x.isupper() else x for x in text[1:])
 
 
+def booleanize(value: str) -> Any:
+    """
+    Converts a given hexadecimal string representation of a boolean value into its
+    corresponding boolean type.
+
+    :param value: A string representing a hexadecimal boolean value.
+    :return: Either a boolean (`True` or `False`) if the value matches '0x01' or
+        '0x00', respectively, or the original `value` if no matches are found.
+    """
+    if value == "0x01":
+        return True
+    if value == "0x00":
+        return False
+    return value
+
+
 def pem_to_jwk(pem_public_key: str) -> dict:
+    """
+    Converts a PEM-encoded public key to a JWK (JSON Web Key) format and includes a
+    calculated thumbprint-based `kid` (Key ID) according to RFC 7638.
+
+    :param pem_public_key: A PEM-encoded public key string.
+    :type pem_public_key: str
+    :raises EBSIError: If the JWK conversion or `kid` generation fails.
+    :return: A dictionary representation of the JWK with an added `kid` field.
+    :rtype: dict
+    """
     try:
         public_key_obj = load_pem_public_key(pem_public_key.encode(), backend=default_backend())
         jwk_key = jwk.JWK.from_pyca(public_key_obj)
@@ -47,13 +70,13 @@ def pem_to_jwk(pem_public_key: str) -> dict:
             'y': jwk_dict.get('y')
         }
 
-        # Create canonical JSON representation (sorted keys, no whitespace)
+        # Create JSON representation
         canonical_json = json.dumps(required_members, sort_keys=True, separators=(',', ':'))
 
         # Calculate SHA-256 hash
         hash_bytes = hashlib.sha256(canonical_json.encode('utf-8')).digest()
 
-        # Base64url encode (without padding)
+        # Base64url encode
         kid = base64.urlsafe_b64encode(hash_bytes).decode('utf-8').rstrip('=')
 
         jwk_dict['kid'] = kid
@@ -63,45 +86,26 @@ def pem_to_jwk(pem_public_key: str) -> dict:
         return jwk_dict
 
 
-vp_scheme = APIKeyHeader(name="Authorization", auto_error=False)
-
-
-def get_current_user(token: Annotated[str, Depends(vp_scheme)]):
-    user = None
-    try:
-        user: dict = jwt.decode(token, settings.AUTH_PUBLIC_KEY, algorithms=["ES256"],
-                                options={'verify_exp': True, "verify_aud": False})
-    except jwt.ExpiredSignatureError:
-        raise AuthError("Token expired")
-    except jwt.exceptions.DecodeError:
-        raise AuthError("Invalid token")
-
-    if not user:
-        raise AuthError("Impossible to authenticate user")
-
-    scopes = []
-    if "scp" in user:
-        scopes = user["scp"].split(" ")
-    return User(scopes=scopes, sub=user["sub"])
-
-
-def booleanize(value: str) -> Any:
-    if value == "0x01":
-        return True
-    if value == "0x00":
-        return False
-    return value
-
-
-def check_scopes(user: User, method: str, method_scopes: dict[str, list[str]]):
-    if method in method_scopes:
-        common_scopes = set(user.scopes) & set(method_scopes[method])
-        return len(common_scopes) > 0
-    else:
-        raise RequestError("Invalid method")
-
-
 def build_unsigned_transaction(eth_contract, register_address: str, method: str, params: dict) -> dict:
+    """
+    Builds an unsigned Ethereum transaction for a specified contract method with provided parameters.
+
+    This function identifies the appropriate contract method from the Ethereum contract's ABI
+    that matches the provided method name and arguments. It then constructs an unsigned transaction
+    using the specified parameters and a predefined transaction configuration.
+
+    :param eth_contract: The Ethereum contract object providing the ABI for method discovery.
+    :param register_address: The hexadecimal address in string format of the target Ethereum contract.
+    :param method: The name of the contract method to invoke.
+    :param params: A dictionary of parameters for the contract method including the required
+                   Ethereum transaction fields like `from`.
+
+    :return: A dictionary representing the unsigned transaction that can be signed and sent
+             to the Ethereum network.
+    :raises RequestError: If the specified method name is invalid or if the supplied parameters
+                          do not match any of the method's argument configurations.
+    :raises EBSIError: If an internal issue occurs while building the unsigned transaction.
+    """
     abi_functions: list[BaseContractFunction] = eth_contract.find_functions_by_name(method)
 
     params_comparison = params.copy()
@@ -133,6 +137,26 @@ def build_unsigned_transaction(eth_contract, register_address: str, method: str,
 
 def exec_signed_transaction(current_user: User, eth_contract, register_address, service, unsigned_transaction,
                             signed_transaction):
+    """
+    Execute a simulated Ethereum transaction and perform necessary validation checks.
+
+    :param current_user: The current user attempting to execute the transaction.
+    :type current_user: User
+    :param eth_contract: The Ethereum smart contract instance to decode the transaction input.
+    :type eth_contract: Any
+    :param register_address: The Ethereum address to which the transaction is directed.
+    :type register_address: str
+    :param service: The service containing the functionality to be executed based on the transaction.
+    :type service: Any
+    :param unsigned_transaction: The unsigned version of the transaction, used for verification.
+    :type unsigned_transaction: dict
+    :param signed_transaction: The serialized signed transaction in hexadecimal format.
+    :type signed_transaction: str
+    :return: A mock hexadecimal confirmation string indicating the transaction was successfully executed.
+    :rtype: str
+    :raises RequestError: If any validation fails for the transaction data, signer, or addresses.
+    :raises EBSIError: If an internal error occurs while executing the transaction.
+    """
     decoded_transaction: Transaction = rlp.decode(bytes.fromhex(signed_transaction), Transaction)
     decoded_transaction_data = decoded_transaction['data']
     if decoded_transaction['data'] != bytes.fromhex(unsigned_transaction['data'].replace("0x", "")):
@@ -153,11 +177,14 @@ def exec_signed_transaction(current_user: User, eth_contract, register_address, 
         raise RequestError("Invalid transaction")
 
     try:
+        # Searches for the function in the service
         function = getattr(service, to_snakecase(func_obj.fn_name))
 
         params_snakecase = {to_snakecase(k): v for k, v in params.items()}
 
         func_result = function(**params_snakecase)
+
+        # Mock return value confirming the transaction was executed
         return '0xe670ec64341771606e55d6b4ca35a1a6b75ee3d5145a99d05921026d1527331'
     except AttributeError:
         raise RequestError("Invalid transaction")

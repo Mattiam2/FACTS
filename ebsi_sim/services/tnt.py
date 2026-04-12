@@ -15,7 +15,8 @@ from ebsi_sim.repositories.tnt import DocumentRepository
 from ebsi_sim.repositories.tnt import EventRepository
 from ebsi_sim.schemas import JsonRpcCreate, PermissionEnum
 from ebsi_sim.schemas.event import EventParams
-from ebsi_sim.utils import check_scopes, User, build_unsigned_transaction, exec_signed_transaction, booleanize
+from ebsi_sim.core.auth import check_scopes, User
+from ebsi_sim.utils import build_unsigned_transaction, exec_signed_transaction, booleanize
 
 
 class TntServiceError(EBSIError):
@@ -66,26 +67,102 @@ class TntService:
         self.eth_contract = Web3().eth.contract(abi=self.tnt_abi)
 
     def get_document(self, document_hash: bytes | str):
+        """
+        Retrieves a document based on its hash value.
+
+        :param document_hash: The hash of the document to retrieve. This can be
+            either a byte sequence or a string.
+        :type document_hash: bytes | str
+        :return: The document corresponding to the provided hash.
+        :rtype: Any
+        """
         if isinstance(document_hash, bytes):
             document_hash = "0x" + document_hash.hex()
         return self.document_repository.get(document_hash)
 
     def count_documents(self, **filters):
+        """
+        Counts the number of documents based on the provided filters.
+
+        :param filters: Key-value pairs representing filter criteria to apply.
+        :type filters: dict
+        :return: The total count of documents matching the filters.
+        :rtype: int
+        """
         return self.document_repository.count(**filters)
 
     def list_documents(self, *, offset: int = 0, limit: int = 100, order_by: str | None = None, **filters):
+        """
+        Lists documents from the repository with optional pagination, ordering, and filtering
+        parameters.
+
+        :param offset: The starting position of the records to fetch. Default is 0.
+        :type offset: int
+        :param limit: The maximum number of records to fetch. Default is 100.
+        :type limit: int
+        :param order_by: The field by which to order the results. Default is None.
+        :type order_by: str | None
+        :param filters: Key-value pairs representing filter criteria to apply.
+        :type filters: dict
+        :return: A list of documents satisfying the specified parameters.
+        :rtype: list
+        """
         return self.document_repository.list(offset=offset, limit=limit, order_by=order_by, **filters)
 
     def count_accesses(self, **filters):
+        """
+        Counts the number of accesses based on provided filter criteria.
+
+        :param filters: Key-value pairs representing filter criteria to apply.
+        :type filters: dict
+        :return: The total count of accesses matching the specified filters.
+        :rtype: int
+        """
         return self.access_repository.count(**filters)
 
     def list_accesses(self, *, offset: int = 0, limit: int = 100, order_by: str | None = None, **filters):
+        """
+        Provides a paginated list of access entries with optional ordering and filtering.
+
+        :param offset: The starting position of the records to fetch. Default is 0.
+        :type offset: int
+        :param limit: The maximum number of records to fetch. Default is 100.
+        :type limit: int
+        :param order_by: The field by which to order the results. Default is None.
+        :type order_by: str | None
+        :param filters: Key-value pairs representing filter criteria to apply.
+        :type filters: dict
+        :return: A collection of access entries from the access repository.
+        :rtype: Any (based on the implementation of `list` in the access repository)
+        """
         return self.access_repository.list(offset=offset, limit=limit, order_by=order_by, **filters)
 
     def count_events(self, **filters):
+        """
+        Counts the number of events based on the given filters.
+
+        :param filters: Key-value pairs representing filter criteria to apply.
+        :type filters: dict
+        :return: The total count of events matching the specified filters.
+        :rtype: int
+        """
         return self.event_repository.count(**filters)
 
     def list_events(self, *, offset: int = 0, limit: int = 100, order_by: str | None = None, **filters):
+        """
+        Retrieve a list of events with pagination, sorting, and filtering options.
+
+        :param offset: The starting position of the records to fetch. Default is 0.
+        :type offset: int
+        :param limit: The maximum number of records to fetch. Default is 100.
+        :type limit: int
+        :param order_by: The field by which to order the results. Default is None.
+        :type order_by: str | None
+        :param filters: Key-value pairs representing filter criteria to apply.
+        :type filters: dict
+        :return: A list of fetched event records based on the applied pagination,
+            sorting, and filtering criteria.
+        """
         return self.event_repository.list(offset=offset, limit=limit, order_by=order_by, **filters)
 
     def authorise_did(self, *, sender_did: str, authorised_did: str, white_list: bool):
@@ -109,12 +186,17 @@ class TntService:
         JSON RPC Method: Creates a document in the database with the provided metadata, hash, and optional timestamp information.
 
         :param document_hash: Hash of the document to be created. The hash can be provided as a string or bytes.
+        :type document_hash: bytes | str
         :param document_metadata: Metadata of the document represented as a string in hexadecimal format. The metadata
             should be decoded before being stored.
+        :type document_metadata: str
         :param did_ebsi_creator: DID of the creator in EBSI format as a string.
+        :type did_ebsi_creator: str
         :param timestamp: (Optional) Integer Unix timestamp representing the creation time of the document.
+        :type timestamp: int | None
         :param timestamp_proof: (Optional) Proof of the timestamp, provided as a string or bytes. If provided, the
             source will be marked as "external"; otherwise, it defaults to "block".
+        :type timestamp_proof: bytes | str | None
         :return: None
         """
         doc_metadata = bytes.fromhex(document_metadata[2:]).decode('utf-8')
