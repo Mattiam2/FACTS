@@ -414,7 +414,7 @@ class AuthService:
             raise AuthServiceRequestError("DID is already registered")
         elif payload.scope != ScopeEnum.didr_invite and not subject_did:
             raise AuthServiceRequestError("DID is not registered")
-        elif payload.scope == ScopeEnum.tnt_create and not subject_did.tnt_authorized:
+        elif (payload.scope == ScopeEnum.tnt_create or payload.scope == ScopeEnum.tnt_write) and not subject_did.tnt_authorized:
             raise AuthServiceAuthError("DID not authorized to this scope")
 
     def create_token(self, vp_payload: VerifiablePresentationPayload, scope: ScopeEnum,
