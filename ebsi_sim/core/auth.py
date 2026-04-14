@@ -6,7 +6,7 @@ from fastapi.security import OAuth2PasswordBearer, APIKeyHeader
 from sqlmodel import SQLModel
 
 from ebsi_sim.core.config import settings
-from ebsi_sim.core.exceptions import AuthError, RequestError
+from ebsi_sim.core.exceptions import EBSIAuthError, EBSIRequestError
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/authorisation/token")
 
@@ -43,14 +43,14 @@ def get_current_user(token: Annotated[str, Depends(vp_scheme)]):
     """
     try:
         user = jwt.decode(token, settings.AUTH_PUBLIC_KEY, algorithms=["ES256"],
-                          options={'verify_exp': True, "verify_aud": False})
+                          options={'verify_exp': False, "verify_aud": False})
     except jwt.ExpiredSignatureError:
-        raise AuthError("Token expired")
+        raise EBSIAuthError("Token expired")
     except jwt.exceptions.DecodeError:
-        raise AuthError("Invalid token")
+        raise EBSIAuthError("Invalid token")
 
     if not user:
-        raise AuthError("Impossible to authenticate user")
+        raise EBSIAuthError("Impossible to authenticate user")
 
     scopes = []
     if "scp" in user:
@@ -80,4 +80,4 @@ def check_scopes(user: User, method: str, method_scopes: dict[str, list[str]]):
         common_scopes = set(user.scopes) & set(method_scopes[method])
         return len(common_scopes) > 0
     else:
-        raise RequestError("Invalid method")
+        raise EBSIRequestError("Invalid method")

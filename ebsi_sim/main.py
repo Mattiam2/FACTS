@@ -1,16 +1,18 @@
 from typing import Callable, Awaitable
 
-from fastapi import FastAPI, Request, Response
+from fastapi import FastAPI, Request, Response, logger
+from sqlalchemy.exc import SQLAlchemyError
 from sqlmodel import Session
 from starlette.responses import JSONResponse
 
-from ebsi_sim.api.auth import router as authapp
+from ebsi_sim.api.authorisation import router as authapp
 from ebsi_sim.api.didr import router as didrapp
 from ebsi_sim.api.issuer_mock import router as issuerapp
 from ebsi_sim.api.tnt import router as tntapp
 from ebsi_sim.api.wallet_mock import router as walletapp
 from ebsi_sim.core.db import engine, session_ctx
-from ebsi_sim.core.exceptions import EBSIError, RequestError, NotFoundError, AuthError
+from ebsi_sim.core.exceptions import EBSIError, EBSIRequestError, EBSINotFoundError, EBSIAuthError, EBSIDatabaseError, \
+    EBSIDuplicateError
 
 app = FastAPI()
 app.include_router(tntapp)
@@ -39,26 +41,38 @@ async def db_session_handler(request: Request, call_next: Callable[[Request], Aw
         try:
             response = await call_next(request)
             session.commit()
-        except Exception:
+        except EBSIError:
             session.rollback()
             raise
+        except SQLAlchemyError:
+            session.rollback()
+            raise EBSIDatabaseError("Database error")
+        except Exception:
+            session.rollback()
+            raise EBSIError("Internal error")
         finally:
             session_ctx.reset(token)
             session.close()
     return response
 
 
-@app.exception_handler(EBSIError)
-async def unicorn_exception_handler(request: Request, exc: EBSIError):
+@app.exception_handler(Exception)
+async def unicorn_exception_handler(request: Request, exc: Exception):
+
     status_code = 500
-    if isinstance(exc, RequestError):
+    message = "Internal Server Error"
+    if isinstance(exc, EBSIError):
+        message = str(exc)
+    if isinstance(exc, EBSIRequestError):
         status_code = 400
-    elif isinstance(exc, NotFoundError):
+    elif isinstance(exc, EBSINotFoundError):
         status_code = 404
-    elif isinstance(exc, AuthError):
+    elif isinstance(exc, EBSIAuthError):
         status_code = 401
+    elif isinstance(exc, EBSIDuplicateError):
+        status_code = 409
 
     return JSONResponse(
         status_code=status_code,
-        content={"message": str(exc)},
+        content={"message": message},
     )

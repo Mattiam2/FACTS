@@ -1,6 +1,8 @@
+from sqlalchemy.exc import SQLAlchemyError
 from sqlmodel import select, func, literal
 
 from ebsi_sim.core.db import db
+from ebsi_sim.core.exceptions import EBSIDatabaseError
 from ebsi_sim.models.didr import Identifier, VerificationMethod, VerificationRelationship, IdentifierController
 from ebsi_sim.repositories.base import BaseRepository
 
@@ -25,17 +27,22 @@ class IdentifierRepository(BaseRepository[Identifier]):
         :return: The count of identifiers that match the specified filters and controller.
         :rtype: int
         """
-        stmt = select(func.count()).select_from(Identifier)
+        try:
+            stmt = select(func.count()).select_from(Identifier)
 
-        for field, value in filters.items():
-            if value is not None:
-                stmt = stmt.where(getattr(Identifier, field) == value)
+            for field, value in filters.items():
+                if value is not None:
+                    stmt = stmt.where(getattr(Identifier, field) == value)
 
-        if controller is not None:
-            stmt = stmt.where(literal(controller).in_(select(IdentifierController.did_controller).where(
-                IdentifierController.identifier_did == Identifier.did)))
+            if controller is not None:
+                stmt = stmt.where(literal(controller).in_(select(IdentifierController.did_controller).where(
+                    IdentifierController.identifier_did == Identifier.did)))
 
-        return db.session.scalar(stmt)
+            result = db.session.scalar(stmt)
+        except SQLAlchemyError:
+            raise EBSIDatabaseError("Error counting Identifier")
+        else:
+            return result
 
     def list(self, *, offset: int = 0, limit: int = 100, order_by: str | None = None, controller: str | None = None,
              **filters) -> list[
@@ -57,21 +64,27 @@ class IdentifierRepository(BaseRepository[Identifier]):
         :type filters: Any
         :return: A list of `Identifier` objects satisfying the provided conditions.
         """
-        stmt = select(Identifier)
+        try:
+            stmt = select(Identifier)
 
-        for field, value in filters.items():
-            if value is not None:
-                stmt = stmt.where(getattr(self.model, field) == value)
+            for field, value in filters.items():
+                if value is not None:
+                    stmt = stmt.where(getattr(self.model, field) == value)
 
-        if order_by:
-            stmt = stmt.order_by(getattr(self.model, order_by))
+            if order_by:
+                stmt = stmt.order_by(getattr(self.model, order_by))
 
-        if controller is not None:
-            stmt = stmt.where(literal(controller).in_(select(IdentifierController.did_controller).where(
-                IdentifierController.identifier_did == Identifier.did)))
+            if controller is not None:
+                stmt = stmt.where(literal(controller).in_(select(IdentifierController.did_controller).where(
+                    IdentifierController.identifier_did == Identifier.did)))
 
-        stmt = stmt.offset(offset).limit(limit)
-        return list(db.session.scalars(stmt))
+            stmt = stmt.offset(offset).limit(limit)
+
+            results = db.session.scalars(stmt)
+        except SQLAlchemyError:
+            raise EBSIDatabaseError("Error retrieving Identifier list")
+        else:
+            return list(results)
 
 
 class IdentifierControllerRepository(BaseRepository[IdentifierController]):

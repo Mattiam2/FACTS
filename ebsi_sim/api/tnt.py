@@ -7,7 +7,7 @@ from starlette.status import HTTP_204_NO_CONTENT, HTTP_404_NOT_FOUND
 from web3 import Web3
 
 from ebsi_sim.core.auth import User, get_current_user
-from ebsi_sim.core.exceptions import NotFoundError
+from ebsi_sim.core.exceptions import EBSINotFoundError
 from ebsi_sim.schemas import AccessListPublic, DocumentItemPublic, DocumentListPublic, DocumentPublic, EventItemPublic, \
     EventListPublic, EventPublic, JsonRpcCreate, JsonRpcPublic, PageLinksPublic, TimestampPublic, VersionEnum
 from ebsi_sim.services.didr import DidrService
@@ -152,7 +152,7 @@ def read_doc(document_id: Annotated[str, Path(description="The 32-bytes ID of th
     """
     doc = tnt_service.get_document(document_id)
     if not doc:
-        raise NotFoundError("Document not found")
+        raise EBSINotFoundError("Document not found")
 
     timestamp = TimestampPublic(
         datetime=doc.timestamp_datetime.isoformat() if doc.timestamp_datetime else None,
@@ -186,6 +186,10 @@ def read_doc_events(
     """
     if page_size == 0:
         page_size = 10
+
+    document = tnt_service.get_document(document_id)
+    if not document:
+        raise EBSINotFoundError("Document not found")
 
     events_count = tnt_service.count_events(document_id=document_id)
     n_pages = math.ceil(events_count / page_size)
@@ -227,7 +231,7 @@ def read_doc_event(
     """
     events = tnt_service.list_events(document_id=document_id, id=event_id)
     if not events or len(events) == 0:
-        raise NotFoundError("Event not found")
+        raise EBSINotFoundError("Event not found")
     event = events[0]
 
     timestamp = TimestampPublic(
@@ -261,6 +265,10 @@ def read_doc_accesses(
     """
     if page_size == 0:
         page_size = 10
+
+    document = tnt_service.get_document(document_id)
+    if not document:
+        raise EBSINotFoundError("Document not found")
 
     accesses_count = tnt_service.count_accesses(document_id=document_id)
     n_pages = math.ceil(accesses_count / page_size)

@@ -12,7 +12,7 @@ from jwt import get_unverified_header
 from jwt.algorithms import ECAlgorithm
 
 from ebsi_sim.core.config import settings
-from ebsi_sim.core.exceptions import AuthError, NotFoundError, RequestError, EBSIError
+from ebsi_sim.core.exceptions import EBSIAuthError, EBSINotFoundError, EBSIRequestError, EBSIError
 from ebsi_sim.models.didr import Identifier
 from ebsi_sim.repositories.didr import IdentifierRepository, VerificationMethodRepository, \
     VerificationRelationshipRepository
@@ -30,21 +30,21 @@ class AuthServiceError(EBSIError):
     pass
 
 
-class AuthServiceAuthError(AuthServiceError, AuthError):
+class AuthServiceAuthError(AuthServiceError, EBSIAuthError):
     """
     Represents an AUTH service authentication error (Status Code: 401).
     """
     pass
 
 
-class AuthServiceNotFoundError(AuthServiceError, NotFoundError):
+class AuthServiceNotFoundError(AuthServiceError, EBSINotFoundError):
     """
     Represents an error raised when a specific resource is not found (Status Code: 404).
     """
     pass
 
 
-class AuthServiceRequestError(AuthServiceError, RequestError):
+class AuthServiceRequestError(AuthServiceError, EBSIRequestError):
     """
     Represents an error that occurs during an AUTH service request.
     """
@@ -387,7 +387,7 @@ class AuthService:
                 raise AuthServiceRequestError("Invalid VP: VP Subject mismatch with holder")
         except EBSIError:
             raise
-        except Exception:
+        except Exception as e:
             raise EBSIError(f"Error decoding VP")
         else:
             return vp_payload

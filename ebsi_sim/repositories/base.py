@@ -1,9 +1,11 @@
 from abc import ABC, abstractmethod
 from typing import Any, Generic, Type, TypeVar
 
+from sqlalchemy.exc import SQLAlchemyError
 from sqlmodel import SQLModel, select, func
 
 from ebsi_sim.core.db import db
+from ebsi_sim.core.exceptions import EBSIError, EBSIDatabaseError
 
 T = TypeVar("T", bound=SQLModel)
 
@@ -58,7 +60,12 @@ class BaseRepository(Repository[T]):
         :return: An instance of the specified entity if found, otherwise None
         :rtype: T | None
         """
-        return db.session.get(self.model, id)
+        try:
+            result = db.session.get(self.model, id)
+        except SQLAlchemyError as e:
+            raise EBSIDatabaseError(f"Error retrieving {self.model.__name__} with id {id}")
+        else:
+            return result
 
     def list(self, *, offset: int = 0, limit: int = 100, order_by: str | None = None, **filters) -> list[T]:
         """
@@ -75,14 +82,19 @@ class BaseRepository(Repository[T]):
         :return: A list of retrieved records of the specified type.
         :rtype: list[T]
         """
-        stmt = select(self.model)
-        for field, value in filters.items():
-            if value is not None:
-                stmt = stmt.where(getattr(self.model, field) == value)
-        if order_by:
-            stmt = stmt.order_by(getattr(self.model, order_by))
-        stmt = stmt.offset(offset).limit(limit)
-        return list(db.session.scalars(stmt))
+        try:
+            stmt = select(self.model)
+            for field, value in filters.items():
+                if value is not None:
+                    stmt = stmt.where(getattr(self.model, field) == value)
+            if order_by:
+                stmt = stmt.order_by(getattr(self.model, order_by))
+            stmt = stmt.offset(offset).limit(limit)
+            results = db.session.scalars(stmt)
+        except SQLAlchemyError as e:
+            raise EBSIDatabaseError(f"Error retrieving {self.model.__name__} list")
+        else:
+            return list(results)
 
     def create(self, *, commit=False, **data) -> T:
         """
@@ -97,13 +109,17 @@ class BaseRepository(Repository[T]):
         :return: The object created and persisted into the database.
         :rtype: T
         """
-        obj = self.model(**data)
-        db.session.add(obj)
-        if commit:
-            db.session.commit()
+        try:
+            obj = self.model(**data)
+            db.session.add(obj)
+            if commit:
+                db.session.commit()
+            else:
+                db.session.flush()
+        except SQLAlchemyError as e:
+            raise EBSIDatabaseError(f"Error creating {self.model.__name__}")
         else:
-            db.session.flush()
-        return obj
+            return obj
 
     def update(self, *, commit=False, id: Any, **data) -> T:
         """
@@ -121,16 +137,20 @@ class BaseRepository(Repository[T]):
         :rtype: T
         :raises ValueError: If the object with the given identifier is not found in the database.
         """
-        obj = self.get(id)
-        if obj is None:
-            raise ValueError(f"{self.model.__name__} {id} not found")
-        for field, value in data.items():
-            setattr(obj, field, value)
-        if commit:
-            db.session.commit()
+        try:
+            obj = self.get(id)
+            if obj is None:
+                raise ValueError(f"{self.model.__name__} {id} not found")
+            for field, value in data.items():
+                setattr(obj, field, value)
+            if commit:
+                db.session.commit()
+            else:
+                db.session.flush()
+        except SQLAlchemyError as e:
+            raise EBSIDatabaseError(f"Error updating {self.model.__name__} {id}")
         else:
-            db.session.flush()
-        return obj
+            return obj
 
     def delete(self, *, commit=False, id: Any) -> None:
         """
@@ -142,14 +162,17 @@ class BaseRepository(Repository[T]):
         :type id: Any
         :return: None
         """
-        obj = self.get(id)
-        if obj is None:
-            return
-        db.session.delete(obj)
-        if commit:
-            db.session.commit()
-        else:
-            db.session.flush()
+        try:
+            obj = self.get(id)
+            if obj is None:
+                return
+            db.session.delete(obj)
+            if commit:
+                db.session.commit()
+            else:
+                db.session.flush()
+        except SQLAlchemyError as e:
+            raise EBSIDatabaseError(f"Error deleting {self.model.__name__} {id}")
 
     def count(self, **filters) -> int:
         """
@@ -162,8 +185,13 @@ class BaseRepository(Repository[T]):
             provided filters.
         :rtype: int
         """
-        stmt = select(func.count()).select_from(self.model)
-        for field, value in filters.items():
-            if value is not None:
-                stmt = stmt.where(getattr(self.model, field) == value)
-        return db.session.scalar(stmt)
+        try:
+            stmt = select(func.count()).select_from(self.model)
+            for field, value in filters.items():
+                if value is not None:
+                    stmt = stmt.where(getattr(self.model, field) == value)
+            result = db.session.scalar(stmt)
+        except SQLAlchemyError as e:
+            raise EBSIDatabaseError(f"Error counting {self.model.__name__}")
+        else:
+            return result

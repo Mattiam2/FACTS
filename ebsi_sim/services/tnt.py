@@ -9,7 +9,7 @@ from web3.contract import Contract
 
 from ebsi_sim.core.auth import check_scopes, User
 from ebsi_sim.core.config import settings
-from ebsi_sim.core.exceptions import RequestError, NotFoundError, AuthError, EBSIError
+from ebsi_sim.core.exceptions import EBSIRequestError, EBSINotFoundError, EBSIAuthError, EBSIError, EBSIDuplicateError
 from ebsi_sim.repositories.didr import IdentifierRepository
 from ebsi_sim.repositories.tnt import AccessRepository
 from ebsi_sim.repositories.tnt import DocumentRepository
@@ -26,21 +26,28 @@ class TntServiceError(EBSIError):
     pass
 
 
-class TntServiceAuthError(TntServiceError, AuthError):
+class TntServiceDuplicateError(TntServiceError, EBSIDuplicateError):
+    """
+    Represents an error raised when a duplicate entry is detected (Status Code: 409).
+    """
+    pass
+
+
+class TntServiceAuthError(TntServiceError, EBSIAuthError):
     """
     Represents an TNT service authentication error (Status Code: 401).
     """
     pass
 
 
-class TntServiceNotFoundError(TntServiceError, NotFoundError):
+class TntServiceNotFoundError(TntServiceError, EBSINotFoundError):
     """
     Represents an error raised when a specific resource is not found (Status Code: 404).
     """
     pass
 
 
-class TntServiceRequestError(TntServiceError, RequestError):
+class TntServiceRequestError(TntServiceError, EBSIRequestError):
     """
     Represents an error that occurs during an TNT service request.
     """
@@ -209,6 +216,10 @@ class TntService:
 
         if doc_timestamp_proof and isinstance(doc_timestamp_proof, bytes):
             doc_timestamp_proof = "0x" + doc_timestamp_proof.hex()
+
+        document = self.document_repository.get(id=document_hash)
+        if document:
+            raise TntServiceDuplicateError(f"TNT Document {document_hash} already exists in the database")
 
         self.document_repository.create(id=document_hash, creator=did_ebsi_creator,
                                         metadata_text=doc_metadata,
@@ -487,7 +498,7 @@ class TntService:
                                                           params['signedRawTransaction'])
         except EBSIError:
             raise
-        except Exception:
+        except Exception as e:
             raise TntServiceError("Internal error")
         else:
             return json_rpc_result

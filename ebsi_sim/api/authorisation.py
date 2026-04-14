@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends
 
 from ebsi_sim.core.config import settings
 from ebsi_sim.schemas import ScopeEnum, TokenCreate, TokenBase
-from ebsi_sim.services.auth import AuthService
+from ebsi_sim.services.authorisation import AuthService
 from ebsi_sim.services.didr import DidrService
 from ebsi_sim.utils import pem_to_jwk
 

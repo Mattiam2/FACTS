@@ -12,7 +12,7 @@ from jwcrypto import jwk
 from web3.contract.base_contract import BaseContractFunction
 
 from ebsi_sim.core.auth import User
-from ebsi_sim.core.exceptions import RequestError, EBSIError
+from ebsi_sim.core.exceptions import EBSIRequestError, EBSIError
 
 
 def to_snakecase(text: str) -> str:
@@ -113,13 +113,13 @@ def build_unsigned_transaction(eth_contract, register_address: str, method: str,
         params_comparison.pop('from')
 
     if not len(abi_functions):
-        raise RequestError("Invalid method name")
+        raise EBSIRequestError("Invalid method name")
 
     candidate_function: BaseContractFunction | None = next(
         (tmp_fn for tmp_fn in abi_functions if set(tmp_fn.argument_names) == set(params_comparison.keys())), None)
 
     if not candidate_function:
-        raise RequestError("Invalid arguments")
+        raise EBSIRequestError("Invalid arguments")
 
     abi_args = {k: params[k] for k in candidate_function.argument_names if k in params}
 
@@ -160,21 +160,24 @@ def exec_signed_transaction(current_user: User, eth_contract, register_address, 
     decoded_transaction: Transaction = rlp.decode(bytes.fromhex(signed_transaction), Transaction)
     decoded_transaction_data = decoded_transaction['data']
     if decoded_transaction['data'] != bytes.fromhex(unsigned_transaction['data'].replace("0x", "")):
-        raise RequestError("Signed transaction mismatch with unsigned transaction")
+        raise EBSIRequestError("Signed transaction mismatch with unsigned transaction")
 
     signer = Account.recover_transaction(bytes.fromhex(signed_transaction))
     if signer.lower() != unsigned_transaction['from'].lower():
-        raise RequestError("Invalid transaction from")
+        raise EBSIRequestError("Invalid transaction from")
 
     if decoded_transaction['to'] != bytes.fromhex(register_address.replace("0x", "")):
-        raise RequestError("Invalid transaction to")
+        raise EBSIRequestError("Invalid transaction to")
 
     data = decoded_transaction['data']
 
-    func_obj, params = eth_contract.decode_function_input(data=data)
+    try:
+        func_obj, params = eth_contract.decode_function_input(data=data)
+    except Exception:
+        raise EBSIRequestError("Impossible to decode and find transaction function (check function name and args)")
 
     if "did" in params and current_user.sub != params['did']:
-        raise RequestError("Invalid transaction")
+        raise EBSIRequestError("User subject is not the same as the transaction signer")
 
     try:
         # Searches for the function in the service
@@ -184,7 +187,9 @@ def exec_signed_transaction(current_user: User, eth_contract, register_address, 
         # Execute the function with the decoded parameters
         function(**params_snakecase)
     except AttributeError:
-        raise RequestError("Invalid transaction")
+        raise EBSIRequestError("Function not found in service class")
+    except EBSIError:
+        raise
     except Exception as e:
         raise EBSIError("Internal error while executing transaction")
     else:

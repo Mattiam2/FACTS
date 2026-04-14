@@ -7,7 +7,7 @@ from web3.contract import Contract
 
 from ebsi_sim.core.auth import check_scopes, User
 from ebsi_sim.core.config import settings
-from ebsi_sim.core.exceptions import AuthError, NotFoundError, RequestError, EBSIError
+from ebsi_sim.core.exceptions import EBSIAuthError, EBSINotFoundError, EBSIRequestError, EBSIError, EBSIDuplicateError
 from ebsi_sim.models.didr import Identifier, VerificationMethod
 from ebsi_sim.repositories.didr import IdentifierRepository, IdentifierControllerRepository, \
     VerificationMethodRepository, VerificationRelationshipRepository
@@ -22,21 +22,28 @@ class DidrServiceError(EBSIError):
     pass
 
 
-class DidrServiceAuthError(DidrServiceError, AuthError):
+class DidrServiceDuplicateError(DidrServiceError, EBSIDuplicateError):
+    """
+    Represents an error raised when a duplicate entry is detected (Status Code: 409).
+    """
+    pass
+
+
+class DidrServiceAuthError(DidrServiceError, EBSIAuthError):
     """
     Represents an DIDR service authentication error (Status Code: 401).
     """
     pass
 
 
-class DidrServiceNotFoundError(DidrServiceError, NotFoundError):
+class DidrServiceNotFoundError(DidrServiceError, EBSINotFoundError):
     """
     Represents an error raised when a specific resource is not found (Status Code: 404).
     """
     pass
 
 
-class DidrServiceRequestError(DidrServiceError, RequestError):
+class DidrServiceRequestError(DidrServiceError, EBSIRequestError):
     """
     Represents an error that occurs during an DIDR service request.
     """
@@ -164,6 +171,12 @@ class DidrService:
         date_not_before = datetime.fromtimestamp(not_before)
         date_not_after = datetime.fromtimestamp(not_after)
 
+        identifier = self.identifier_repository.get(did)
+        if identifier:
+            raise DidrServiceDuplicateError(
+                f"Identifier {did} already exists in the database"
+            )
+
         self.identifier_repository.create(did=did, context=base_document)
         self.identifier_controller_repository.create(identifier_did=did, did_controller=did)
 
@@ -171,6 +184,10 @@ class DidrService:
 
         if isinstance(public_key, bytes):
             public_key = "0x" + public_key.hex()
+
+        vmethod = self.verification_method_repository.get(id=full_vmethod_id)
+        if vmethod:
+            raise DidrServiceDuplicateError(f"Verification method {full_vmethod_id} already exists in the database")
 
         self.verification_method_repository.create(id=full_vmethod_id, did_controller=did,
                                                    type="JsonWebKey2020",
@@ -241,6 +258,11 @@ class DidrService:
         full_vmethod_id = f"{did}#{v_method_id}"
         if isinstance(public_key, bytes):
             public_key = "0x" + public_key.hex()
+
+        vmethod = self.verification_method_repository.get(id=full_vmethod_id)
+        if vmethod:
+            raise DidrServiceDuplicateError(f"Verification method {full_vmethod_id} already exists in the database")
+
         self.verification_method_repository.create(id=full_vmethod_id, did_controller=did,
                                                    type="JsonWebKey2020",
                                                    public_key=public_key, issecp256k1=is_secp256k1)

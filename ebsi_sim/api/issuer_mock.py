@@ -9,7 +9,7 @@ from fastapi import APIRouter, Query
 from ebsi_sim.core.config import settings
 from ebsi_sim.schemas.verifiable_credential import VerifiableCredentialPublic, VerifiableCredentialPayload
 
-router = APIRouter(prefix="/issue-mock", tags=["issuer mock"])
+router = APIRouter(prefix="/issuer-mock", tags=["issuer mock"])
 
 
 @router.get("/request_vc")
