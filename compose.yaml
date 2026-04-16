@@ -1,21 +1,34 @@
 services:
-  api:
+  ebsi_sim:
     build:
       context: .
       target: builder
+    depends_on:
+      db:
+        condition: service_healthy
     environment:
-      DB_HOST: 'postgres'
-      DB_USER: 'postgres'
+      DB_HOST: 'db'
+      DB_USER: 'ebsi'
       DB_PASSWORD: 'password'
+      DB_NAME: 'ebsi'
       PORT: 8000
     ports:
       - '8000:8000'
     restart: "no"
-  postgres:
+  db:
     image: postgres:13.2-alpine
     restart: always
     shm_size: 128mb
     volumes:
       - ./db:/var/lib/postgresql/data
     environment:
-      POSTGRES_PASSWORD: password
+      POSTGRES_USER: 'ebsi'
+      POSTGRES_PASSWORD: 'password'
+      POSTGRES_DB: 'ebsi'
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U ebsi -d ebsi" ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    ports:
+      - '5432:5432'

@@ -1,8 +1,9 @@
+from contextlib import asynccontextmanager
 from typing import Callable, Awaitable
 
 from fastapi import FastAPI, Request, Response, logger
 from sqlalchemy.exc import SQLAlchemyError
-from sqlmodel import Session
+from sqlmodel import Session, SQLModel
 from starlette.responses import JSONResponse
 
 from ebsi_sim.api.authorisation import router as authapp
@@ -14,7 +15,16 @@ from ebsi_sim.core.db import engine, session_ctx
 from ebsi_sim.core.exceptions import EBSIError, EBSIRequestError, EBSINotFoundError, EBSIAuthError, EBSIDatabaseError, \
     EBSIDuplicateError
 
-app = FastAPI()
+
+def create_db_and_tables():
+    SQLModel.metadata.create_all(engine)
+
+@asynccontextmanager
+async def lifespan(app):
+    create_db_and_tables()
+    yield
+
+app = FastAPI(lifespan=lifespan)
 app.include_router(tntapp)
 app.include_router(didrapp)
 app.include_router(authapp)
