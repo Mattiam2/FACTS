@@ -4,11 +4,14 @@ services:
       context: .
       target: builder
     environment:
+      DB_HOST: 'postgres'
+      DB_USER: 'postgres'
+      DB_PASSWORD: 'password'
       PORT: 8000
     ports:
       - '8000:8000'
     restart: "no"
-  db:
+  postgres:
     image: postgres:13.2-alpine
     restart: always
     shm_size: 128mb
@@ -16,5 +19,3 @@ services:
       - ./db:/var/lib/postgresql/data
     environment:
       POSTGRES_PASSWORD: password
-    ports:
-      - '5432:5432'
