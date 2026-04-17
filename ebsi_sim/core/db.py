@@ -4,7 +4,7 @@ from sqlmodel import create_engine, Session
 
 from .config import settings
 
-engine = create_engine(settings.db_url, echo=True)
+engine = create_engine(settings.db_url, echo=False, pool_pre_ping=True)
 
 session_ctx = ContextVar("session_ctx", default=None)
 

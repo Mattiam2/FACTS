@@ -1,9 +1,9 @@
 from contextlib import asynccontextmanager
 from typing import Callable, Awaitable
 
-from fastapi import FastAPI, Request, Response, logger
+from fastapi import FastAPI, Request, Response
 from sqlalchemy.exc import SQLAlchemyError
-from sqlmodel import Session, SQLModel
+from sqlmodel import Session
 from starlette.responses import JSONResponse
 
 from ebsi_sim.api.authorisation import router as authapp
@@ -14,14 +14,13 @@ from ebsi_sim.api.wallet_mock import router as walletapp
 from ebsi_sim.core.db import engine, session_ctx
 from ebsi_sim.core.exceptions import EBSIError, EBSIRequestError, EBSINotFoundError, EBSIAuthError, EBSIDatabaseError, \
     EBSIDuplicateError
+from ebsi_sim.repositories import create_db_and_tables, create_default_data
 
-
-def create_db_and_tables():
-    SQLModel.metadata.create_all(engine)
 
 @asynccontextmanager
 async def lifespan(app):
     create_db_and_tables()
+    create_default_data()
     yield
 
 app = FastAPI(lifespan=lifespan)
@@ -68,7 +67,6 @@ async def db_session_handler(request: Request, call_next: Callable[[Request], Aw
 
 @app.exception_handler(Exception)
 async def unicorn_exception_handler(request: Request, exc: Exception):
-
     status_code = 500
     message = "Internal Server Error"
     if isinstance(exc, EBSIError):

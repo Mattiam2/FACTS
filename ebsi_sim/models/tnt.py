@@ -2,6 +2,7 @@ from datetime import datetime
 
 from sqlmodel import Field, Relationship, func, SQLModel
 
+from ebsi_sim.models.didr import Identifier
 from ebsi_sim.schemas.access import AccessBase
 from ebsi_sim.schemas.event import EventBase
 
@@ -23,8 +24,13 @@ class Access(AccessBase, table=True):
 
     id: int = Field(primary_key=True, nullable=False)
     document_id: str = Field(foreign_key="public.documents.id", schema_extra={'serialization_alias': 'documentId'})
+    subject: str = Field(foreign_key="public.identifiers.did", description="Subject")
+    granted_by: str = Field(foreign_key="public.identifiers.did", schema_extra={'serialization_alias': 'grantedBy'},
+                            description="DID that granted the access")
 
     document: "Document" = Relationship(back_populates="accesses")
+    subject_identifier: "Identifier" = Relationship(sa_relationship_kwargs={"foreign_keys": "Access.subject"})
+    granted_by_identifier: "Identifier" = Relationship(sa_relationship_kwargs={"foreign_keys": "Access.granted_by"})
 
 
 class Document(SQLModel, table=True):
@@ -60,10 +66,11 @@ class Document(SQLModel, table=True):
     timestamp_datetime: datetime = Field(default=func.now())
     timestamp_source: str
     timestamp_proof: str
-    creator: str
+    creator: str = Field(foreign_key="public.identifiers.did")
 
     events: list["Event"] = Relationship(back_populates="document")
     accesses: list["Access"] = Relationship(back_populates="document")
+    creator_identifier: "Identifier" = Relationship()
 
 
 class Event(EventBase, table=True):
@@ -89,8 +96,10 @@ class Event(EventBase, table=True):
 
     id: str = Field(schema_extra={'serialization_alias': 'hash'}, primary_key=True)
     document_id: str = Field(foreign_key="public.documents.id")
+    sender: str = Field(foreign_key="public.identifiers.did", description="The `did:key` or `did:ebsi` that created the event")
     timestamp_datetime: datetime = Field(default=func.now())
     timestamp_source: str
     timestamp_proof: str
 
+    sender_identifier: Identifier = Relationship()
     document: Document = Relationship(back_populates="events")

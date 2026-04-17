@@ -14,7 +14,6 @@ from web3.contract.base_contract import BaseContractFunction
 from ebsi_sim.core.auth import User
 from ebsi_sim.core.exceptions import EBSIRequestError, EBSIError
 
-
 def to_snakecase(text: str) -> str:
     """
     Converts a given string from CamelCase to snake_case format.
