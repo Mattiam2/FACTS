@@ -2,16 +2,14 @@ from fastapi.testclient import TestClient
 
 from ..main import app
 
-client = TestClient(app)
 
-
-def test_read_oidc_config():
+def test_read_oidc_config(client):
     response = client.get("/authorisation/.well-known/openid-configuration")
     assert response.status_code == 200
     assert len(response.json()) > 0
 
 
-def test_read_presentation_definitions_tir_write():
+def test_read_presentation_definitions_tir_write(client):
     response = client.get("/authorisation/presentation-definitions", params={
         "scope": 'openid tir_write',
     })
@@ -19,7 +17,7 @@ def test_read_presentation_definitions_tir_write():
     assert len(response.json()) > 0
 
 
-def test_read_presentation_definitions_tnt_write():
+def test_read_presentation_definitions_tnt_write(client):
     response = client.get("/authorisation/presentation-definitions", params={
         "scope": 'openid tnt_write',
     })
@@ -27,7 +25,7 @@ def test_read_presentation_definitions_tnt_write():
     assert len(response.json()) > 0
 
 
-def test_read_presentation_definitions_tpr_write():
+def test_read_presentation_definitions_tpr_write(client):
     response = client.get("/authorisation/presentation-definitions", params={
         "scope": 'openid tpr_write',
     })
@@ -35,7 +33,7 @@ def test_read_presentation_definitions_tpr_write():
     assert len(response.json()) > 0
 
 
-def test_read_presentation_definitions_didr_invite():
+def test_read_presentation_definitions_didr_invite(client):
     response = client.get("/authorisation/presentation-definitions", params={
         "scope": 'openid didr_invite',
     })
@@ -43,7 +41,7 @@ def test_read_presentation_definitions_didr_invite():
     assert len(response.json()) > 0
 
 
-def test_read_presentation_definitions_didr_write():
+def test_read_presentation_definitions_didr_write(client):
     response = client.get("/authorisation/presentation-definitions", params={
         "scope": 'openid didr_write',
     })
@@ -51,7 +49,7 @@ def test_read_presentation_definitions_didr_write():
     assert len(response.json()) > 0
 
 
-def test_read_presentation_definitions_timestamp_write():
+def test_read_presentation_definitions_timestamp_write(client):
     response = client.get("/authorisation/presentation-definitions", params={
         "scope": 'openid timestamp_write',
     })
@@ -59,7 +57,7 @@ def test_read_presentation_definitions_timestamp_write():
     assert len(response.json()) > 0
 
 
-def test_read_presentation_definitions_tir_invite():
+def test_read_presentation_definitions_tir_invite(client):
     response = client.get("/authorisation/presentation-definitions", params={
         "scope": 'openid tir_invite',
     })
@@ -67,7 +65,7 @@ def test_read_presentation_definitions_tir_invite():
     assert len(response.json()) > 0
 
 
-def test_read_presentation_definitions_tnt_authorise():
+def test_read_presentation_definitions_tnt_authorise(client):
     response = client.get("/authorisation/presentation-definitions", params={
         "scope": 'openid tnt_authorise',
     })
@@ -75,7 +73,7 @@ def test_read_presentation_definitions_tnt_authorise():
     assert len(response.json()) > 0
 
 
-def test_read_presentation_definitions_tnt_create():
+def test_read_presentation_definitions_tnt_create(client):
     response = client.get("/authorisation/presentation-definitions", params={
         "scope": 'openid tnt_create',
     })
@@ -83,7 +81,7 @@ def test_read_presentation_definitions_tnt_create():
     assert len(response.json()) > 0
 
 
-def test_read_presentation_definitions_tsr_write():
+def test_read_presentation_definitions_tsr_write(client):
     response = client.get("/authorisation/presentation-definitions", params={
         "scope": 'openid tsr_write',
     })
@@ -91,7 +89,7 @@ def test_read_presentation_definitions_tsr_write():
     assert len(response.json()) > 0
 
 
-def test_read_presentation_definitions_fake():
+def test_read_presentation_definitions_fake(client):
     response = client.get("/authorisation/presentation-definitions", params={
         "scope": 'fake',
     })

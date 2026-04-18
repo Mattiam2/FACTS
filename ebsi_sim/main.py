@@ -46,7 +46,7 @@ async def db_session_handler(request: Request, call_next: Callable[[Request], Aw
     :rtype: Response
     """
     with Session(engine) as session:
-        token = session_ctx.set(session)
+        session_token = session_ctx.set(session)
         try:
             response = await call_next(request)
             session.commit()
@@ -60,7 +60,7 @@ async def db_session_handler(request: Request, call_next: Callable[[Request], Aw
             session.rollback()
             raise EBSIError("Internal error")
         finally:
-            session_ctx.reset(token)
+            session_ctx.reset(session_token)
             session.close()
     return response
 
