@@ -2,16 +2,16 @@ from pydantic_settings import BaseSettings
 
 
 class Settings(BaseSettings):
-    app_name: str = "EBSI SIMULATOR"
-    db_user: str = "postgres"
-    db_password: str = "password"
-    db_host: str = "localhost"
-    db_port: int = 5432
-    db_name: str = "ebsi"
+    APP_NAME: str = "EBSI SIMULATOR"
+    DB_USER: str = "postgres"
+    DB_PASSWORD: str = "password"
+    DB_HOST: str = "localhost"
+    DB_PORT: int = 5432
+    DB_NAME: str = "ebsi"
 
     @property
     def db_url(self):
-        return f"postgresql://{self.db_user}:{self.db_password}@{self.db_host}:{self.db_port}/{self.db_name}"
+        return f"postgresql://{self.DB_USER}:{self.DB_PASSWORD}@{self.DB_HOST}:{self.DB_PORT}/{self.DB_NAME}"
 
     # ES256
     AUTH_PUBLIC_KEY: str = b"-----BEGIN PUBLIC KEY-----\nMFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEb5P/Fz+Agu4M1Ljrxgny12UwJq6T\nLkVLBD7Km5VoD4QXhODiklJFugoTR+HmwwgzkdotRKASS97NTQ3KrrBdTA==\n-----END PUBLIC KEY-----\n"

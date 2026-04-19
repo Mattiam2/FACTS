@@ -1,10 +1,3 @@
-from fastapi.testclient import TestClient
-
-from ..main import app
-
-client = TestClient(app)
-
-
 def test_read_abi(client):
     response = client.get("/did-registry/abi")
     assert response.status_code == 200

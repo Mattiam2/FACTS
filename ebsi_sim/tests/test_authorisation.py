@@ -1,8 +1,3 @@
-from fastapi.testclient import TestClient
-
-from ..main import app
-
-
 def test_read_oidc_config(client):
     response = client.get("/authorisation/.well-known/openid-configuration")
     assert response.status_code == 200

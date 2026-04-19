@@ -1,7 +1,7 @@
 from contextlib import asynccontextmanager
 from typing import Callable, Awaitable
 
-from fastapi import FastAPI, Request, Response
+from fastapi import FastAPI, Request, Response, HTTPException
 from sqlalchemy.exc import SQLAlchemyError
 from sqlmodel import Session
 from starlette.responses import JSONResponse
@@ -23,12 +23,32 @@ async def lifespan(app):
     create_default_data()
     yield
 
+
 app = FastAPI(lifespan=lifespan)
 app.include_router(tntapp)
 app.include_router(didrapp)
 app.include_router(authapp)
 app.include_router(walletapp)
 app.include_router(issuerapp)
+
+
+def handle_exception(exc: Exception):
+    status_code = 500
+    message = "Internal Server Error"
+    if isinstance(exc, EBSIError):
+        message = str(exc)
+    if isinstance(exc, EBSIRequestError):
+        status_code = 400
+    elif isinstance(exc, EBSINotFoundError):
+        status_code = 404
+    elif isinstance(exc, EBSIAuthError):
+        status_code = 401
+    elif isinstance(exc, EBSIDuplicateError):
+        status_code = 409
+    elif isinstance(exc, SQLAlchemyError):
+        message = "Database error"
+
+    return JSONResponse(status_code=status_code, content={"detail": message})
 
 
 @app.middleware("http")
@@ -50,37 +70,32 @@ async def db_session_handler(request: Request, call_next: Callable[[Request], Aw
         try:
             response = await call_next(request)
             session.commit()
-        except EBSIError:
+        except Exception as e:
             session.rollback()
-            raise
-        except SQLAlchemyError:
-            session.rollback()
-            raise EBSIDatabaseError("Database error")
-        except Exception:
-            session.rollback()
-            raise EBSIError("Internal error")
+            return handle_exception(e)
+        else:
+            return response
         finally:
             session_ctx.reset(session_token)
             session.close()
-    return response
 
-
-@app.exception_handler(Exception)
-async def unicorn_exception_handler(request: Request, exc: Exception):
-    status_code = 500
-    message = "Internal Server Error"
-    if isinstance(exc, EBSIError):
-        message = str(exc)
-    if isinstance(exc, EBSIRequestError):
-        status_code = 400
-    elif isinstance(exc, EBSINotFoundError):
-        status_code = 404
-    elif isinstance(exc, EBSIAuthError):
-        status_code = 401
-    elif isinstance(exc, EBSIDuplicateError):
-        status_code = 409
-
-    return JSONResponse(
-        status_code=status_code,
-        content={"message": message},
-    )
+# @app.exception_handler(Exception)
+# async def unicorn_exception_handler(request: Request, exc: Exception):
+#     status_code = 500
+#     message = "Internal Server Error"
+#     if isinstance(exc, EBSIError):
+#         message = str(exc)
+#     if isinstance(exc, EBSIRequestError):
+#         status_code = 400
+#     elif isinstance(exc, EBSINotFoundError):
+#         status_code = 404
+#     elif isinstance(exc, EBSIAuthError):
+#         status_code = 401
+#     elif isinstance(exc, EBSIDuplicateError):
+#         status_code = 409
+#
+#     raise HTTPException(status_code=status_code, detail=message)
+#     # return JSONResponse(
+#     #     status_code=status_code,
+#     #     content={"message": message},
+#     # )
