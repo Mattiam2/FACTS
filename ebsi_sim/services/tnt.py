@@ -301,9 +301,7 @@ class TntService:
         JSON RPC Method: Writes an event to the database using the provided event parameters,
         timestamp, and timestamp proof.
 
-        :param event_params: A dictionary containing the parameters of the event,
-            including `documentHash` (bytes or str), `externalHash` (str),
-            `sender` (bytes or str), `origin` (str), and `metadata` (str).
+        :param event_params: A dictionary containing the parameters of the event
         :type event_params: EventParams
         :param timestamp: Optional UNIX timestamp for the event. If not provided, the timestamp will be set to None.
         :type timestamp: int | None

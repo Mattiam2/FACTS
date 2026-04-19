@@ -65,7 +65,7 @@ class Document(SQLModel, table=True):
     metadata_text: str = Field(schema_extra={'serialization_alias': 'metadata'})
     timestamp_datetime: datetime = Field(default=func.now())
     timestamp_source: str
-    timestamp_proof: str
+    timestamp_proof: str | None
     creator: str = Field(foreign_key="public.identifiers.did")
 
     events: list["Event"] = Relationship(back_populates="document")
@@ -99,7 +99,7 @@ class Event(EventBase, table=True):
     sender: str = Field(foreign_key="public.identifiers.did", description="The `did:key` or `did:ebsi` that created the event")
     timestamp_datetime: datetime = Field(default=func.now())
     timestamp_source: str
-    timestamp_proof: str
+    timestamp_proof: str | None
 
     sender_identifier: Identifier = Relationship()
     document: Document = Relationship(back_populates="events")

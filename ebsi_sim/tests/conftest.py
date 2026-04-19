@@ -12,8 +12,8 @@ from ..main import app
 def test_engine_fixture():
     """
     Creates an in-memory SQLite engine.
-    StaticPool is critical here: it ensures that all connections
-    go to the exact same in-memory database.
+    StaticPool ensures that all connections
+    go to the same in-memory database.
     """
     sqlite_url = "sqlite://"
     engine = create_engine(
@@ -43,3 +43,11 @@ def client_fixture(test_engine):
     with patch_middleware, patch_lifespan:
         with TestClient(app) as client:
             yield client
+
+@pytest.fixture(name="session")
+def session_fixture(test_engine):
+    """
+    Create a pytest fixture for a database session using the given test engine.
+    """
+    with Session(test_engine) as session:
+        yield session
