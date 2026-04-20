@@ -11,16 +11,16 @@ from jsonschema import validate
 from jwt import get_unverified_header
 from jwt.algorithms import ECAlgorithm
 
-from ebsi_sim.core.config import settings
-from ebsi_sim.core.exceptions import EBSIAuthError, EBSINotFoundError, EBSIRequestError, EBSIError
-from ebsi_sim.models.didr import Identifier
-from ebsi_sim.repositories.didr import IdentifierRepository, VerificationMethodRepository, \
+from src.core.config import settings
+from src.core.exceptions import EBSIAuthError, EBSINotFoundError, EBSIRequestError, EBSIError
+from src.models.didr import Identifier
+from src.repositories.didr import IdentifierRepository, VerificationMethodRepository, \
     VerificationRelationshipRepository
-from ebsi_sim.schemas import ScopeEnum
-from ebsi_sim.schemas.token import PresentationDescriptor, PresentationSubmission, TokenCreate
-from ebsi_sim.schemas.verifiable_credential import VerifiableCredentialPayload
-from ebsi_sim.schemas.verifiable_presentation import VerifiablePresentationPayload
-from ebsi_sim.utils import pem_to_jwk
+from src.schemas import ScopeEnum
+from src.schemas.token import PresentationDescriptor, PresentationSubmission, TokenCreate
+from src.schemas.verifiable_credential import VerifiableCredentialPayload
+from src.schemas.verifiable_presentation import VerifiablePresentationPayload
+from src.utils import pem_to_jwk
 
 
 class AuthServiceError(EBSIError):
@@ -167,25 +167,25 @@ class AuthService:
         """
         match scope:
             case ScopeEnum.tir_write:
-                path = f"ebsi_sim/includes/presentation_tir_write.json"
+                path = f"{settings.PROJECT_ROOT}/includes/presentation_tir_write.json"
             case ScopeEnum.tnt_write:
-                path = f"ebsi_sim/includes/presentation_tnt_write.json"
+                path = f"{settings.PROJECT_ROOT}/includes/presentation_tnt_write.json"
             case ScopeEnum.tpr_write:
-                path = f"ebsi_sim/includes/presentation_tpr_write.json"
+                path = f"{settings.PROJECT_ROOT}/includes/presentation_tpr_write.json"
             case ScopeEnum.didr_invite:
-                path = f"ebsi_sim/includes/presentation_didr_invite.json"
+                path = f"{settings.PROJECT_ROOT}/includes/presentation_didr_invite.json"
             case ScopeEnum.didr_write:
-                path = f"ebsi_sim/includes/presentation_didr_write.json"
+                path = f"{settings.PROJECT_ROOT}/includes/presentation_didr_write.json"
             case ScopeEnum.timestamp_write:
-                path = f"ebsi_sim/includes/presentation_timestamp_write.json"
+                path = f"{settings.PROJECT_ROOT}/includes/presentation_timestamp_write.json"
             case ScopeEnum.tir_invite:
-                path = f"ebsi_sim/includes/presentation_tir_invite.json"
+                path = f"{settings.PROJECT_ROOT}/includes/presentation_tir_invite.json"
             case ScopeEnum.tnt_authorise:
-                path = f"ebsi_sim/includes/presentation_tnt_authorise.json"
+                path = f"{settings.PROJECT_ROOT}/includes/presentation_tnt_authorise.json"
             case ScopeEnum.tnt_create:
-                path = f"ebsi_sim/includes/presentation_tnt_create.json"
+                path = f"{settings.PROJECT_ROOT}/includes/presentation_tnt_create.json"
             case ScopeEnum.tsr_write:
-                path = f"ebsi_sim/includes/presentation_tsr_write.json"
+                path = f"{settings.PROJECT_ROOT}/includes/presentation_tsr_write.json"
             case _:
                 raise AuthServiceError("Invalid scope")
         try:

@@ -8,8 +8,8 @@ from cryptography.hazmat.primitives.asymmetric.ec import derive_private_key, SEC
 from fastapi import APIRouter, HTTPException, Query
 from web3 import Web3
 
-from ebsi_sim.core.config import settings
-from ebsi_sim.schemas.verifiable_presentation import VerifiablePresentationPayload, VerifiablePresentationPublic
+from src.core.config import settings
+from src.schemas.verifiable_presentation import VerifiablePresentationPayload, VerifiablePresentationPublic
 
 router = APIRouter(prefix="/wallet-mock", tags=["wallet mock"])
 

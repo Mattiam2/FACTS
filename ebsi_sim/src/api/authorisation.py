@@ -1,10 +1,10 @@
 from fastapi import APIRouter, Depends
 
-from ebsi_sim.core.config import settings
-from ebsi_sim.schemas import ScopeEnum, TokenCreate, TokenBase
-from ebsi_sim.services.authorisation import AuthService
-from ebsi_sim.services.didr import DidrService
-from ebsi_sim.utils import pem_to_jwk
+from src.core.config import settings
+from src.schemas import ScopeEnum, TokenCreate, TokenBase
+from src.services.authorisation import AuthService
+from src.services.didr import DidrService
+from src.utils import pem_to_jwk
 
 router = APIRouter(prefix="/authorisation", tags=["authorisation"])
 

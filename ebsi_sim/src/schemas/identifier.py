@@ -1,7 +1,7 @@
 from sqlmodel import SQLModel, Field
 
-from ebsi_sim.schemas.shared import PageLinksPublic
-from ebsi_sim.schemas.verification import VerificationMethodBase
+from src.schemas.shared import PageLinksPublic
+from src.schemas.verification import VerificationMethodBase
 
 
 class IdentifierBase(SQLModel):

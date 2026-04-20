@@ -2,11 +2,11 @@ from typing import Annotated
 
 import jwt
 from fastapi import Depends
-from fastapi.security import OAuth2PasswordBearer, APIKeyHeader, HTTPBearer, HTTPAuthorizationCredentials
+from fastapi.security import OAuth2PasswordBearer, HTTPBearer, HTTPAuthorizationCredentials
 from sqlmodel import SQLModel
 
-from ebsi_sim.core.config import settings
-from ebsi_sim.core.exceptions import EBSIAuthError, EBSIRequestError
+from src.core.config import settings
+from src.core.exceptions import EBSIAuthError, EBSIRequestError
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/authorisation/token")
 

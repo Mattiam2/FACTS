@@ -4,8 +4,8 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlmodel import Session
 
-from ebsi_sim.models.didr import Identifier, VerificationMethod, VerificationRelationship
-from ebsi_sim.models.tnt import Document
+from src.models.didr import Identifier, VerificationMethod, VerificationRelationship
+from src.models.tnt import Document
 
 
 @pytest.fixture(name="default_data")

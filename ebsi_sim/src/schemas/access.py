@@ -1,6 +1,6 @@
 from sqlmodel import SQLModel, Field
 
-from ebsi_sim.schemas.shared import PermissionEnum, PageLinksPublic
+from src.schemas.shared import PermissionEnum, PageLinksPublic
 
 
 class AccessBase(SQLModel):

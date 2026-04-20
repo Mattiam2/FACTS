@@ -6,8 +6,8 @@ from uuid import uuid4
 import jwt
 from fastapi import APIRouter, Query
 
-from ebsi_sim.core.config import settings
-from ebsi_sim.schemas.verifiable_credential import VerifiableCredentialPublic, VerifiableCredentialPayload
+from src.core.config import settings
+from src.schemas.verifiable_credential import VerifiableCredentialPublic, VerifiableCredentialPayload
 
 router = APIRouter(prefix="/issuer-mock", tags=["issuer mock"])
 

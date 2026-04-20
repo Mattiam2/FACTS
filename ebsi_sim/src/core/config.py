@@ -1,3 +1,5 @@
+from pathlib import Path
+
 from pydantic_settings import BaseSettings
 
 
@@ -31,6 +33,8 @@ class Settings(BaseSettings):
     ISSUER_ASSERTION_PUBLIC_KEY: str = b"-----BEGIN PUBLIC KEY-----\nMFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAErgu6fVLzZ8lExaqXcIeZ+YCyL1P2\npFgjV3P4tOi7OeXN2JBwWDzfoYy9gPaQhWf31ZyYJLTBhFV7eHWIKfc3PA==\n-----END PUBLIC KEY-----\n"
     ISSUER_ASSERTION_PRIVATE_KEY: str = b"-----BEGIN PRIVATE KEY-----\nMIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQgg1Z50fbmQc4S4YeX\n9es9TX39qsVXz8Ze3frlwTnhwhShRANCAASuC7p9UvNnyUTFqpdwh5n5gLIvU/ak\nWCNXc/i06Ls55c3YkHBYPN+hjL2A9pCFZ/fVnJgktMGEVXt4dYgp9zc8\n-----END PRIVATE KEY-----\n"
     ISSUER_ASSERTION_VMETHOD_ID: str = 'did:ebsi:zE971oT9esuKdcHspKdfAXg#pjyiTxPXALmmH4/ZBxgoUSibpzzKCntMXlzyPGYzupI'
+
+    PROJECT_ROOT: str = str(Path(__file__).resolve().parent.parent)
 
 
 settings = Settings()

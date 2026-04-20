@@ -3,7 +3,7 @@ from typing import Optional
 
 from sqlmodel import SQLModel, Field
 
-from ebsi_sim.schemas.presentation import ScopeEnum
+from src.schemas.presentation import ScopeEnum
 
 
 class GrantTypeEnum(str, Enum):

@@ -7,16 +7,16 @@ from fastapi import Depends
 from web3 import Web3
 from web3.contract import Contract
 
-from ebsi_sim.core.auth import check_scopes, User
-from ebsi_sim.core.config import settings
-from ebsi_sim.core.exceptions import EBSIRequestError, EBSINotFoundError, EBSIAuthError, EBSIError, EBSIDuplicateError
-from ebsi_sim.repositories.didr import IdentifierRepository
-from ebsi_sim.repositories.tnt import AccessRepository
-from ebsi_sim.repositories.tnt import DocumentRepository
-from ebsi_sim.repositories.tnt import EventRepository
-from ebsi_sim.schemas import JsonRpcCreate, PermissionEnum
-from ebsi_sim.schemas.event import EventParams
-from ebsi_sim.utils import build_unsigned_transaction, exec_signed_transaction, booleanize
+from src.core.auth import check_scopes, User
+from src.core.config import settings
+from src.core.exceptions import EBSIRequestError, EBSINotFoundError, EBSIAuthError, EBSIError, EBSIDuplicateError
+from src.repositories.didr import IdentifierRepository
+from src.repositories.tnt import AccessRepository
+from src.repositories.tnt import DocumentRepository
+from src.repositories.tnt import EventRepository
+from src.schemas import JsonRpcCreate, PermissionEnum
+from src.schemas.event import EventParams
+from src.utils import build_unsigned_transaction, exec_signed_transaction, booleanize
 
 
 class TntServiceError(EBSIError):
@@ -70,7 +70,7 @@ class TntService:
         self.event_repository = event_repository
         self.identifier_repository = identifier_repository
 
-        self.tnt_abi = json.load(open("ebsi_sim/includes/abi_tnt.json", "r"))
+        self.tnt_abi = json.load(open(f"{settings.PROJECT_ROOT}/includes/abi_tnt.json", "r"))
         self.eth_contract = Web3().eth.contract(abi=self.tnt_abi)
 
     def get_document(self, document_hash: bytes | str):

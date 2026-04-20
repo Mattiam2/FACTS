@@ -2,8 +2,8 @@ from datetime import datetime
 
 from sqlmodel import SQLModel, Field, func, Relationship
 
-from ebsi_sim.schemas.identifier import IdentifierBase
-from ebsi_sim.schemas.verification import VerificationMethodBase, VerificationRelationshipBase
+from src.schemas.identifier import IdentifierBase
+from src.schemas.verification import VerificationMethodBase, VerificationRelationshipBase
 
 
 class VerificationMethod(VerificationMethodBase, table=True):

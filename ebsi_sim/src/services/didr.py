@@ -5,14 +5,14 @@ from fastapi import Depends
 from web3 import Web3
 from web3.contract import Contract
 
-from ebsi_sim.core.auth import check_scopes, User
-from ebsi_sim.core.config import settings
-from ebsi_sim.core.exceptions import EBSIAuthError, EBSINotFoundError, EBSIRequestError, EBSIError, EBSIDuplicateError
-from ebsi_sim.models.didr import Identifier, VerificationMethod
-from ebsi_sim.repositories.didr import IdentifierRepository, IdentifierControllerRepository, \
+from src.core.auth import check_scopes, User
+from src.core.config import settings
+from src.core.exceptions import EBSIAuthError, EBSINotFoundError, EBSIRequestError, EBSIError, EBSIDuplicateError
+from src.models.didr import Identifier, VerificationMethod
+from src.repositories.didr import IdentifierRepository, IdentifierControllerRepository, \
     VerificationMethodRepository, VerificationRelationshipRepository
-from ebsi_sim.schemas import JsonRpcCreate
-from ebsi_sim.utils import build_unsigned_transaction, exec_signed_transaction
+from src.schemas import JsonRpcCreate
+from src.utils import build_unsigned_transaction, exec_signed_transaction
 
 
 class DidrServiceError(EBSIError):
@@ -67,7 +67,7 @@ class DidrService:
         self.verification_method_repository = verification_method_repository
         self.verification_relationship_repository = verification_relationship_repository
 
-        self.didr_abi = json.load(open("ebsi_sim/includes/abi_didr.json", "r"))
+        self.didr_abi = json.load(open(f"{settings.PROJECT_ROOT}/includes/abi_didr.json", "r"))
         self.eth_contract = Web3().eth.contract(abi=self.didr_abi)
 
     def get_did_document(self, did: str) -> Identifier | None:

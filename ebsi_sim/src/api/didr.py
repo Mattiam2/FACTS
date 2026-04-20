@@ -6,10 +6,10 @@ from fastapi import Query
 from fastapi.params import Path
 from starlette.status import HTTP_404_NOT_FOUND
 
-from ebsi_sim.core.auth import get_current_user, User
-from ebsi_sim.schemas import IdentifierListPublic, IdentifierPublic, IdentifierItemPublic, JsonRpcCreate, JsonRpcPublic, \
+from src.core.auth import get_current_user, User
+from src.schemas import IdentifierListPublic, IdentifierPublic, IdentifierItemPublic, JsonRpcCreate, JsonRpcPublic, \
     PageLinksPublic
-from ebsi_sim.services.didr import DidrService
+from src.services.didr import DidrService
 
 router = APIRouter(prefix="/did-registry", tags=["did-registry"])
 

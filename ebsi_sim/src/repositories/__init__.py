@@ -1,8 +1,8 @@
 from datetime import datetime
 from sqlmodel import SQLModel, Session, select
-from ebsi_sim.core.db import engine
-from ebsi_sim.core.exceptions import EBSIDatabaseError
-from ebsi_sim.models.didr import Identifier, VerificationMethod, VerificationRelationship, IdentifierController
+from src.core.db import engine
+from src.core.exceptions import EBSIDatabaseError
+from src.models.didr import Identifier, VerificationMethod, VerificationRelationship, IdentifierController
 
 
 def create_db_and_tables():

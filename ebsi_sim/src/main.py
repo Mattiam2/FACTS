@@ -1,20 +1,19 @@
 from contextlib import asynccontextmanager
 from typing import Callable, Awaitable
 
-from fastapi import FastAPI, Request, Response, HTTPException
+from fastapi import FastAPI, Request, Response
 from sqlalchemy.exc import SQLAlchemyError
 from sqlmodel import Session
 from starlette.responses import JSONResponse
 
-from ebsi_sim.api.authorisation import router as authapp
-from ebsi_sim.api.didr import router as didrapp
-from ebsi_sim.api.issuer_mock import router as issuerapp
-from ebsi_sim.api.tnt import router as tntapp
-from ebsi_sim.api.wallet_mock import router as walletapp
-from ebsi_sim.core.db import engine, session_ctx
-from ebsi_sim.core.exceptions import EBSIError, EBSIRequestError, EBSINotFoundError, EBSIAuthError, EBSIDatabaseError, \
-    EBSIDuplicateError
-from ebsi_sim.repositories import create_db_and_tables, create_default_data
+from src.api.authorisation import router as authapp
+from src.api.didr import router as didrapp
+from src.api.issuer_mock import router as issuerapp
+from src.api.tnt import router as tntapp
+from src.api.wallet_mock import router as walletapp
+from src.core.db import engine, session_ctx
+from src.core.exceptions import EBSIError, EBSIRequestError, EBSINotFoundError, EBSIAuthError, EBSIDuplicateError
+from src.repositories import create_db_and_tables, create_default_data
 
 
 @asynccontextmanager
@@ -79,24 +78,3 @@ async def db_session_handler(request: Request, call_next: Callable[[Request], Aw
         finally:
             session_ctx.reset(session_token)
             session.close()
-
-# @app.exception_handler(Exception)
-# async def unicorn_exception_handler(request: Request, exc: Exception):
-#     status_code = 500
-#     message = "Internal Server Error"
-#     if isinstance(exc, EBSIError):
-#         message = str(exc)
-#     if isinstance(exc, EBSIRequestError):
-#         status_code = 400
-#     elif isinstance(exc, EBSINotFoundError):
-#         status_code = 404
-#     elif isinstance(exc, EBSIAuthError):
-#         status_code = 401
-#     elif isinstance(exc, EBSIDuplicateError):
-#         status_code = 409
-#
-#     raise HTTPException(status_code=status_code, detail=message)
-#     # return JSONResponse(
-#     #     status_code=status_code,
-#     #     content={"message": message},
-#     # )

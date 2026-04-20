@@ -1,5 +1,5 @@
 from fastapi.testclient import TestClient
-from ebsi_sim.models.tnt import Document, Event, Access
+from src.models.tnt import Document, Event, Access
 
 def test_read_abi(client: TestClient):
     """

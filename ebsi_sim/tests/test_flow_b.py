@@ -1,11 +1,10 @@
-import json
 from datetime import datetime, timedelta
 
 import pytest
 from fastapi.testclient import TestClient
 from sqlmodel import Session
 
-from ebsi_sim.models.didr import Identifier, VerificationMethod, VerificationRelationship
+from src.models.didr import Identifier, VerificationMethod, VerificationRelationship
 
 @pytest.fixture(name="default_data")
 def prepare_data(session: Session):

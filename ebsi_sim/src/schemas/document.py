@@ -1,6 +1,6 @@
 from sqlmodel import SQLModel, Field
 
-from ebsi_sim.schemas.shared import TimestampPublic, PageLinksPublic
+from src.schemas.shared import TimestampPublic, PageLinksPublic
 
 
 class DocumentItemPublic(SQLModel):

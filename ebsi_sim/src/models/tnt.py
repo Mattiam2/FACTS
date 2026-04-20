@@ -2,9 +2,9 @@ from datetime import datetime
 
 from sqlmodel import Field, Relationship, func, SQLModel
 
-from ebsi_sim.models.didr import Identifier
-from ebsi_sim.schemas.access import AccessBase
-from ebsi_sim.schemas.event import EventBase
+from src.models.didr import Identifier
+from src.schemas.access import AccessBase
+from src.schemas.event import EventBase
 
 
 class Access(AccessBase, table=True):

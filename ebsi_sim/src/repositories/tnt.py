@@ -1,5 +1,5 @@
-from ebsi_sim.models.tnt import Access, Document, Event
-from ebsi_sim.repositories.base import BaseRepository
+from src.models.tnt import Access, Document, Event
+from src.repositories.base import BaseRepository
 
 
 class AccessRepository(BaseRepository[Access]):
