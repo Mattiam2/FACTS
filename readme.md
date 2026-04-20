@@ -1,4 +1,7 @@
 # FACTS: Facts Authenticity and Credibility Tracking System
+Author: Mattia Maglie (ID: 2095330)\
+Supervisor: Prof. Mauro Migliardi\
+University of Padova
 
 This repository contains the source code of my thesis project for the Master Degree in Computer Engineering.
 
