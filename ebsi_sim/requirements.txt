@@ -43,7 +43,6 @@ multidict==6.7.1
 packaging==26.1
 parsimonious==0.10.0
 pathlib==1.0.1
-pdoc==16.0.0
 pluggy==1.6.0
 ply==3.11
 propcache==0.4.1
@@ -57,7 +56,6 @@ pydantic_core==2.46.1
 Pygments==2.20.0
 PyJWT==2.12.1
 pytest==9.0.3
-python-docx==1.2.0
 python-dotenv==1.2.2
 pyunormalize==17.0.0
 referencing==0.37.0
