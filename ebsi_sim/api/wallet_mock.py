@@ -44,7 +44,7 @@ def create_vp(vc_token: str, did: str, private_key: str, verification_id: Option
         vp=vp
     )
 
-    client_private_key_bytes = bytes.fromhex(private_key)
+    client_private_key_bytes = bytes.fromhex(private_key.replace("0x", ''))
     client_private_key = derive_private_key(int.from_bytes(client_private_key_bytes), SECP256K1())
 
     jwt_headers = {"typ": "JWT", "alg": "ES256K"}

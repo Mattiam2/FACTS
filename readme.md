@@ -19,9 +19,17 @@ EBSI FactChecker is composed of 4 FastAPI applications:
 
 - **EBSI-Sim**: this application simulates the EBSI Blockchain, in particular Authorisation API and Track'n'Trace API.
 - **FACTS-Publish**: this application allows publishers (i.e. news agencies) to register their digital content (e.g.
-  articles, videos, social posts) on the EBSI Blockchain.
+  articles, videos, social posts) on the EBSI Blockchain. [Work in progress]
 - **FACTS-Check**: this application allows independent FactCheckers to register their assessments about the authenticity
   and the credibility of the
-  digital content published on the EBSI Blockchain.
+  digital content published on the EBSI Blockchain. [Work in progress]
 - **FACTS-Verify**: this application allows to check all the assessments made by independent FactCheckers about a
-  digital content given a media url. It is also a browser extension.
+  digital content given a media url. It is also a browser extension. [Work in progress]
+
+## How to run EBSI Simulator
+
+1. Clone the repository
+2. Install Docker Engine and Docker Compose
+3. Run the command `docker-compose up` in the root directory of the repository
+4. Open the browser and go to `http://localhost:8000/docs` for the Swagger API documentation or
+   `http://localhost:8000/redoc` for the ReDoc API documentation

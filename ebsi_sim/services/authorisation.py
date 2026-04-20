@@ -234,7 +234,7 @@ class AuthService:
                 vmethod_public_key = ECAlgorithm.from_jwk(vmethod_public_key_string)
 
             decoded_token = jwt.decode(token, vmethod_public_key, algorithms=credential_algos,
-                                       options={'verify_exp': False, 'verify_aud': False, 'verify_signature': True})
+                                       options={'verify_exp': settings.JWT_VERIFY_EXP, 'verify_aud': False, 'verify_signature': True})
 
             vmethod_issuer = decoded_token["iss"]
             if vmethod_issuer is None:
@@ -255,7 +255,7 @@ class AuthService:
 
         else:
             decoded_token = jwt.decode(token,
-                                       options={'verify_exp': False, 'verify_aud': False, 'verify_signature': False})
+                                       options={'verify_exp': settings.JWT_VERIFY_EXP, 'verify_aud': False, 'verify_signature': False})
 
         return decoded_token
 

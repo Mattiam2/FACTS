@@ -2,7 +2,7 @@ from typing import Annotated
 
 import jwt
 from fastapi import Depends
-from fastapi.security import OAuth2PasswordBearer, APIKeyHeader
+from fastapi.security import OAuth2PasswordBearer, APIKeyHeader, HTTPBearer, HTTPAuthorizationCredentials
 from sqlmodel import SQLModel
 
 from ebsi_sim.core.config import settings
@@ -25,10 +25,10 @@ class User(SQLModel):
     sub: str
 
 
-vp_scheme = APIKeyHeader(name="Authorization", auto_error=False)
+vp_scheme = HTTPBearer(auto_error=False)
 
 
-def get_current_user(token: Annotated[str, Depends(vp_scheme)]):
+def get_current_user(token: Annotated[HTTPAuthorizationCredentials, Depends(vp_scheme)]):
     """
     Decodes and validates a provided token to authenticate a user and retrieve its
     information.
@@ -42,8 +42,8 @@ def get_current_user(token: Annotated[str, Depends(vp_scheme)]):
         fails.
     """
     try:
-        user = jwt.decode(token, settings.AUTH_PUBLIC_KEY, algorithms=["ES256"],
-                          options={'verify_exp': False, "verify_aud": False})
+        user = jwt.decode(token.credentials, settings.AUTH_PUBLIC_KEY, algorithms=["ES256"],
+                          options={'verify_exp': settings.JWT_VERIFY_EXP, "verify_aud": False})
     except jwt.ExpiredSignatureError:
         raise EBSIAuthError("Token expired")
     except jwt.exceptions.DecodeError:

@@ -24,7 +24,8 @@ async def lifespan(app):
     yield
 
 
-app = FastAPI(lifespan=lifespan)
+app = FastAPI(lifespan=lifespan, title="EBSI SIM",
+              description="EBSI SIM is a simulation of the EBSI Blockchain API.")
 app.include_router(tntapp)
 app.include_router(didrapp)
 app.include_router(authapp)
