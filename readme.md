@@ -30,6 +30,6 @@ EBSI FactChecker is composed of 4 FastAPI applications:
 
 1. Clone the repository
 2. Install Docker Engine and Docker Compose
-3. Run the command `docker-compose up` in the root directory of the repository
+3. Run the command `docker-compose up` in the ebsi_sim directory
 4. Open the browser and go to `http://localhost:8000/docs` for the Swagger API documentation or
    `http://localhost:8000/redoc` for the ReDoc API documentation
