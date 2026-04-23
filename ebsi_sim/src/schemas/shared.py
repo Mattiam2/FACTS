@@ -62,7 +62,10 @@ class PermissionEnum(str, Enum):
     :type write: str
     :ivar delegate: Represents the permission to delegate access.
     :type delegate: str
+    :ivar creator: If document is created by the creator
+    :type creator: str
     """
 
     write = "write"
     delegate = "delegate"
+    creator = "creator"

@@ -3,11 +3,11 @@ from datetime import datetime
 from sqlmodel import Field, Relationship, func, SQLModel
 
 from src.models.didr import Identifier
-from src.schemas.access import AccessBase
+from src.schemas.access import AccessItemPublic
 from src.schemas.event import EventBase
 
 
-class Access(AccessBase, table=True):
+class Access(AccessItemPublic, table=True):
     """
     Represents an EBSI Access model for storing and managing grants data.
 

@@ -236,11 +236,11 @@ class AuthService:
             decoded_token = jwt.decode(token, vmethod_public_key, algorithms=credential_algos,
                                        options={'verify_exp': settings.JWT_VERIFY_EXP, 'verify_aud': False, 'verify_signature': True})
 
-            vmethod_issuer = decoded_token["iss"]
+            vmethod_issuer = decoded_token["iss"] #Issuer della credential
             if vmethod_issuer is None:
                 raise AuthServiceError("No issuer found in token")
 
-            if vmethod.did_controller != vmethod_issuer:
+            if vmethod.did_controller != vmethod_issuer: #Issuer della credential corrisponde al did_controller del vmethod usato?
                 raise AuthServiceError("Verification method is not owned by the issuer")
 
             if vmethod.notafter < datetime.now():

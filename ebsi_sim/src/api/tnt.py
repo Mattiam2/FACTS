@@ -8,8 +8,10 @@ from web3 import Web3
 
 from src.core.auth import User, get_current_user
 from src.core.exceptions import EBSINotFoundError
+from src.models.tnt import Access
 from src.schemas import AccessListPublic, DocumentItemPublic, DocumentListPublic, DocumentPublic, EventItemPublic, \
-    EventListPublic, EventPublic, JsonRpcCreate, JsonRpcPublic, PageLinksPublic, TimestampPublic, VersionEnum
+    EventListPublic, EventPublic, JsonRpcCreate, JsonRpcPublic, PageLinksPublic, TimestampPublic, VersionEnum, \
+    AccessItemPublic, PermissionEnum
 from src.services.didr import DidrService
 from src.services.tnt import TntService
 
@@ -78,7 +80,13 @@ def read_subject_accesses(subject: Annotated[str, Query(description="Subject DID
         page_size = 10
 
     accesses_count = tnt_service.count_accesses(subject=subject)
-    n_pages = math.ceil(accesses_count / page_size)
+    documents_count = tnt_service.count_documents(creator=subject)
+    total_count = accesses_count + documents_count
+
+    accesses_n_pages = math.ceil(accesses_count / page_size)
+    documents_n_pages = math.ceil(documents_count / page_size)
+
+    n_pages = accesses_n_pages + documents_n_pages
 
     links = PageLinksPublic(first=f"/accesses?page[after]=1&page[size]={page_size}&subject={subject}",
                             prev=f"/accesses?page[after]={max(1, page_after - 1)}&page[size]={page_size}&subject={subject}",
@@ -87,10 +95,25 @@ def read_subject_accesses(subject: Annotated[str, Query(description="Subject DID
 
     accesses = tnt_service.list_accesses(offset=(page_after - 1) * page_size, limit=page_size, subject=subject)
 
+    documents = []
+    if page_size > len(accesses) > 0:
+        documents = tnt_service.list_documents(offset=0, limit=page_size - len(accesses), creator=subject)
+    elif len(accesses) == 0 and page_after > accesses_n_pages:
+        documents = tnt_service.list_documents(offset=(page_after - accesses_n_pages - 1) * page_size, limit=page_size, creator=subject)
+
+    items = [*accesses]
+    for d in documents:
+        items.append(Access(
+            permission=PermissionEnum.creator,
+            subject=subject,
+            document_id=d.id,
+            granted_by=d.creator))
+
+
     return AccessListPublic(
         self=f"/accesses?page[after]={page_after}&page[size]={page_size}&subject={subject}",
-        items=accesses,
-        total=accesses_count,
+        items=items,
+        total=total_count,
         page_size=page_size,
         links=links
     )

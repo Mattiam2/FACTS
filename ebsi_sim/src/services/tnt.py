@@ -10,6 +10,7 @@ from web3.contract import Contract
 from src.core.auth import check_scopes, User
 from src.core.config import settings
 from src.core.exceptions import EBSIRequestError, EBSINotFoundError, EBSIAuthError, EBSIError, EBSIDuplicateError
+from src.models.tnt import Access
 from src.repositories.didr import IdentifierRepository
 from src.repositories.tnt import AccessRepository
 from src.repositories.tnt import DocumentRepository
@@ -126,7 +127,7 @@ class TntService:
         """
         return self.access_repository.count(**filters)
 
-    def list_accesses(self, *, offset: int = 0, limit: int = 100, order_by: str | None = None, **filters):
+    def list_accesses(self, *, offset: int = 0, limit: int = 100, order_by: str | None = None, **filters) -> list[Access]:
         """
         Provides a paginated list of access entries with optional ordering and filtering.
 
