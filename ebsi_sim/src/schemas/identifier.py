@@ -1,7 +1,7 @@
 from sqlmodel import SQLModel, Field
 
-from src.schemas.shared import PageLinksPublic
-from src.schemas.verification import VerificationMethodBase
+from schemas.shared import PageLinksPublic
+from schemas.verification import VerificationMethodBase
 
 
 class IdentifierBase(SQLModel):

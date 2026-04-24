@@ -1,10 +1,10 @@
 from fastapi import APIRouter, Depends
 
-from src.core.config import settings
-from src.schemas import ScopeEnum, TokenCreate, TokenBase
-from src.services.authorisation import AuthService
-from src.services.didr import DidrService
-from src.utils import pem_to_jwk
+from core.config import settings
+from schemas import ScopeEnum, TokenCreate, TokenBase
+from services.authorisation import AuthService
+from services.didr import DidrService
+from utils import pem_to_jwk
 
 router = APIRouter(prefix="/authorisation", tags=["authorisation"])
 

@@ -1,10 +1,10 @@
 from sqlalchemy.exc import SQLAlchemyError
 from sqlmodel import select, func, literal
 
-from src.core.db import db
-from src.core.exceptions import EBSIDatabaseError
-from src.models.didr import Identifier, VerificationMethod, VerificationRelationship, IdentifierController
-from src.repositories.base import BaseRepository
+from core.db import db
+from core.exceptions import EBSIDatabaseError
+from models.didr import Identifier, VerificationMethod, VerificationRelationship, IdentifierController
+from repositories.base import BaseRepository
 
 
 class IdentifierRepository(BaseRepository[Identifier]):

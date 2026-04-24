@@ -1,6 +1,6 @@
 from sqlmodel import SQLModel, Field
 
-from src.schemas.shared import TimestampPublic, PageLinksPublic
+from schemas.shared import TimestampPublic, PageLinksPublic
 
 
 class DocumentItemPublic(SQLModel):

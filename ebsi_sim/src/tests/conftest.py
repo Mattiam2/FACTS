@@ -6,8 +6,8 @@ from fastapi.testclient import TestClient
 from sqlmodel import StaticPool, SQLModel, Session
 from sqlmodel import create_engine
 
-from src.core.config import Settings
-from src.main import app
+from core.config import Settings
+from main import app
 
 
 @pytest.fixture(name="test_engine")
@@ -49,14 +49,14 @@ def client_fixture(test_engine):
 
     os.environ["JWT_VERIFY_EXP"] = "0"
 
-    patch_middleware = patch("src.main.engine", test_engine)
+    patch_middleware = patch("main.engine", test_engine)
 
-    patch_lifespan = patch("src.repositories.engine", test_engine)
+    patch_lifespan = patch("repositories.engine", test_engine)
 
     test_settings = Settings(JWT_VERIFY_EXP=False)
 
-    patch_settings_auth = patch("src.core.auth.settings", test_settings)
-    patch_settings_auth_services = patch("src.services.authorisation.settings", test_settings)
+    patch_settings_auth = patch("core.auth.settings", test_settings)
+    patch_settings_auth_services = patch("services.authorisation.settings", test_settings)
 
     with patch_middleware, patch_lifespan, patch_settings_auth, patch_settings_auth_services:
         with TestClient(app) as client:

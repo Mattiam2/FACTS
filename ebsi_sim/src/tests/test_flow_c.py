@@ -4,8 +4,8 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlmodel import Session
 
-from src.models.didr import Identifier, VerificationMethod, VerificationRelationship
-from src.models.tnt import Document
+from models.didr import Identifier, VerificationMethod, VerificationRelationship
+from models.tnt import Document
 
 
 @pytest.fixture(name="default_data")

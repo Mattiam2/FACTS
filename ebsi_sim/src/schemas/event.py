@@ -3,7 +3,7 @@ from dataclasses import dataclass
 from sqlmodel import SQLModel, Field
 from typing_extensions import TypedDict
 
-from src.schemas.shared import TimestampPublic, PageLinksPublic
+from schemas.shared import TimestampPublic, PageLinksPublic
 
 
 class EventBase(SQLModel):

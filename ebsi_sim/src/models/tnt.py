@@ -2,9 +2,9 @@ from datetime import datetime
 
 from sqlmodel import Field, Relationship, func, SQLModel
 
-from src.models.didr import Identifier
-from src.schemas.access import AccessItemPublic
-from src.schemas.event import EventBase
+from models.didr import Identifier
+from schemas.access import AccessItemPublic
+from schemas.event import EventBase
 
 
 class Access(AccessItemPublic, table=True):

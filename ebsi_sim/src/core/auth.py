@@ -5,8 +5,8 @@ from fastapi import Depends
 from fastapi.security import OAuth2PasswordBearer, HTTPBearer, HTTPAuthorizationCredentials
 from sqlmodel import SQLModel
 
-from src.core.config import settings
-from src.core.exceptions import EBSIAuthError, EBSIRequestError
+from core.config import settings
+from core.exceptions import EBSIAuthError, EBSIRequestError
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/authorisation/token")
 

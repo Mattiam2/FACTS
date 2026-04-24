@@ -5,14 +5,14 @@ from fastapi import Depends
 from web3 import Web3
 from web3.contract import Contract
 
-from src.core.auth import check_scopes, User
-from src.core.config import settings
-from src.core.exceptions import EBSIAuthError, EBSINotFoundError, EBSIRequestError, EBSIError, EBSIDuplicateError
-from src.models.didr import Identifier, VerificationMethod
-from src.repositories.didr import IdentifierRepository, IdentifierControllerRepository, \
+from core.auth import check_scopes, User
+from core.config import settings
+from core.exceptions import EBSIAuthError, EBSINotFoundError, EBSIRequestError, EBSIError, EBSIDuplicateError
+from models.didr import Identifier, VerificationMethod
+from repositories.didr import IdentifierRepository, IdentifierControllerRepository, \
     VerificationMethodRepository, VerificationRelationshipRepository
-from src.schemas import JsonRpcCreate
-from src.utils import build_unsigned_transaction, exec_signed_transaction
+from schemas import JsonRpcCreate
+from utils import build_unsigned_transaction, exec_signed_transaction
 
 
 class DidrServiceError(EBSIError):

@@ -11,16 +11,16 @@ from jsonschema import validate
 from jwt import get_unverified_header
 from jwt.algorithms import ECAlgorithm
 
-from src.core.config import settings
-from src.core.exceptions import EBSIAuthError, EBSINotFoundError, EBSIRequestError, EBSIError
-from src.models.didr import Identifier
-from src.repositories.didr import IdentifierRepository, VerificationMethodRepository, \
+from core.config import settings
+from core.exceptions import EBSIAuthError, EBSINotFoundError, EBSIRequestError, EBSIError
+from models.didr import Identifier
+from repositories.didr import IdentifierRepository, VerificationMethodRepository, \
     VerificationRelationshipRepository
-from src.schemas import ScopeEnum
-from src.schemas.token import PresentationDescriptor, PresentationSubmission, TokenCreate
-from src.schemas.verifiable_credential import VerifiableCredentialPayload
-from src.schemas.verifiable_presentation import VerifiablePresentationPayload
-from src.utils import pem_to_jwk
+from schemas import ScopeEnum
+from schemas.token import PresentationDescriptor, PresentationSubmission, TokenCreate
+from schemas.verifiable_credential import VerifiableCredentialPayload
+from schemas.verifiable_presentation import VerifiablePresentationPayload
+from utils import pem_to_jwk
 
 
 class AuthServiceError(EBSIError):

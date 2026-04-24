@@ -6,14 +6,14 @@ from fastapi import Response, APIRouter, Depends, HTTPException
 from starlette.status import HTTP_204_NO_CONTENT, HTTP_404_NOT_FOUND
 from web3 import Web3
 
-from src.core.auth import User, get_current_user
-from src.core.exceptions import EBSINotFoundError
-from src.models.tnt import Access
-from src.schemas import AccessListPublic, DocumentItemPublic, DocumentListPublic, DocumentPublic, EventItemPublic, \
+from core.auth import User, get_current_user
+from core.exceptions import EBSINotFoundError
+from models.tnt import Access
+from schemas import AccessListPublic, DocumentItemPublic, DocumentListPublic, DocumentPublic, EventItemPublic, \
     EventListPublic, EventPublic, JsonRpcCreate, JsonRpcPublic, PageLinksPublic, TimestampPublic, VersionEnum, \
-    AccessItemPublic, PermissionEnum
-from src.services.didr import DidrService
-from src.services.tnt import TntService
+    PermissionEnum
+from services.didr import DidrService
+from services.tnt import TntService
 
 w3 = Web3()
 router = APIRouter(prefix="/track-and-trace", tags=["track-and-trace"])

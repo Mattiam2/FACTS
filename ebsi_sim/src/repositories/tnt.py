@@ -1,5 +1,5 @@
-from src.models.tnt import Access, Document, Event
-from src.repositories.base import BaseRepository
+from models.tnt import Access, Document, Event
+from repositories.base import BaseRepository
 
 
 class AccessRepository(BaseRepository[Access]):

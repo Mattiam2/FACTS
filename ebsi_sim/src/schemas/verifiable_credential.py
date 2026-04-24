@@ -9,10 +9,6 @@ class CredentialSchemaPublic(SQLModel):
     type: Optional[str] = None
 
 
-class CredentialSubjectPublic(SQLModel):
-    id: Optional[str] = None
-
-
 class VerifiableCredentialPublic(SQLModel):
     """
     Represents a Verifiable Credential
@@ -49,7 +45,7 @@ class VerifiableCredentialPublic(SQLModel):
     expirationDate: Optional[datetime] = None
     issued: Optional[datetime] = None
     issuer: Optional[str] = None
-    credentialSubject: CredentialSubjectPublic
+    credentialSubject: Optional[dict] = None
     credentialSchema: CredentialSchemaPublic
 
 

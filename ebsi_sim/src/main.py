@@ -1,3 +1,4 @@
+import sys
 from contextlib import asynccontextmanager
 from typing import Callable, Awaitable
 
@@ -6,14 +7,14 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlmodel import Session
 from starlette.responses import JSONResponse
 
-from src.api.authorisation import router as authapp
-from src.api.didr import router as didrapp
-from src.api.issuer_mock import router as issuerapp
-from src.api.tnt import router as tntapp
-from src.api.wallet_mock import router as walletapp
-from src.core.db import engine, session_ctx
-from src.core.exceptions import EBSIError, EBSIRequestError, EBSINotFoundError, EBSIAuthError, EBSIDuplicateError
-from src.repositories import create_db_and_tables, create_default_data
+from api.authorisation import router as authapp
+from api.didr import router as didrapp
+from api.issuer_mock import router as issuerapp
+from api.tnt import router as tntapp
+from api.wallet_mock import router as walletapp
+from core.db import engine, session_ctx
+from core.exceptions import EBSIError, EBSIRequestError, EBSINotFoundError, EBSIAuthError, EBSIDuplicateError
+from repositories import create_db_and_tables, create_default_data
 
 
 @asynccontextmanager

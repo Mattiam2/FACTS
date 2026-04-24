@@ -3,14 +3,14 @@ import json
 from fastapi.testclient import TestClient
 from sqlmodel import Session
 
-from src.models.didr import Identifier
+from models.didr import Identifier
 
 
 def test_request_vc(client: TestClient):
     """
     Tests the request_vc endpoint of the Issuer Mock API
     """
-    response = client.get("/issuer-mock/request_vc", params={
+    response = client.post("/issuer-mock/request_vc", json={
         "subject_did": "did:ebsi:z95paQoBwGAqnnu4RKTmCtT",
         "credential_type": "VerifiableAuthorisationToOnboard"
     })

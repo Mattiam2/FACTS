@@ -4,8 +4,8 @@ from typing import Any, Generic, Type, TypeVar
 from sqlalchemy.exc import SQLAlchemyError
 from sqlmodel import SQLModel, select, func
 
-from src.core.db import db
-from src.core.exceptions import EBSIDatabaseError
+from core.db import db
+from core.exceptions import EBSIDatabaseError
 
 T = TypeVar("T", bound=SQLModel)
 

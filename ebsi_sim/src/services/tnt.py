@@ -7,17 +7,17 @@ from fastapi import Depends
 from web3 import Web3
 from web3.contract import Contract
 
-from src.core.auth import check_scopes, User
-from src.core.config import settings
-from src.core.exceptions import EBSIRequestError, EBSINotFoundError, EBSIAuthError, EBSIError, EBSIDuplicateError
-from src.models.tnt import Access
-from src.repositories.didr import IdentifierRepository
-from src.repositories.tnt import AccessRepository
-from src.repositories.tnt import DocumentRepository
-from src.repositories.tnt import EventRepository
-from src.schemas import JsonRpcCreate, PermissionEnum
-from src.schemas.event import EventParams
-from src.utils import build_unsigned_transaction, exec_signed_transaction, booleanize
+from core.auth import check_scopes, User
+from core.config import settings
+from core.exceptions import EBSIRequestError, EBSINotFoundError, EBSIAuthError, EBSIError, EBSIDuplicateError
+from models.tnt import Access
+from repositories.didr import IdentifierRepository
+from repositories.tnt import AccessRepository
+from repositories.tnt import DocumentRepository
+from repositories.tnt import EventRepository
+from schemas import JsonRpcCreate, PermissionEnum
+from schemas.event import EventParams
+from utils import build_unsigned_transaction, exec_signed_transaction, booleanize
 
 
 class TntServiceError(EBSIError):

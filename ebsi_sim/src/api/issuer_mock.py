@@ -6,15 +6,19 @@ from uuid import uuid4
 import jwt
 from fastapi import APIRouter, Query
 
-from src.core.config import settings
-from src.schemas.verifiable_credential import VerifiableCredentialPublic, VerifiableCredentialPayload
+from core.config import settings
+from schemas.issuer import CredentialCreate
+from schemas.verifiable_credential import VerifiableCredentialPublic, VerifiableCredentialPayload
 
 router = APIRouter(prefix="/issuer-mock", tags=["issuer mock"])
 
+@router.post("/request_vc")
+def request_vc(payload: CredentialCreate) -> str:
 
-@router.get("/request_vc")
-def request_vc(subject_did: Annotated[str, Query(description="DID Subject of the request")],
-               credential_type: Annotated[list[str], Query()] = None) -> str:
+    subject_did = payload.subject_did
+    credential_type = payload.credential_type
+    credential_subject = payload.credential_subject
+
     """
     Handles the issuance of a Verifiable Credential (VC) simulating an Issuer.
     This endpoint generates a credential containing information about the subject,
@@ -23,6 +27,10 @@ def request_vc(subject_did: Annotated[str, Query(description="DID Subject of the
     """
     if credential_type is None:
         credential_type = []
+    if credential_subject is None:
+        credential_subject = {}
+    if isinstance(credential_type, str):
+        credential_type = [credential_type]
     issued = datetime.now()
     expiration_date = datetime.now() + timedelta(days=10 * 365)
     uuid_str = uuid4().urn
@@ -37,7 +45,7 @@ def request_vc(subject_did: Annotated[str, Query(description="DID Subject of the
         expirationDate=expiration_date,
         issued=issued,
         issuer=settings.ISSUER_DID,
-        credentialSubject={'id': subject_did},
+        credentialSubject={'id': subject_did, **credential_subject},
         credentialSchema={
             'id': 'https://api-pilot.ebsi.eu/trusted-schemas-registry/v2/schemas/0x23039e6356ea6b703ce672e7cfac0b42765b150f63df78e2bd18ae785787f6a2',
             'type': 'FullJsonSchemaValidator2021'}
