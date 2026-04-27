@@ -8,8 +8,8 @@ from cryptography.hazmat.primitives.asymmetric.ec import derive_private_key, SEC
 from fastapi import APIRouter, HTTPException, Query
 from web3 import Web3
 
-from core.config import settings
-from schemas.verifiable_presentation import VerifiablePresentationPayload, VerifiablePresentationPublic
+from ebsi_sim.src.core.config import settings
+from ebsi_sim.src.schemas.verifiable_presentation import VerifiablePresentationPayload, VerifiablePresentationBase
 
 router = APIRouter(prefix="/wallet-mock", tags=["wallet mock"])
 
@@ -22,7 +22,7 @@ def create_vp(vc_token: str, did: str, private_key: str, verification_id: Option
     """
     uuid_str = uuid4().urn
 
-    vp = VerifiablePresentationPublic(
+    vp = VerifiablePresentationBase(
         context=["https://www.w3.org/2018/credentials/v1"],
         id=uuid_str,
         type=["VerifiablePresentation"],

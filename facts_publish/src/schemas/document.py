@@ -1,9 +1,7 @@
-from typing import Any
-
-from sqlmodel import SQLModel, Field, JSON
 from pydantic import Json
+from sqlmodel import SQLModel, Field, JSON
 
-from ebsi_sim.src.schemas.shared import TimestampPublic, PageLinksPublic
+from facts_publish.src.schemas.shared import TimestampPublic, PageLinksPublic
 
 
 class DocumentItemPublic(SQLModel):
@@ -62,6 +60,6 @@ class DocumentPublic(SQLModel):
     :type creator: str
     """
 
-    metadata_json: dict | str | None = Field(default=None, schema_extra={'serialization_alias': 'metadata'}, description="Document's metadata")
+    metadata_json: dict | str | None = Field(default=None, alias="metadata", schema_extra={'serialization_alias': 'metadata'}, description="Document's metadata")
     timestamp: TimestampPublic | None = Field(default=None, description="Document's metadata")
     creator: str | None = Field(default=None, description="The `did:key` or `did:ebsi` that created the document")

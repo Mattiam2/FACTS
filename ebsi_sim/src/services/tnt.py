@@ -7,17 +7,17 @@ from fastapi import Depends
 from web3 import Web3
 from web3.contract import Contract
 
-from core.auth import check_scopes, User
-from core.config import settings
-from core.exceptions import EBSIRequestError, EBSINotFoundError, EBSIAuthError, EBSIError, EBSIDuplicateError
-from models.tnt import Access
-from repositories.didr import IdentifierRepository
-from repositories.tnt import AccessRepository
-from repositories.tnt import DocumentRepository
-from repositories.tnt import EventRepository
-from schemas import JsonRpcCreate, PermissionEnum
-from schemas.event import EventParams
-from utils import build_unsigned_transaction, exec_signed_transaction, booleanize
+from ebsi_sim.src.core.auth import check_scopes, User
+from ebsi_sim.src.core.config import settings
+from ebsi_sim.src.core.exceptions import EBSIRequestError, EBSINotFoundError, EBSIAuthError, EBSIError, EBSIDuplicateError
+from ebsi_sim.src.models.tnt import Access
+from ebsi_sim.src.repositories.didr import IdentifierRepository
+from ebsi_sim.src.repositories.tnt import AccessRepository
+from ebsi_sim.src.repositories.tnt import DocumentRepository
+from ebsi_sim.src.repositories.tnt import EventRepository
+from ebsi_sim.src.schemas import JsonRpcCreate, PermissionEnum
+from ebsi_sim.src.schemas.event import EventParams
+from ebsi_sim.src.utils import build_unsigned_transaction, exec_signed_transaction, booleanize
 
 
 class TntServiceError(EBSIError):
@@ -223,7 +223,7 @@ class TntService:
             raise TntServiceDuplicateError(f"TNT Document {document_hash} already exists in the database")
 
         self.document_repository.create(id=document_hash, creator=did_ebsi_creator,
-                                        metadata_text=doc_metadata,
+                                        metadata_json=doc_metadata,
                                         timestamp_datetime=doc_timestamp_datetime, timestamp_proof=doc_timestamp_proof,
                                         timestamp_source="external" if doc_timestamp_proof else "block")
 
@@ -322,8 +322,8 @@ class TntService:
                                                                                                bytes) else timestamp_proof
         raw_id = f"{doc_id}{external_hash}{sender}{time.time_ns()}"
         event_id = "0x" + hashlib.sha256(raw_id.encode()).hexdigest()
-        self.event_repository.create(id=event_id, document_id=doc_id, metadata_text=metadata, sender=sender,
-                                     origin=origin, hash=00000, external_hash=external_hash,
+        self.event_repository.create(id=event_id, document_id=doc_id, metadata_json=metadata, sender=sender,
+                                     origin=origin, external_hash=external_hash,
                                      timestamp_datetime=event_timestamp_datetime, timestamp_proof=event_timestamp_proof,
                                      timestamp_source="external" if event_timestamp_proof else "block")
 

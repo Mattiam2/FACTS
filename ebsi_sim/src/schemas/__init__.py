@@ -5,5 +5,5 @@ from .identifier import IdentifierListPublic, IdentifierPublic, IdentifierItemPu
 from .jsonrpc import JsonRpcCreate, JsonRpcPublic
 from .presentation import ScopeEnum
 from .shared import PageLinksPublic, PermissionEnum, TimestampPublic, VersionEnum
-from .token import TokenBase, TokenCreate
+from .token import TokenPublic, TokenCreate
 from .verification import VerificationMethodBase, VerificationRelationshipBase

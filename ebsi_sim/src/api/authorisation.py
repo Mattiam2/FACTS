@@ -1,10 +1,10 @@
 from fastapi import APIRouter, Depends
 
-from core.config import settings
-from schemas import ScopeEnum, TokenCreate, TokenBase
-from services.authorisation import AuthService
-from services.didr import DidrService
-from utils import pem_to_jwk
+from ebsi_sim.src.core.config import settings
+from ebsi_sim.src.schemas import ScopeEnum, TokenCreate, TokenPublic
+from ebsi_sim.src.services.authorisation import AuthService
+from ebsi_sim.src.services.didr import DidrService
+from ebsi_sim.src.utils import pem_to_jwk
 
 router = APIRouter(prefix="/authorisation", tags=["authorisation"])
 
@@ -17,7 +17,7 @@ router = APIRouter(prefix="/authorisation", tags=["authorisation"])
                  500: {"description": "Internal Server Error"}
              })
 def create_token(payload: TokenCreate, auth_service: AuthService = Depends(),
-                 didr_service: DidrService = Depends()) -> TokenBase:
+                 didr_service: DidrService = Depends()) -> TokenPublic:
     """
     Users receive access tokens after they present a valid EBSI Verifiable Credential and prove ownership over their DID.
     """
@@ -30,8 +30,8 @@ def create_token(payload: TokenCreate, auth_service: AuthService = Depends(),
 
     access_token, id_token = auth_service.create_token(vp_payload, payload.scope, payload.presentation_submission,
                                                        presentation_definition)
-    return TokenBase(access_token=access_token, id_token=id_token, expires_in=7200, token_type="Bearer",
-                     scope=payload.scope.value)
+    return TokenPublic(access_token=access_token, id_token=id_token, expires_in=7200, token_type="Bearer",
+                       scope=payload.scope.value)
 
 
 @router.get("/.well-known/openid-configuration", summary="OpenID Provider Metadata",

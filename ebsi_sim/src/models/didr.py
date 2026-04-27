@@ -2,8 +2,8 @@ from datetime import datetime
 
 from sqlmodel import SQLModel, Field, func, Relationship
 
-from schemas.identifier import IdentifierBase
-from schemas.verification import VerificationMethodBase, VerificationRelationshipBase
+from ebsi_sim.src.schemas.identifier import IdentifierBase
+from ebsi_sim.src.schemas.verification import VerificationMethodBase, VerificationRelationshipBase
 
 
 class VerificationMethod(VerificationMethodBase, table=True):
@@ -111,10 +111,10 @@ class Identifier(IdentifierBase, table=True):
     __table_args__ = {'schema': 'public'}
 
     did: str = Field(primary_key=True)
-    context: str | None = Field(default=None)
+    context: str | None = None
     created_at: datetime = Field(default=func.now())
-    tir_authorized: bool = Field(default=False)
-    tnt_authorized: bool = Field(default=False)
+    tir_authorized: bool = False
+    tnt_authorized: bool = False
 
     controllers: list["Identifier"] = Relationship(back_populates="controlled_identifiers",
                                                    link_model=IdentifierController, sa_relationship_kwargs=dict(

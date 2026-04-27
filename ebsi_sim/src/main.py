@@ -1,4 +1,4 @@
-import sys
+import traceback
 from contextlib import asynccontextmanager
 from typing import Callable, Awaitable
 
@@ -7,14 +7,14 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlmodel import Session
 from starlette.responses import JSONResponse
 
-from api.authorisation import router as authapp
-from api.didr import router as didrapp
-from api.issuer_mock import router as issuerapp
-from api.tnt import router as tntapp
-from api.wallet_mock import router as walletapp
-from core.db import engine, session_ctx
-from core.exceptions import EBSIError, EBSIRequestError, EBSINotFoundError, EBSIAuthError, EBSIDuplicateError
-from repositories import create_db_and_tables, create_default_data
+from ebsi_sim.src.api.authorisation import router as authapp
+from ebsi_sim.src.api.didr import router as didrapp
+from ebsi_sim.src.api.issuer_mock import router as issuerapp
+from ebsi_sim.src.api.tnt import router as tntapp
+from ebsi_sim.src.api.wallet_mock import router as walletapp
+from ebsi_sim.src.core.db import engine, session_ctx
+from ebsi_sim.src.core.exceptions import EBSIError, EBSIRequestError, EBSINotFoundError, EBSIAuthError, EBSIDuplicateError
+from ebsi_sim.src.repositories import create_db_and_tables, create_default_data
 
 
 @asynccontextmanager
@@ -49,6 +49,8 @@ def handle_exception(exc: Exception):
     elif isinstance(exc, SQLAlchemyError):
         message = "Database error"
 
+    if status_code == 500 or not isinstance(exc, EBSIError):
+        traceback.print_exc()
     return JSONResponse(status_code=status_code, content={"detail": message})
 
 

@@ -1,17 +1,18 @@
 from dataclasses import dataclass
 
-from sqlmodel import SQLModel, Field
-from typing_extensions import TypedDict
+from pydantic import Json
+from sqlmodel import SQLModel, Field, JSON
+from typing_extensions import TypedDict, Any
 
-from schemas.shared import TimestampPublic, PageLinksPublic
+from ebsi_sim.src.schemas.shared import TimestampPublic, PageLinksPublic
 
 
 class EventBase(SQLModel):
     """
     Represents an EBSI event base model
 
-    :ivar metadata_text: Metadata information for the event
-    :type metadata_text: str
+    :ivar metadata_json: Metadata information for the event
+    :type metadata_json: Json
     :ivar sender: Identifier of the sender of the event.
     :type sender: str
     :ivar origin: Origin or source of the event.
@@ -22,7 +23,7 @@ class EventBase(SQLModel):
     :type external_hash: str, optional
     """
 
-    metadata_text: str = Field(schema_extra={'serialization_alias': 'metadata'}, description="Event's metadata")
+    metadata_json: dict | str = Field(schema_extra={'serialization_alias': 'metadata'}, description="Event's metadata")
     sender: str = Field(description="The `did:key` or `did:ebsi` that created the event")
     origin: str = Field(
         description="Most of the times empty field, while it may be a string containing company name, while it can also point into an Event. All assumed relations are external to the SC.")
@@ -41,8 +42,8 @@ class EventItemPublic(SQLModel):
     :type href: str
     """
 
-    event_id: str = Field(schema_extra={'serialization_alias': 'eventId'}, description="Event ID")
-    href: str = Field(description="Link to the resource")
+    event_id: str | None = Field(default=None, schema_extra={'serialization_alias': 'eventId'}, description="Event ID")
+    href: str | None = Field(default=None, description="Link to the resource")
 
 
 class EventListPublic(SQLModel):
@@ -61,12 +62,12 @@ class EventListPublic(SQLModel):
     :type links: PageLinksPublic
     """
 
-    self: str = Field(description="Absolute path to the collection (consult)")
-    items: list[EventItemPublic] = Field(description="List of events")
-    total: int = Field(description="Total number of items across all pages.")
-    page_size: int = Field(schema_extra={'serialization_alias': 'pageSize'},
+    self: str | None = Field(default=None, description="Absolute path to the collection (consult)")
+    items: list[EventItemPublic] | None = Field(default=None, description="List of events")
+    total: int | None = Field(default=None, description="Total number of items across all pages.")
+    page_size: int | None = Field(default=None, schema_extra={'serialization_alias': 'pageSize'},
                            description="Maximum number of items per page. For the last page, its value should be independent of the number of actually returned items.")
-    links: PageLinksPublic = Field(description="Links model used for pagination")
+    links: PageLinksPublic | None = Field(default=None, description="Links model used for pagination")
 
 
 class EventPublic(EventBase):
@@ -77,7 +78,14 @@ class EventPublic(EventBase):
     :type timestamp: TimestampPublic
     """
 
-    timestamp: TimestampPublic = Field(description="Timestamp object")
+    metadata_json: dict | str | None = Field(default=None, schema_extra={'serialization_alias': 'metadata'}, description="Event's metadata")
+    sender: str | None = Field(default=None, description="The `did:key` or `did:ebsi` that created the event")
+    origin: str | None = Field(default=None,
+        description="Most of the times empty field, while it may be a string containing company name, while it can also point into an Event. All assumed relations are external to the SC.")
+    id: str | None = Field(default=None, schema_extra={'serialization_alias': 'hash'}, description="Event hash")
+    external_hash: str | None = Field(None, schema_extra={'serialization_alias': 'externalHash'},
+                                      description="Externally generated hash")
+    timestamp: TimestampPublic | None = Field(default=None, description="Timestamp object")
 
 
 @dataclass

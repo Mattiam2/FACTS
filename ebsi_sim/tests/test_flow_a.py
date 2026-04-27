@@ -3,7 +3,7 @@ import json
 from fastapi.testclient import TestClient
 from sqlmodel import Session
 
-from models.didr import Identifier
+from ebsi_sim.src.models.didr import Identifier
 
 
 def test_request_vc(client: TestClient):

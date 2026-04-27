@@ -6,14 +6,14 @@ from fastapi import Response, APIRouter, Depends, HTTPException
 from starlette.status import HTTP_204_NO_CONTENT, HTTP_404_NOT_FOUND
 from web3 import Web3
 
-from core.auth import User, get_current_user
-from core.exceptions import EBSINotFoundError
-from models.tnt import Access
-from schemas import AccessListPublic, DocumentItemPublic, DocumentListPublic, DocumentPublic, EventItemPublic, \
+from ebsi_sim.src.core.auth import User, get_current_user
+from ebsi_sim.src.core.exceptions import EBSINotFoundError
+from ebsi_sim.src.models.tnt import Access
+from ebsi_sim.src.schemas import AccessListPublic, DocumentItemPublic, DocumentListPublic, DocumentPublic, EventItemPublic, \
     EventListPublic, EventPublic, JsonRpcCreate, JsonRpcPublic, PageLinksPublic, TimestampPublic, VersionEnum, \
     PermissionEnum
-from services.didr import DidrService
-from services.tnt import TntService
+from ebsi_sim.src.services.didr import DidrService
+from ebsi_sim.src.services.tnt import TntService
 
 w3 = Web3()
 router = APIRouter(prefix="/track-and-trace", tags=["track-and-trace"])
@@ -184,7 +184,7 @@ def read_doc(document_id: Annotated[str, Path(description="The 32-bytes ID of th
     )
 
     return DocumentPublic(
-        metadata_text=doc.metadata_text,
+        metadata_json=doc.metadata_json,
         timestamp=timestamp,
         creator=doc.creator
     )

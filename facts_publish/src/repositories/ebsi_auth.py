@@ -1,19 +1,14 @@
 import httpx
 
 from facts_publish.src.repositories.ebsi_base import EBSIClient
+from facts_publish.src.schemas.auth import TokenPublic
 
 
-class AuthClient(EBSIClient):
-    root_path: str
+class AuthRepository(EBSIClient):
 
     def __init__(self):
-        super().__init__()
-        self.root_path = '/authorisation'
+        super().__init__(root_path="authorisation")
 
-    async def get_token(self, data: dict):
-        async with httpx.AsyncClient(base_url=self.base_url) as client:
-            response = await client.post(f"{self.root_path}/token",
-                                         headers={"Content-Type": "application/json"},
-                                         data=data)
-            response.raise_for_status()
-            return response.json()
+    def get_token(self, data: dict) -> TokenPublic:
+        response = self.post("/token", data=data)
+        return TokenPublic.model_validate(response)

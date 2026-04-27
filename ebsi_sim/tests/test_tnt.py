@@ -1,5 +1,5 @@
 from fastapi.testclient import TestClient
-from models.tnt import Document, Event, Access
+from ebsi_sim.src.models.tnt import Document, Event, Access
 
 def test_read_abi(client: TestClient):
     """
@@ -56,7 +56,7 @@ def test_read_document(client, session):
     """
     d = Document(
         id="0xcd299cdabd6299907c31f7cdf112830bda9e2d9f5d33c9fc75dd62caa6b9bd67",
-        metadata_text="This is a test document",
+        metadata_json="This is a test document",
         timestamp_source="block",
         creator="did:ebsi:zE971oT9esuKdcHspKdfAXg",
     )
@@ -84,7 +84,7 @@ def test_read_document_events(client, session):
     """
     d = Document(
         id="0xcd299cdabd6299907c31f7cdf112830bda9e2d9f5d33c9fc75dd62caa6b9bd67",
-        metadata_text="This is a test document",
+        metadata_json="This is a test document",
         timestamp_source="block",
         creator="did:ebsi:zE971oT9esuKdcHspKdfAXg",
     )
@@ -92,7 +92,7 @@ def test_read_document_events(client, session):
         id="0x02a09bf88268028d1ca221305bd460db856c696a47cd58949aca0803eedc62ae",
         origin="test",
         document_id="0xcd299cdabd6299907c31f7cdf112830bda9e2d9f5d33c9fc75dd62caa6b9bd67",
-        metadata_text="Event test data",
+        metadata_json="Event test data",
         timestamp_source="block",
         sender="did:ebsi:zE971oT9esuKdcHspKdfAXg",
         external_hash="0x02a09bf88268028d1ca221305bd460db856c696a47cd58949aca0803eedc62ae",
@@ -101,7 +101,7 @@ def test_read_document_events(client, session):
         id="0x03a09bf88268028d1ca221305bd460db856c696a47cd58949aca0803eedc62ae",
         origin="test",
         document_id="0xcd299cdabd6299907c31f7cdf112830bda9e2d9f5d33c9fc75dd62caa6b9bd67",
-        metadata_text="Event test data 2",
+        metadata_json="Event test data 2",
         timestamp_source="block",
         sender="did:ebsi:zE971oT9esuKdcHspKdfAXg",
         external_hash="0x03a09bf88268028d1ca221305bd460db856c696a47cd58949aca0803eedc62ae",
@@ -131,7 +131,7 @@ def test_read_document_event(client, session):
     """
     d = Document(
         id="0xcd299cdabd6299907c31f7cdf112830bda9e2d9f5d33c9fc75dd62caa6b9bd67",
-        metadata_text="This is a test document",
+        metadata_json="This is a test document",
         timestamp_source="block",
         creator="did:ebsi:zE971oT9esuKdcHspKdfAXg",
     )
@@ -139,7 +139,7 @@ def test_read_document_event(client, session):
         id="0x02a09bf88268028d1ca221305bd460db856c696a47cd58949aca0803eedc62ae",
         origin="test",
         document_id="0xcd299cdabd6299907c31f7cdf112830bda9e2d9f5d33c9fc75dd62caa6b9bd67",
-        metadata_text="Event test data",
+        metadata_json="Event test data",
         timestamp_source="block",
         sender="did:ebsi:zE971oT9esuKdcHspKdfAXg",
         external_hash="0x02a09bf88268028d1ca221305bd460db856c696a47cd58949aca0803eedc62ae",
@@ -169,7 +169,7 @@ def test_read_document_accesses(client, session):
     """
     d = Document(
         id="0xcd299cdabd6299907c31f7cdf112830bda9e2d9f5d33c9fc75dd62caa6b9bd67",
-        metadata_text="This is a test document",
+        metadata_json="This is a test document",
         timestamp_source="block",
         creator="did:ebsi:zE971oT9esuKdcHspKdfAXg",
     )

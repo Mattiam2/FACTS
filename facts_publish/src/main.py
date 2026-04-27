@@ -1,14 +1,20 @@
 from typing import Callable, Awaitable
 
-from fastapi import FastAPI, Request, Response, Depends
-from sqlmodel import Session, SQLModel
+from fastapi import FastAPI, Request, Response
+from sqlmodel import Session
 
-from core.db import engine, session_ctx
-from repositories.ebsi_issuer import IssuerClient
+from facts_publish.src.core.db import engine, session_ctx
+from facts_publish.src.api.articles import router as articleapi
+from facts_publish.src.api.credentials import router as credentialapi
+from facts_publish.src.api.auth import router as authapi
+
 
 app = FastAPI(title="FACTS Publish",
               description="FACTS Publisher tool")
 
+app.include_router(articleapi)
+app.include_router(credentialapi)
+app.include_router(authapi)
 
 @app.middleware("http")
 async def db_session_handler(request: Request, call_next: Callable[[Request], Awaitable[Response]]) -> Response:
@@ -37,21 +43,3 @@ async def db_session_handler(request: Request, call_next: Callable[[Request], Aw
         finally:
             session_ctx.reset(session_token)
             session.close()
-
-class CredentialSubject(SQLModel):
-    subject_did: str
-    company_name: str
-    company_address: str
-    company_vat: str
-
-@app.post("/request_vc")
-async def request_vc(payload: CredentialSubject, subject_did: str, issuer_repo: IssuerClient = Depends()):
-    return await issuer_repo.request_vc({
-        "subject_did": payload.subject_did,
-        "credential_subject":{
-            "company_name": payload.company_name,
-            "company_address": payload.company_address,
-            "company_vat": payload.company_vat
-        },
-        "credential_type": ['VerifiableCredential', 'FACTSPublisherCredential']
-    })

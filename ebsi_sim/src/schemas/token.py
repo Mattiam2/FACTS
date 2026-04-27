@@ -3,7 +3,7 @@ from typing import Optional
 
 from sqlmodel import SQLModel, Field
 
-from schemas.presentation import ScopeEnum
+from ebsi_sim.src.schemas.presentation import ScopeEnum
 
 
 class GrantTypeEnum(str, Enum):
@@ -112,7 +112,7 @@ class TokenTypeEnum(str, Enum):
     bearer = "Bearer"
 
 
-class TokenBase(SQLModel):
+class TokenPublic(SQLModel):
     """
     Represents a response schema for token information.
 
@@ -130,12 +130,11 @@ class TokenBase(SQLModel):
         Presents the client's identity. ID Token is issued in JWS format.
     :type id_token: str
     """
-    access_token: str = Field(description="The access token issued by the Authorisation Server in JWS format.")
-    token_type: TokenTypeEnum = Field(description="MUST be `Bearer`")
-    expires_in: int = Field(description="The lifetime in seconds of the access token.", ge=1)
-    scope: ScopeEnum = Field(description="The scope of the access token")
-    id_token: str = Field(
-        description="ID Token value associated with the authenticated session. Presents client's identity. ID Token is issued in a JWS format.")
+    access_token: str | None = Field(default=None, description="The access token issued by the Authorisation Server in JWS format.")
+    token_type: TokenTypeEnum | None = Field(default=None, description="MUST be `Bearer`")
+    expires_in: int | None = Field(default=None, description="The lifetime in seconds of the access token.", ge=1)
+    scope: ScopeEnum | None = Field(default=None, description="The scope of the access token")
+    id_token: str | None = Field(default=None, description="ID Token value associated with the authenticated session. Presents client's identity. ID Token is issued in a JWS format.")
 
     model_config = {
         "json_schema_extra": {

@@ -1,7 +1,7 @@
 from sqlmodel import SQLModel, Field
 
-from schemas.shared import PageLinksPublic
-from schemas.verification import VerificationMethodBase
+from ebsi_sim.src.schemas.shared import PageLinksPublic
+from ebsi_sim.src.schemas.verification import VerificationMethodBase
 
 
 class IdentifierBase(SQLModel):
@@ -15,7 +15,7 @@ class IdentifierBase(SQLModel):
 
 
 class IdentifierPublic(IdentifierBase):
-    did: str = Field(schema_extra={'serialization_alias': 'id'})
+    did: str | None = Field(default=None, schema_extra={'serialization_alias': 'id'})
     controller: list[str] | None = None
     verificationMethod: list[VerificationMethodBase] | None = None
     authentication: list[str] | None = None
@@ -32,7 +32,7 @@ class IdentifierItemPublic(IdentifierBase):
     :ivar href: URL of the resource representing the identifier.
     :type href: str
     """
-    href: str = Field(description="Link to the resource")
+    href: str | None = Field(default=None, description="Link to the resource")
 
 
 class IdentifierListPublic(SQLModel):
@@ -54,9 +54,9 @@ class IdentifierListPublic(SQLModel):
     :type links: PageLinksPublic
     """
 
-    self: str = Field(description="Filter by controller DID.")
-    items: list[IdentifierItemPublic] = Field(description="List of identifier.")
-    total: int = Field(description="Total number of items across all pages.")
-    page_size: int = Field(schema_extra={'serialization_alias': 'pageSize'},
+    self: str | None = Field(default=None, description="Filter by controller DID.")
+    items: list[IdentifierItemPublic] | None = Field(default=None, description="List of identifier.")
+    total: int | None = Field(default=None, description="Total number of items across all pages.")
+    page_size: int | None = Field(default=None, schema_extra={'serialization_alias': 'pageSize'},
                            description="Maximum number of items per page. For the last page, its value should be independent of the number of actually returned items.")
-    links: PageLinksPublic = Field(description="Links model used for pagination")
+    links: PageLinksPublic | None = Field(default=None, description="Links model used for pagination")

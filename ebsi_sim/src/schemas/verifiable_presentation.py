@@ -1,7 +1,7 @@
 from sqlmodel import SQLModel, Field
 
 
-class VerifiablePresentationPublic(SQLModel):
+class VerifiablePresentationBase(SQLModel):
     """
     Represents a verifiable presentation.
 
@@ -17,11 +17,11 @@ class VerifiablePresentationPublic(SQLModel):
         the presentation.
     :type verifiableCredential: list[str]
     """
-    context: list[str] = Field(default_factory=list, alias="@context")
-    id: str
-    type: list[str] = Field(default_factory=list)
-    holder: str
-    verifiableCredential: list[str] = Field(default_factory=list)
+    context: list[str] = Field(default_factory=list, alias="@context", description="Context(s) related to this verifiable presentation.")
+    id: str | None = Field(default=None, description="The unique identifier for the verifiable presentation.")
+    type: list[str] = Field(default_factory=list, description="Type(s) of the verifiable presentation.")
+    holder: str = Field(description="DID of the entity holding the verifiable presentation.")
+    verifiableCredential: list[str] = Field(default_factory=list, description="A list of verifiable credentials contained within the presentation.")
 
 
 class VerifiablePresentationPayload(SQLModel):
@@ -46,7 +46,7 @@ class VerifiablePresentationPayload(SQLModel):
     :ivar jti: Unique identifier for the payload.
     :type jti: str
     :ivar vp: Verifiable presentation.
-    :type vp: VerifiablePresentationPublic
+    :type vp: VerifiablePresentationBase
     """
     iss: str
     aud: str
@@ -56,4 +56,4 @@ class VerifiablePresentationPayload(SQLModel):
     exp: int
     nonce: str
     jti: str
-    vp: VerifiablePresentationPublic
+    vp: VerifiablePresentationBase

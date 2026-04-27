@@ -1,6 +1,6 @@
 from sqlmodel import SQLModel, Field
 
-from schemas.shared import PermissionEnum, PageLinksPublic
+from ebsi_sim.src.schemas.shared import PermissionEnum, PageLinksPublic
 
 
 class AccessBase(SQLModel):
@@ -30,7 +30,11 @@ class AccessItemPublic(AccessBase):
     :ivar document_id: Identifier for the associated document.
     :type document_id: str
     """
-    document_id: str = Field(schema_extra={'serialization_alias': 'documentId'}, description="Document ID")
+    subject: str | None = Field(default=None, description="Subject")
+    granted_by: str | None = Field(default=None, schema_extra={'serialization_alias': 'grantedBy'},
+                            description="DID that granted the access")
+    permission: PermissionEnum | None = Field(default=None, description="Type of permission")
+    document_id: str | None = Field(default=None, schema_extra={'serialization_alias': 'documentId'}, description="Document ID")
 
 
 class AccessListPublic(SQLModel):
@@ -52,9 +56,9 @@ class AccessListPublic(SQLModel):
     :type links: PageLinksPublic
     """
 
-    self: str = Field(description="Absolute path to the collection (consult)")
-    items: list[AccessItemPublic] = Field(description="List of accesses")
-    total: int = Field(description="Total number of items across all pages.")
-    page_size: int = Field(schema_extra={'serialization_alias': 'pageSize'},
+    self: str | None = Field(default=None, description="Absolute path to the collection (consult)")
+    items: list[AccessItemPublic] | None = Field(default=None, description="List of accesses")
+    total: int | None = Field(default=None, description="Total number of items across all pages.")
+    page_size: int | None = Field(default=None, schema_extra={'serialization_alias': 'pageSize'},
                            description="Maximum number of items per page. For the last page, its value should be independent of the number of actually returned items.")
-    links: PageLinksPublic = Field(description="Links model used for pagination")
+    links: PageLinksPublic | None = Field(default=None, description="Links model used for pagination")

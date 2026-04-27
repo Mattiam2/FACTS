@@ -4,8 +4,8 @@ from typing import Any, Generic, Type, TypeVar
 from sqlalchemy.exc import SQLAlchemyError
 from sqlmodel import SQLModel, select, func
 
-from ebsi_sim.src.core.db import db
-from ebsi_sim.src.core.exceptions import EBSIDatabaseError
+from facts_publish.src.core.db import db
+from facts_publish.src.core.exceptions import FACTSDatabaseError
 
 T = TypeVar("T", bound=SQLModel)
 
@@ -63,7 +63,7 @@ class BaseRepository(Repository[T]):
         try:
             result = db.session.get(self.model, id)
         except SQLAlchemyError as e:
-            raise EBSIDatabaseError(f"Error retrieving {self.model.__name__} with id {id}")
+            raise FACTSDatabaseError(f"Error retrieving {self.model.__name__} with id {id}")
         else:
             return result
 
@@ -92,7 +92,7 @@ class BaseRepository(Repository[T]):
             stmt = stmt.offset(offset).limit(limit)
             results = db.session.scalars(stmt)
         except SQLAlchemyError as e:
-            raise EBSIDatabaseError(f"Error retrieving {self.model.__name__} list")
+            raise FACTSDatabaseError(f"Error retrieving {self.model.__name__} list")
         else:
             return list(results)
 
@@ -117,7 +117,7 @@ class BaseRepository(Repository[T]):
             else:
                 db.session.flush()
         except SQLAlchemyError as e:
-            raise EBSIDatabaseError(f"Error creating {self.model.__name__}")
+            raise FACTSDatabaseError(f"Error creating {self.model.__name__}")
         else:
             return obj
 
@@ -148,7 +148,7 @@ class BaseRepository(Repository[T]):
             else:
                 db.session.flush()
         except SQLAlchemyError as e:
-            raise EBSIDatabaseError(f"Error updating {self.model.__name__} {id}")
+            raise FACTSDatabaseError(f"Error updating {self.model.__name__} {id}")
         else:
             return obj
 
@@ -172,7 +172,7 @@ class BaseRepository(Repository[T]):
             else:
                 db.session.flush()
         except SQLAlchemyError as e:
-            raise EBSIDatabaseError(f"Error deleting {self.model.__name__} {id}")
+            raise FACTSDatabaseError(f"Error deleting {self.model.__name__} {id}")
 
     def count(self, **filters) -> int:
         """
@@ -192,6 +192,6 @@ class BaseRepository(Repository[T]):
                     stmt = stmt.where(getattr(self.model, field) == value)
             result = db.session.scalar(stmt)
         except SQLAlchemyError as e:
-            raise EBSIDatabaseError(f"Error counting {self.model.__name__}")
+            raise FACTSDatabaseError(f"Error counting {self.model.__name__}")
         else:
             return result

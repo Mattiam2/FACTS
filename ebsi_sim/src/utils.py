@@ -11,8 +11,8 @@ from eth_account._utils.legacy_transactions import Transaction
 from jwcrypto import jwk
 from web3.contract.base_contract import BaseContractFunction
 
-from core.auth import User
-from core.exceptions import EBSIRequestError, EBSIError
+from ebsi_sim.src.core.auth import User
+from ebsi_sim.src.core.exceptions import EBSIRequestError, EBSIError
 
 def to_snakecase(text: str) -> str:
     """

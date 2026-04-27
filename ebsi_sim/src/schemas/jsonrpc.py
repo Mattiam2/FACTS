@@ -77,6 +77,6 @@ class JsonRpcPublic(SQLModel):
     :type result: dict | str
     """
 
-    jsonrpc: str = Field(description="Must be exactly `2.0`")
-    id: int = Field(description="Same identifier established by the client in the call")
-    result: dict | str = Field(description="Result of the call")
+    jsonrpc: str | None = Field(default=None, description="Must be exactly `2.0`")
+    id: int | None = Field(default=None, description="Same identifier established by the client in the call")
+    result: dict | str | None = Field(default=None, description="Result of the call")

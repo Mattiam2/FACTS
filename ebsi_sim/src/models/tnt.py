@@ -1,10 +1,12 @@
 from datetime import datetime
+from typing import Any
 
-from sqlmodel import Field, Relationship, func, SQLModel
+from pydantic import Json
+from sqlmodel import Field, Relationship, func, SQLModel, JSON
 
-from models.didr import Identifier
-from schemas.access import AccessItemPublic
-from schemas.event import EventBase
+from ebsi_sim.src.models.didr import Identifier
+from ebsi_sim.src.schemas.access import AccessItemPublic
+from ebsi_sim.src.schemas.event import EventBase
 
 
 class Access(AccessItemPublic, table=True):
@@ -39,8 +41,8 @@ class Document(SQLModel, table=True):
 
     :ivar id: The unique identifier for the document.
     :type id: str
-    :ivar metadata_text: The metadata of the document.
-    :type metadata_text: str
+    :ivar metadata_json: The metadata of the document.
+    :type metadata_json: Json
     :ivar timestamp_datetime: The date and time when the document was
         created or recorded.
     :type timestamp_datetime: datetime
@@ -62,7 +64,7 @@ class Document(SQLModel, table=True):
     __table_args__ = {'schema': 'public'}
 
     id: str = Field(default=None, primary_key=True)
-    metadata_text: str = Field(schema_extra={'serialization_alias': 'metadata'})
+    metadata_json: dict | str = Field(sa_type=JSON, schema_extra={'serialization_alias': 'metadata'})
     timestamp_datetime: datetime = Field(default=func.now())
     timestamp_source: str
     timestamp_proof: str | None
@@ -96,6 +98,7 @@ class Event(EventBase, table=True):
 
     id: str = Field(schema_extra={'serialization_alias': 'hash'}, primary_key=True)
     document_id: str = Field(foreign_key="public.documents.id")
+    metadata_json: dict | str = Field(sa_type=JSON, schema_extra={'serialization_alias': 'metadata'}, description="Event's metadata")
     sender: str = Field(foreign_key="public.identifiers.did", description="The `did:key` or `did:ebsi` that created the event")
     timestamp_datetime: datetime = Field(default=func.now())
     timestamp_source: str

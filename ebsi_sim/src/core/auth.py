@@ -5,10 +5,11 @@ from fastapi import Depends
 from fastapi.security import OAuth2PasswordBearer, HTTPBearer, HTTPAuthorizationCredentials
 from sqlmodel import SQLModel
 
-from core.config import settings
-from core.exceptions import EBSIAuthError, EBSIRequestError
+from ebsi_sim.src.core.config import settings
+from ebsi_sim.src.core.exceptions import EBSIAuthError, EBSIRequestError
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/authorisation/token")
+vp_scheme = HTTPBearer(auto_error=False)
 
 
 class User(SQLModel):
@@ -23,9 +24,6 @@ class User(SQLModel):
     """
     scopes: list[str]
     sub: str
-
-
-vp_scheme = HTTPBearer(auto_error=False)
 
 
 def get_current_user(token: Annotated[HTTPAuthorizationCredentials, Depends(vp_scheme)]):
