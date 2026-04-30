@@ -7,7 +7,9 @@ import rlp
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives.serialization import load_pem_public_key
 from eth_account import Account
-from eth_account._utils.legacy_transactions import Transaction
+from eth_account._utils.legacy_transactions import Transaction, serializable_unsigned_transaction_from_dict
+from eth_keys import keys
+from eth_utils import to_checksum_address
 from jwcrypto import jwk
 from web3.contract.base_contract import BaseContractFunction
 
@@ -85,7 +87,7 @@ def pem_to_jwk(pem_public_key: str) -> dict:
         return jwk_dict
 
 
-def build_unsigned_transaction(eth_contract, register_address: str, method: str, params: dict) -> dict:
+def build_unsigned_transaction(eth_contract, register_address: str, method: str, params: dict, public_key_check: bool, allowed_public_keys: list[str]) -> dict:
     """
     Builds an unsigned Ethereum transaction for a specified contract method with provided parameters.
 
@@ -105,6 +107,11 @@ def build_unsigned_transaction(eth_contract, register_address: str, method: str,
                           do not match any of the method's argument configurations.
     :raises EBSIError: If an internal issue occurs while building the unsigned transaction.
     """
+    if public_key_check:
+        is_eth_address_valid = len([pk for pk in allowed_public_keys if public_key_matches_address(pk, params['from'])]) > 0
+        if not is_eth_address_valid:
+            raise EBSIRequestError("Invalid transaction signer")
+
     abi_functions: list[BaseContractFunction] = eth_contract.find_functions_by_name(method)
 
     params_comparison = params.copy()
@@ -133,9 +140,34 @@ def build_unsigned_transaction(eth_contract, register_address: str, method: str,
         raise EBSIError("Internal error while building transaction")
     return unsigned_transaction
 
+def get_public_key_from_transaction(decoded_transaction: Transaction, unsigned_transaction: dict):
+    r, s, v = decoded_transaction['r'], decoded_transaction['s'], decoded_transaction['v']
+    v_standard = v - 27 if v in (27, 28) else (v - 35) % 2
+    sig = keys.Signature(vrs=(v_standard, r, s))
+
+    unsigned_transaction.pop("from")
+    unsigned_transaction_hash = serializable_unsigned_transaction_from_dict(unsigned_transaction).hash()
+    eth_public_key = sig.recover_public_key_from_msg_hash(unsigned_transaction_hash).to_hex()
+    return eth_public_key
+
+
+def public_key_matches_address(public_key_hex: str, eth_address: str) -> bool:
+    pub_key_hex = public_key_hex.replace("0x", "")
+
+    # Strip the 0x04 uncompressed prefix if present (eth_keys expects 64 raw bytes)
+    if pub_key_hex.startswith("04"):
+        pub_key_hex = pub_key_hex[2:]
+
+    pub_key_bytes = bytes.fromhex(pub_key_hex)
+    pub_key = keys.PublicKey(pub_key_bytes)
+
+    derived_address = pub_key.to_checksum_address()
+    expected_address = to_checksum_address(eth_address)
+
+    return derived_address == expected_address
 
 def exec_signed_transaction(current_user: User, eth_contract, register_address, service, unsigned_transaction,
-                            signed_transaction) -> str:
+                            signed_transaction, public_key_check: bool, allowed_public_keys: list[str]) -> str:
     """
     Execute a simulated Ethereum transaction and perform necessary validation checks.
 
@@ -151,6 +183,8 @@ def exec_signed_transaction(current_user: User, eth_contract, register_address, 
     :type unsigned_transaction: dict
     :param signed_transaction: The serialized signed transaction in hexadecimal format.
     :type signed_transaction: str
+    :param allowed_public_keys: List of public keys allowed to sign the transaction.
+    :type allowed_public_keys: list[str]
     :return: A mock hexadecimal confirmation string indicating the transaction was successfully executed.
     :rtype: str
     :raises RequestError: If any validation fails for the transaction data, signer, or addresses.
@@ -167,6 +201,11 @@ def exec_signed_transaction(current_user: User, eth_contract, register_address, 
 
     if decoded_transaction['to'] != bytes.fromhex(register_address.replace("0x", "")):
         raise EBSIRequestError("Invalid transaction to")
+
+    if public_key_check:
+        eth_public_key = '0x04' + get_public_key_from_transaction(decoded_transaction, unsigned_transaction).replace('0x', '')
+        if eth_public_key not in allowed_public_keys:
+            raise EBSIRequestError("Transaction signer not allowed for this user")
 
     data = decoded_transaction['data']
 

@@ -3,11 +3,11 @@ from enum import Enum
 from sqlmodel import SQLModel, Field
 
 
-class TokenRequestScopeEnum(str, Enum):
+class TokenScopeEnum(str, Enum):
     scope_create = "create"
     scope_write = "write"
 
-class TokenResponseScopeEnum(str, Enum):
+class EBSITokenScopeEnum(str, Enum):
     didr_write = "openid didr_write"
     didr_invite = "openid didr_invite"
     tir_write = "openid tir_write"
@@ -21,7 +21,7 @@ class TokenResponseScopeEnum(str, Enum):
 
 class TokenCreate(SQLModel):
     vp_token: str
-    scope: TokenRequestScopeEnum
+    scope: TokenScopeEnum
 
 class TokenTypeEnum(str, Enum):
     """
@@ -29,7 +29,7 @@ class TokenTypeEnum(str, Enum):
     """
     bearer = "Bearer"
 
-class TokenPublic(SQLModel):
+class EBSITokenPublic(SQLModel):
     """
     Represents a response schema for token information.
 
@@ -50,7 +50,7 @@ class TokenPublic(SQLModel):
     access_token: str | None = Field(default=None, description="The access token issued by the Authorisation Server in JWS format.")
     token_type: TokenTypeEnum | None = Field(default=None, description="MUST be `Bearer`")
     expires_in: int | None = Field(default=None, description="The lifetime in seconds of the access token.", ge=1)
-    scope: TokenResponseScopeEnum | None = Field(default=None, description="The scope of the access token")
+    scope: EBSITokenScopeEnum | None = Field(default=None, description="The scope of the access token")
     id_token: str | None = Field(default=None, description="ID Token value associated with the authenticated session. Presents client's identity. ID Token is issued in a JWS format.")
 
     model_config = {
@@ -66,3 +66,7 @@ class TokenPublic(SQLModel):
             ]
         }
     }
+
+class TokenPublic(SQLModel):
+    access_token: str
+    token_type: str

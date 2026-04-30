@@ -233,25 +233,28 @@ class AuthService:
                 vmethod_public_key_string = vmethod_public_key_bytes.decode('utf-8')
                 vmethod_public_key = ECAlgorithm.from_jwk(vmethod_public_key_string)
 
-            decoded_token = jwt.decode(token, vmethod_public_key, algorithms=credential_algos,
-                                       options={'verify_exp': settings.JWT_VERIFY_EXP, 'verify_aud': False, 'verify_signature': True})
+            try:
+                decoded_token = jwt.decode(token, vmethod_public_key, algorithms=credential_algos,
+                                           options={'verify_exp': settings.JWT_VERIFY_EXP, 'verify_aud': False, 'verify_signature': True})
+            except jwt.exceptions.InvalidSignatureError:
+                raise AuthServiceRequestError("Invalid signature")
 
             vmethod_issuer = decoded_token["iss"] #Issuer della credential
             if vmethod_issuer is None:
-                raise AuthServiceError("No issuer found in token")
+                raise AuthServiceRequestError("No issuer found in token")
 
             if vmethod.did_controller != vmethod_issuer: #Issuer della credential corrisponde al did_controller del vmethod usato?
-                raise AuthServiceError("Verification method is not owned by the issuer")
+                raise AuthServiceRequestError("Verification method is not owned by the issuer")
 
             if vmethod.notafter < datetime.now():
-                raise AuthServiceError("Verification method is expired")
+                raise AuthServiceRequestError("Verification method is expired")
 
             vrels = self.verification_relationship_repository.list(identifier_did=vmethod_issuer,
                                                                    name=relationship_type,
                                                                    vmethodid=vmethod_id)
 
             if vrels is None or len(vrels) == 0:
-                raise AuthServiceError("Verification method not valid for this operation")
+                raise AuthServiceRequestError("Verification method not valid for this operation")
 
         else:
             decoded_token = jwt.decode(token,

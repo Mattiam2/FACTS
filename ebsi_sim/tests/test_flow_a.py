@@ -26,7 +26,7 @@ def test_create_vp(client: TestClient):
     response = client.get("/wallet-mock/create_vp", params={
         "vc_token": verifiable_credential,
         "did": "did:ebsi:z95paQoBwGAqnnu4RKTmCtT",
-        "private_key": "0xd34781e8008e6a57946b43d97cb09ac066144f4d3c5f5de1567fa7269434a831"
+        "private_key": "0x0a30a737e618bd00bfc0113f2a26bbf14c0b9dc5697de8e9ef65e9b7310ae8f7"
     })
     assert response.status_code == 200
     assert len(response.json()) > 0
@@ -83,7 +83,7 @@ def test_insert_did_document_create_transaction(client: TestClient):
                                        "did": "did:ebsi:z95paQoBwGAqnnu4RKTmCtT",
                                        "baseDocument": "{\"@context\":[\"https://www.w3.org/ns/did/v1\",\"https://w3id.org/security/suites/jws-2020/v1\"]}",
                                        "vMethodId": "axZAOKbj-YyMiIN2CRLCwPjSCgMwhBwCVNgEbOl3QJY",
-                                       "publicKey": "0x0441ffbbe8f6fd93da9fad0114e96861801e87e1f5c53f617467a16a329c74f818226a24dbb1241422ab7faa764175fa710a57d5d52b33958efd37447e5826ea33",
+                                       "publicKey": "0x04625f44f6ef03abcc854a95d2104dc8230da8ce15180a20d218aeb45a9ecaa2a68aab4d69ec2e10be1f04010c3c62108cdb3d20abefc15d59233c81b17b69f734",
                                        "isSecp256k1": True,
                                        "notBefore": 1774707573,
                                        "notAfter": 2090326773

@@ -1,7 +1,9 @@
 import json
 from datetime import datetime
 
+from cryptography.hazmat.primitives.asymmetric.ec import EllipticCurvePublicKey, SECP256K1
 from fastapi import Depends
+from jwt.algorithms import ECAlgorithm
 from web3 import Web3
 from web3.contract import Contract
 
@@ -11,7 +13,7 @@ from ebsi_sim.src.core.exceptions import EBSIAuthError, EBSINotFoundError, EBSIR
 from ebsi_sim.src.models.didr import Identifier, VerificationMethod
 from ebsi_sim.src.repositories.didr import IdentifierRepository, IdentifierControllerRepository, \
     VerificationMethodRepository, VerificationRelationshipRepository
-from ebsi_sim.src.schemas import JsonRpcCreate
+from ebsi_sim.src.schemas import JsonRpcCreate, ScopeEnum
 from ebsi_sim.src.utils import build_unsigned_transaction, exec_signed_transaction
 
 
@@ -168,6 +170,7 @@ class DidrService:
         :type not_after: int
         :return: None
         """
+
         date_not_before = datetime.fromtimestamp(not_before)
         date_not_after = datetime.fromtimestamp(not_after)
 
@@ -183,7 +186,20 @@ class DidrService:
         full_vmethod_id = f"{did}#{v_method_id}"
 
         if isinstance(public_key, bytes):
-            public_key = "0x" + public_key.hex()
+            public_key: str = "0x" + public_key.hex()
+
+        vmethod_public_key_bytes = bytes.fromhex(public_key.replace("0x", ""))
+        try:
+            if is_secp256k1:
+                vmethod_public_key = EllipticCurvePublicKey.from_encoded_point(
+                    SECP256K1(),
+                    vmethod_public_key_bytes
+                )
+            else:
+                vmethod_public_key_string = vmethod_public_key_bytes.decode('utf-8')
+                vmethod_public_key = ECAlgorithm.from_jwk(vmethod_public_key_string)
+        except Exception as e:
+            raise DidrServiceRequestError(f"Invalid public key: {e}")
 
         vmethod = self.verification_method_repository.get(id=full_vmethod_id)
         if vmethod:
@@ -416,7 +432,7 @@ class DidrService:
         """
         return self.didr_abi
 
-    def handle_rpc(self, current_user: User, payload: JsonRpcCreate) -> dict | str:
+    def handle_rpc(self, current_user: User, payload: JsonRpcCreate, capability_invocation_methods: list[VerificationMethod]) -> dict | str:
         """
         Handles the RPC request by processing the method specified in the payload and taking appropriate actions.
         Supports creating or executing transactions based on the payload details.
@@ -425,22 +441,26 @@ class DidrService:
         :type current_user: User
         :param payload: The payload of the JSON-RPC request containing method and parameters.
         :type payload: JsonRpcCreate
+        :param capability_invocation_methods: User verification methods list
+        :type capability_invocation_methods: list[VerificationMethod]
         :return: The result of executing the JSON-RPC call, either an unsigned or a signed transaction.
         :rtype: dict
         :raises DidrServiceError: If there is an internal error during processing.
         :raises EBSIError: Forwards any application-specific exceptions raised by the underlying methods.
         """
         try:
+            public_key_check = ScopeEnum.didr_invite in current_user.scopes
+            allowed_public_keys = [vmethod.public_key for vmethod in capability_invocation_methods]
             params = payload.params[0] if len(payload.params) > 0 else {}
             self._check_scope(current_user, payload.method)
             if payload.method != "sendSignedTransaction":
                 self._check_did_access(current_user, payload)
                 json_rpc_result = build_unsigned_transaction(self.eth_contract, settings.ETH_ADDRESS, payload.method,
-                                                             params)
+                                                             params, public_key_check, allowed_public_keys)
             else:
                 json_rpc_result = exec_signed_transaction(current_user, self.eth_contract, settings.ETH_ADDRESS, self,
                                                           params['unsignedTransaction'],
-                                                          params['signedRawTransaction'])
+                                                          params['signedRawTransaction'], public_key_check, allowed_public_keys)
         except EBSIError:
             raise
         except Exception:

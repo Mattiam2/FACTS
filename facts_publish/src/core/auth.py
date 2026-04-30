@@ -8,25 +8,17 @@ from sqlmodel import SQLModel
 from facts_publish.src.core.config import settings
 from facts_publish.src.core.exceptions import FACTSAuthError, FACTSRequestError
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/token")
-vp_scheme = HTTPBearer(auto_error=False)
+facts_scheme = HTTPBearer(auto_error=False)
 
 
 class User(SQLModel):
-    """
-    Represents the current User entity.
-
-    :ivar scopes: Specifies the list of scopes or permissions assigned
-        to the user, which determine the actions the user can perform.
-    :type scopes: list[str]
-    :ivar sub: Represents the unique identifier (subject) for the user.
-    :type sub: str
-    """
-    scopes: list[str]
-    sub: str
+    credential_subject: dict | None = None
+    verifiable_credential: str | None = None
+    ebsi_access_token: str | None = None
+    scopes: list[str] | None = None
 
 
-def get_current_user(token: Annotated[HTTPAuthorizationCredentials, Depends(vp_scheme)]):
+def get_current_user(token: Annotated[HTTPAuthorizationCredentials, Depends(facts_scheme)]):
     """
     Decodes and validates a provided token to authenticate a user and retrieve its
     information.
@@ -40,20 +32,18 @@ def get_current_user(token: Annotated[HTTPAuthorizationCredentials, Depends(vp_s
         fails.
     """
     try:
-        user = jwt.decode(token.credentials, settings.AUTH_PUBLIC_KEY, algorithms=["ES256"],
-                          options={'verify_exp': settings.JWT_VERIFY_EXP, "verify_aud": False})
+        user_data = jwt.decode(token.credentials, settings.AUTH_SECRET_KEY, algorithms=["HS256"],
+                          options={'verify_exp': True, "verify_aud": False})
     except jwt.ExpiredSignatureError:
         raise FACTSAuthError("Token expired")
     except jwt.exceptions.DecodeError:
         raise FACTSAuthError("Invalid token")
 
-    if not user:
+    if not user_data:
         raise FACTSAuthError("Impossible to authenticate user")
 
-    scopes = []
-    if "scp" in user:
-        scopes = user["scp"].split(" ")
-    return User(scopes=scopes, sub=user["sub"])
+    user_data.pop("exp", None)
+    return User.model_validate(user_data)
 
 
 def check_scopes(user: User, method: str, method_scopes: dict[str, list[str]]):

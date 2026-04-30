@@ -3,6 +3,7 @@ from sqlmodel import SQLModel
 
 from facts_publish.src.repositories.ebsi_issuer import IssuerRepository
 
+# TODO: In reality for FACTS Issuer!
 
 class CredentialSubject(SQLModel):
     subject_did: str

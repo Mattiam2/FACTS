@@ -26,12 +26,22 @@ router = APIRouter(prefix="/track-and-trace", tags=["track-and-trace"])
                  400: {"description": "Bad request"}
              })
 def rpc(current_user: Annotated[User, Depends(get_current_user)], payload: JsonRpcCreate,
-        tnt_service: TntService = Depends()) -> JsonRpcPublic:
+        tnt_service: TntService = Depends(), didr_service: DidrService = Depends()) -> JsonRpcPublic:
     """
     JSON-RPC API endpoint for simulating the handling of blockchain transactions and interaction with the ledger.
     """
 
-    json_rpc_result = tnt_service.handle_rpc(current_user, payload)
+    identifier = didr_service.get_did_document(current_user.sub)
+    if not identifier:
+        raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Subject identifier not valid")
+    vmethods = identifier.verification_methods
+    vrelationships = identifier.verification_relationships
+
+    capability_invocation_method_ids = [vrel.vmethodid for vrel in vrelationships if
+                                        vrel.name == "capabilityInvocation"]
+    capability_invocation_methods = [vmethod for vmethod in vmethods if vmethod.id in capability_invocation_method_ids]
+
+    json_rpc_result = tnt_service.handle_rpc(current_user, payload, capability_invocation_methods)
 
     return JsonRpcPublic(
         jsonrpc="2.0",

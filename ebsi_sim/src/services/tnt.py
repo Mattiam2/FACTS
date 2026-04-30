@@ -10,6 +10,7 @@ from web3.contract import Contract
 from ebsi_sim.src.core.auth import check_scopes, User
 from ebsi_sim.src.core.config import settings
 from ebsi_sim.src.core.exceptions import EBSIRequestError, EBSINotFoundError, EBSIAuthError, EBSIError, EBSIDuplicateError
+from ebsi_sim.src.models.didr import VerificationMethod
 from ebsi_sim.src.models.tnt import Access
 from ebsi_sim.src.repositories.didr import IdentifierRepository
 from ebsi_sim.src.repositories.tnt import AccessRepository
@@ -469,7 +470,7 @@ class TntService:
         """
         return self.tnt_abi
 
-    def handle_rpc(self, current_user: User, payload: JsonRpcCreate):
+    def handle_rpc(self, current_user: User, payload: JsonRpcCreate, capability_invocation_methods: list[VerificationMethod]):
         """
         Handles the RPC request by processing the method specified in the payload and taking appropriate actions.
         Supports creating or executing transactions based on the payload details.
@@ -478,23 +479,26 @@ class TntService:
         :type current_user: User
         :param payload: The payload of the JSON-RPC request containing method and parameters.
         :type payload: JsonRpcCreate
+        :param capability_invocation_methods: User verification methods list
+        :type capability_invocation_methods: list[VerificationMethod]
         :return: The result of executing the JSON-RPC call, either an unsigned or a signed transaction.
         :rtype: dict
         :raises TntServiceError: If there is an internal error during processing.
         :raises EBSIError: Forwards any application-specific exceptions raised by the underlying methods.
         """
         try:
+            allowed_public_keys = [vmethod.public_key for vmethod in capability_invocation_methods]
             params = payload.params[0] if len(payload.params) > 0 else {}
             self._check_scope(current_user, payload.method)
             if payload.method != "sendSignedTransaction":
                 self._check_did_access(current_user, payload)
                 params = self._check_method_constraints(current_user, payload)
                 json_rpc_result = build_unsigned_transaction(self.eth_contract, settings.ETH_ADDRESS, payload.method,
-                                                             params)
+                                                             params, True, allowed_public_keys)
             else:
                 json_rpc_result = exec_signed_transaction(current_user, self.eth_contract, settings.ETH_ADDRESS, self,
                                                           params['unsignedTransaction'],
-                                                          params['signedRawTransaction'])
+                                                          params['signedRawTransaction'], True, allowed_public_keys)
         except EBSIError:
             raise
         except Exception as e:

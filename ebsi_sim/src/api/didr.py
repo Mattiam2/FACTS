@@ -7,8 +7,10 @@ from fastapi.params import Path
 from starlette.status import HTTP_404_NOT_FOUND
 
 from ebsi_sim.src.core.auth import get_current_user, User
-from ebsi_sim.src.schemas import IdentifierListPublic, IdentifierPublic, IdentifierItemPublic, JsonRpcCreate, JsonRpcPublic, \
+from ebsi_sim.src.schemas import IdentifierListPublic, IdentifierPublic, IdentifierItemPublic, JsonRpcCreate, \
+    JsonRpcPublic, \
     PageLinksPublic
+from ebsi_sim.src.schemas.verification import VerificationRelationshipNameEnum
 from ebsi_sim.src.services.didr import DidrService
 
 router = APIRouter(prefix="/did-registry", tags=["did-registry"])
@@ -25,7 +27,18 @@ def rpc(current_user: Annotated[User, Depends(get_current_user)], payload: JsonR
     """
     The JSON-RPC API provides methods assisting the construction of blockchain transactions and interaction with the ledger, i.e. write operation on ledger.
     """
-    json_rpc_result = didr_service.handle_rpc(current_user, payload)
+    capability_invocation_methods = []
+    identifier = didr_service.get_did_document(current_user.sub)
+    if identifier:
+        vmethods = identifier.verification_methods
+        vrelationships = identifier.verification_relationships
+
+        capability_invocation_method_ids = [vrel.vmethodid for vrel in vrelationships if
+                                            vrel.name == VerificationRelationshipNameEnum.capabilityInvocation]
+        capability_invocation_methods = [vmethod for vmethod in vmethods if
+                                         vmethod.id in capability_invocation_method_ids]
+
+    json_rpc_result = didr_service.handle_rpc(current_user, payload, capability_invocation_methods)
 
     return JsonRpcPublic(
         jsonrpc="2.0",
@@ -102,11 +115,11 @@ def read_identifier(did: Annotated[str, Path(description="A DID to be resolved."
         controller=[did_controller.did for did_controller in did_controllers],
         context=identifier.context,
         verificationMethod=vmethods,
-        authentication=[vrel.vmethodid for vrel in vrelationships if vrel.name == "authentication"],
-        assertionMethod=[vrel.vmethodid for vrel in vrelationships if vrel.name == "assertionMethod"],
-        keyAgreement=[vrel.vmethodid for vrel in vrelationships if vrel.name == "keyAgreement"],
-        capabilityInvocation=[vrel.vmethodid for vrel in vrelationships if vrel.name == "capabilityInvocation"],
-        capabilityDelegation=[vrel.vmethodid for vrel in vrelationships if vrel.name == "capabilityDelegation"]
+        authentication=[vrel.vmethodid for vrel in vrelationships if vrel.name == VerificationRelationshipNameEnum.authentication],
+        assertionMethod=[vrel.vmethodid for vrel in vrelationships if vrel.name == VerificationRelationshipNameEnum.assertionMethod],
+        keyAgreement=[vrel.vmethodid for vrel in vrelationships if vrel.name == VerificationRelationshipNameEnum.keyAgreement],
+        capabilityInvocation=[vrel.vmethodid for vrel in vrelationships if vrel.name == VerificationRelationshipNameEnum.capabilityInvocation],
+        capabilityDelegation=[vrel.vmethodid for vrel in vrelationships if vrel.name == VerificationRelationshipNameEnum.capabilityDelegation]
     )
 
 

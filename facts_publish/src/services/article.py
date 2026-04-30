@@ -12,6 +12,7 @@ from facts_publish.src.core.config import settings
 from facts_publish.src.core.exceptions import FACTSError, FACTSDuplicateError, FACTSAuthError, FACTSNotFoundError, \
     FACTSRequestError
 from facts_publish.src.repositories.ebsi_tnt import TntRepository
+from facts_publish.src.schemas.article import ArticlePayload
 
 
 class ArticleServiceError(FACTSError):
@@ -100,3 +101,6 @@ class ArticleService:
         document_hash = "0x" + hashlib.sha256(normalized_url.encode()).hexdigest()
         document_element = self.tnt_repository.get_document(document_hash)
         return document_element.metadata_json if document_element.metadata_json else None
+
+    def build_transaction(self, payload: ArticlePayload):
+        self.tnt_repository.build_document_transaction("pippo")

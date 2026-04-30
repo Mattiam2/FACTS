@@ -20,7 +20,19 @@ class TntRepository(EBSIClient):
         response = self.get(f"/documents/{doc_hash}/accesses")
         return response
 
-    def build_document_transaction(self, doc_hash: str):
-        response = self.post(f"/{doc_hash}",
-                  data={"jsonrpc": "2.0", "method": "buildDocumentTransaction", "id": 1})
+    def build_document_transaction(self):
+        response = self.post(f"/jsonrpc",
+                             data={
+                                 "jsonrpc": "2.0",
+                                 "method": "createDocument",
+                                 "params": [
+                                     {
+                                         "from": "0xaB6415d6A931A84Dfc02FFD551C4876048c39A92",
+                                         "documentHash": "0xcd299cdabd6299907c31f7cdf112830bda9e2d9f5d33c9fc75dd62caa6b9bd67",
+                                         "documentMetadata": "0x74657374206d65746164617461",
+                                         "didEbsiCreator": "did:ebsi:z95paQoBwGAqnnu4RKTmCtT"
+                                     }
+                                 ],
+                                 "id": 474
+                             })
         return response
