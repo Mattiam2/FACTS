@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends
 from sqlmodel import SQLModel
 
-from facts_publish.src.repositories.ebsi_issuer import IssuerRepository
+from facts_backoffice.src.repositories.ebsi_issuer import IssuerRepository
 
 # TODO: In reality for FACTS Issuer!
 
@@ -17,10 +17,10 @@ router = APIRouter(prefix="/credentials")
 def request_vc(payload: CredentialSubject, issuer_repo: IssuerRepository = Depends()):
     return issuer_repo.request_vc({
         "subject_did": payload.subject_did,
-        "credential_subject":{
+        "credential_subject": {
             "company_name": payload.company_name,
             "company_address": payload.company_address,
             "company_vat": payload.company_vat
         },
-        "credential_type": ['VerifiableCredential', 'FACTSPublisherCredential']
+        "credential_type": ['VerifiableCredential', 'VerifiableAuthorisationToOnboard', 'FACTSPublisherCredential']
     })

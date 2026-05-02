@@ -4,8 +4,8 @@ from typing import Any, Generic, Type, TypeVar
 from sqlalchemy.exc import SQLAlchemyError
 from sqlmodel import SQLModel, select, func
 
-from facts_publish.src.core.db import db
-from facts_publish.src.core.exceptions import FACTSDatabaseError
+from facts_backoffice.src.core.db import db
+from facts_backoffice.src.core.exceptions import FACTSDatabaseError
 
 T = TypeVar("T", bound=SQLModel)
 

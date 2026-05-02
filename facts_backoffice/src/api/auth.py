@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends
 
-from facts_publish.src.schemas.auth import TokenCreate, TokenPublic
-from facts_publish.src.services.auth import AuthService
+from facts_backoffice.src.schemas.auth import TokenCreate, TokenPublic
+from facts_backoffice.src.services.auth import AuthService
 
 router = APIRouter(prefix="/auth", tags=["authorisation"])
 

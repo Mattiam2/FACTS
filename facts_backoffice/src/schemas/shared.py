@@ -69,3 +69,20 @@ class PermissionEnum(str, Enum):
     write = "write"
     delegate = "delegate"
     creator = "creator"
+
+
+class BuildTransactionResponse(SQLModel):
+    document_hash: str
+    transaction: dict
+
+
+class SignedTransactionPayload(SQLModel):
+    protocol: str = "eth"
+    unsignedTransaction: dict
+    r: str
+    s: str
+    v: int
+    signedRawTransaction: str
+
+class SignedTransactionResponse(SQLModel):
+    transaction_hash: str

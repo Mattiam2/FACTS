@@ -1,6 +1,6 @@
 import httpx
 
-from facts_publish.src.core.config import settings
+from facts_backoffice.src.core.config import settings
 
 
 class EBSIClient:
@@ -16,10 +16,14 @@ class EBSIClient:
             response.raise_for_status()
             return response.json()
 
-    def post(self, path: str, data: dict = None):
+    def post(self, path: str, *, data: dict, access_token: str | None = None):
         with self.client as client:
+            response = None
             try:
-                response = client.post(path, json=data, headers={"Content-Type": "application/json"})
+                headers = {"Content-Type": "application/json"}
+                if access_token:
+                    headers["Authorization"] = f"Bearer {access_token}"
+                response = client.post(path, json=data, headers=headers)
                 response.raise_for_status()
             except httpx.HTTPError:
                 if response:

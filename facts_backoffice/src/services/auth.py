@@ -3,14 +3,14 @@ from datetime import datetime, timedelta, timezone
 import jwt
 from fastapi import Depends
 
-from facts_publish.src.core.auth import User
-from facts_publish.src.core.config import settings
-from facts_publish.src.core.exceptions import FACTSError, FACTSDuplicateError, FACTSAuthError, FACTSNotFoundError, \
+from facts_backoffice.src.core.auth import User
+from facts_backoffice.src.core.config import settings
+from facts_backoffice.src.core.exceptions import FACTSError, FACTSDuplicateError, FACTSAuthError, FACTSNotFoundError, \
     FACTSRequestError
-from facts_publish.src.repositories.ebsi_auth import AuthRepository
-from facts_publish.src.schemas.auth import TokenScopeEnum, EBSITokenPublic, TokenPublic
-from facts_publish.src.schemas.verifiable_credential import VerifiableCredentialPayload
-from facts_publish.src.schemas.verifiable_presentation import VerifiablePresentationPayload
+from facts_backoffice.src.repositories.ebsi_auth import AuthRepository
+from facts_backoffice.src.schemas.auth import TokenScopeEnum, EBSITokenPublic, TokenPublic
+from facts_backoffice.src.schemas.verifiable_credential import VerifiableCredentialPayload
+from facts_backoffice.src.schemas.verifiable_presentation import VerifiablePresentationPayload
 
 
 class AuthServiceError(FACTSError):
@@ -60,6 +60,9 @@ class AuthService:
 
         if vp_token_object.exp < datetime.now().timestamp():
             raise FACTSAuthError("VP Token expired")
+
+        if vp_token_object.vp is None or vp_token_object.vp.verifiableCredential is None:
+            raise FACTSAuthError("Invalid VP Token")
 
         if scope == TokenScopeEnum.scope_write:
             presentation_scope = "openid tnt_write"

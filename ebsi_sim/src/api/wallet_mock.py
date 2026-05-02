@@ -15,7 +15,7 @@ router = APIRouter(prefix="/wallet-mock", tags=["wallet mock"])
 
 
 @router.get("/create_vp")
-def create_vp(vc_token: str, did: str, private_key: str, verification_id: Optional[str] = None) -> str:
+def create_vp(did: str, private_key: str, vc_token: str | None = None, verification_id: Optional[str] = None) -> str:
     """
     Generate a Verifiable Presentation JWT based on the provided Verifiable Credential token,
     holder's DID, and private key. Optionally, include a verification ID in the JWT headers.
@@ -29,7 +29,7 @@ def create_vp(vc_token: str, did: str, private_key: str, verification_id: Option
         holder=did,
         verifiableCredential=[
             vc_token
-        ]
+        ] if vc_token else []
     )
 
     vp_payload = VerifiablePresentationPayload(

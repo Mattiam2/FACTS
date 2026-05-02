@@ -1,6 +1,7 @@
 import base64
 import hashlib
 import json
+import traceback
 from typing import Any
 
 import rlp
@@ -9,7 +10,7 @@ from cryptography.hazmat.primitives.serialization import load_pem_public_key
 from eth_account import Account
 from eth_account._utils.legacy_transactions import Transaction, serializable_unsigned_transaction_from_dict
 from eth_keys import keys
-from eth_utils import to_checksum_address
+from eth_utils import to_checksum_address, keccak
 from jwcrypto import jwk
 from web3.contract.base_contract import BaseContractFunction
 
@@ -192,7 +193,8 @@ def exec_signed_transaction(current_user: User, eth_contract, register_address, 
     """
     decoded_transaction: Transaction = rlp.decode(bytes.fromhex(signed_transaction), Transaction)
     decoded_transaction_data = decoded_transaction['data']
-    if decoded_transaction['data'] != bytes.fromhex(unsigned_transaction['data'].replace("0x", "")):
+    signed_transaction_bytes = bytes.fromhex(unsigned_transaction['data'].replace("0x", ""))
+    if decoded_transaction['data'] != signed_transaction_bytes:
         raise EBSIRequestError("Signed transaction mismatch with unsigned transaction")
 
     signer = Account.recover_transaction(bytes.fromhex(signed_transaction))
@@ -231,5 +233,5 @@ def exec_signed_transaction(current_user: User, eth_contract, register_address, 
     except Exception as e:
         raise EBSIError("Internal error while executing transaction")
     else:
-        # Mock return value confirming the transaction was executed
-        return '0xe670ec64341771606e55d6b4ca35a1a6b75ee3d5145a99d05921026d1527331'
+        tx_hash = "0x" + keccak(signed_transaction_bytes).hex()
+        return tx_hash

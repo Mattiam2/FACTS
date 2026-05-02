@@ -5,17 +5,24 @@ from fastapi import Depends
 from fastapi.security import OAuth2PasswordBearer, HTTPBearer, HTTPAuthorizationCredentials
 from sqlmodel import SQLModel
 
-from facts_publish.src.core.config import settings
-from facts_publish.src.core.exceptions import FACTSAuthError, FACTSRequestError
+from facts_backoffice.src.core.config import settings
+from facts_backoffice.src.core.exceptions import FACTSAuthError, FACTSRequestError
 
 facts_scheme = HTTPBearer(auto_error=False)
 
 
+class UserCredentialSubject(SQLModel):
+    id: str
+    company_name: str
+    company_address: str
+    company_vat: str
+
+
 class User(SQLModel):
-    credential_subject: dict | None = None
-    verifiable_credential: str | None = None
-    ebsi_access_token: str | None = None
-    scopes: list[str] | None = None
+    credential_subject: UserCredentialSubject
+    verifiable_credential: str
+    ebsi_access_token: str
+    scopes: list[str]
 
 
 def get_current_user(token: Annotated[HTTPAuthorizationCredentials, Depends(facts_scheme)]):
@@ -64,7 +71,7 @@ def check_scopes(user: User, method: str, method_scopes: dict[str, list[str]]):
     :raises RequestError: Raised when the specified method is not found in the
                           method_scopes dictionary.
     """
-    if method in method_scopes:
+    if method in method_scopes and user.scopes is not None:
         common_scopes = set(user.scopes) & set(method_scopes[method])
         return len(common_scopes) > 0
     else:

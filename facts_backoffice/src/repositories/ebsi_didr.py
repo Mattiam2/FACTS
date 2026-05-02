@@ -1,4 +1,4 @@
-from facts_publish.src.repositories.ebsi_base import EBSIClient
+from facts_backoffice.src.repositories.ebsi_base import EBSIClient
 
 
 class DidrRepository(EBSIClient):

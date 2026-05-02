@@ -3,10 +3,10 @@ from typing import Callable, Awaitable
 from fastapi import FastAPI, Request, Response
 from sqlmodel import Session
 
-from facts_publish.src.core.db import engine, session_ctx
-from facts_publish.src.api.articles import router as articleapi
-from facts_publish.src.api.credentials import router as credentialapi
-from facts_publish.src.api.auth import router as authapi
+from facts_backoffice.src.core.db import engine, session_ctx
+from facts_backoffice.src.api.articles import router as articleapi
+from facts_backoffice.src.api.credentials import router as credentialapi
+from facts_backoffice.src.api.auth import router as authapi
 
 
 app = FastAPI(title="FACTS Publish",

@@ -210,6 +210,12 @@ class TntService:
         :return: None
         """
         doc_metadata = bytes.fromhex(document_metadata[2:]).decode('utf-8')
+
+        try:
+            doc_metadata = json.loads(doc_metadata)
+        except json.JSONDecodeError:
+            pass
+
         doc_timestamp_datetime = datetime.fromtimestamp(timestamp) if timestamp else None
         doc_timestamp_proof = timestamp_proof
 

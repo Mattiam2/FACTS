@@ -21,11 +21,11 @@ The EBSI Blockchain is simulated using FastAPI and a PostgreSQL database, includ
 EBSI FactChecker is composed of 4 FastAPI applications:
 
 - **EBSI-Sim**: this application simulates the EBSI Blockchain, in particular Authorisation API and Track'n'Trace API.
-- **FACTS-Publish**: this application allows publishers (i.e. news agencies) to register their digital content (e.g.
-  articles, videos, social posts) on the EBSI Blockchain. [Work in progress]
-- **FACTS-Check**: this application allows independent FactCheckers to register their assessments about the authenticity
-  and the credibility of the
-  digital content published on the EBSI Blockchain. [Work in progress]
+- **FACTS-Backoffice**: this application exposes API that allows:
+  - Publishers (i.e. news agencies) to register their digital content (e.g.
+    articles, videos, social posts) on the EBSI Blockchain.
+  - Fact-Checkers to register their assessments about the authenticity 
+    and the credibility of the digital content published (or not) on the EBSI Blockchain.
 - **FACTS-Verify**: this application allows to check all the assessments made by independent FactCheckers about a
   digital content given a media url. It is also a browser extension. [Work in progress]
 
