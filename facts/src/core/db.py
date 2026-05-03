@@ -2,7 +2,7 @@ from contextvars import ContextVar
 
 from sqlmodel import create_engine, Session
 
-from facts_backoffice.src.core.config import settings
+from facts.src.core.config import settings
 
 engine = create_engine(settings.db_url, echo=False, pool_pre_ping=True)
 

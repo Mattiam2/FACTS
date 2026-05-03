@@ -1,7 +1,7 @@
 import httpx
 
-from facts_backoffice.src.repositories.ebsi_base import EBSIClient
-from facts_backoffice.src.schemas.auth import EBSITokenPublic
+from facts.src.repositories.ebsi_base import EBSIClient
+from facts.src.schemas.auth import EBSITokenPublic
 
 
 class AuthRepository(EBSIClient):

@@ -1,5 +1,5 @@
-from facts_backoffice.src.repositories.ebsi_base import EBSIClient
-from facts_backoffice.src.schemas.document import DocumentPublic
+from facts.src.repositories.ebsi_base import EBSIClient
+from facts.src.schemas.document import DocumentPublic
 
 
 class TntRepository(EBSIClient):
@@ -7,6 +7,13 @@ class TntRepository(EBSIClient):
 
     def __init__(self):
         super().__init__("track-and-trace")
+
+    def get_documents(self) -> list[DocumentPublic]:
+        response = self.get(f"/documents")
+        docs = []
+        for doc in response:
+            docs.append(DocumentPublic.model_validate(doc))
+        return docs
 
     def get_document(self, doc_hash: str) -> DocumentPublic:
         response = self.get(f"/documents/{doc_hash}")

@@ -3,14 +3,14 @@ from datetime import datetime, timedelta, timezone
 import jwt
 from fastapi import Depends
 
-from facts_backoffice.src.core.auth import User
-from facts_backoffice.src.core.config import settings
-from facts_backoffice.src.core.exceptions import FACTSError, FACTSDuplicateError, FACTSAuthError, FACTSNotFoundError, \
+from facts.src.core.auth import User
+from facts.src.core.config import settings
+from facts.src.core.exceptions import FACTSError, FACTSDuplicateError, FACTSAuthError, FACTSNotFoundError, \
     FACTSRequestError
-from facts_backoffice.src.repositories.ebsi_auth import AuthRepository
-from facts_backoffice.src.schemas.auth import TokenScopeEnum, EBSITokenPublic, TokenPublic
-from facts_backoffice.src.schemas.verifiable_credential import VerifiableCredentialPayload
-from facts_backoffice.src.schemas.verifiable_presentation import VerifiablePresentationPayload
+from facts.src.repositories.ebsi_auth import AuthRepository
+from facts.src.schemas.auth import TokenScopeEnum, EBSITokenPublic, TokenPublic
+from facts.src.schemas.verifiable_credential import VerifiableCredentialPayload
+from facts.src.schemas.verifiable_presentation import VerifiablePresentationPayload
 
 
 class AuthServiceError(FACTSError):

@@ -1,17 +1,17 @@
 from fastapi import APIRouter, Depends
 
-from facts_backoffice.src.core.auth import get_current_user, User
-from facts_backoffice.src.schemas.article import ArticlePayload
-from facts_backoffice.src.schemas.shared import BuildTransactionResponse, SignedTransactionPayload, \
+from facts.src.core.auth import get_current_user, User
+from facts.src.schemas.article import ArticlePayload
+from facts.src.schemas.shared import BuildTransactionResponse, SignedTransactionPayload, \
     SignedTransactionResponse
-from facts_backoffice.src.services.article import ArticleService
+from facts.src.services.article import ArticleService
 
 router = APIRouter(prefix="/articles")
 
 
 @router.get("d/")
-def get_articles() -> str:
-    pass
+def get_articles(article_service: ArticleService = Depends()) -> str:
+    return article_service.get_article_by_url(url)
 
 
 @router.get("/")

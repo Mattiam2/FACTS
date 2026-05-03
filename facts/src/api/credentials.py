@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends
 from sqlmodel import SQLModel
 
-from facts_backoffice.src.repositories.ebsi_issuer import IssuerRepository
+from facts.src.repositories.ebsi_issuer import IssuerRepository
 
 # TODO: In reality for FACTS Issuer!
 

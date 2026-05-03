@@ -5,8 +5,8 @@ from fastapi import Depends
 from fastapi.security import OAuth2PasswordBearer, HTTPBearer, HTTPAuthorizationCredentials
 from sqlmodel import SQLModel
 
-from facts_backoffice.src.core.config import settings
-from facts_backoffice.src.core.exceptions import FACTSAuthError, FACTSRequestError
+from facts.src.core.config import settings
+from facts.src.core.exceptions import FACTSAuthError, FACTSRequestError
 
 facts_scheme = HTTPBearer(auto_error=False)
 

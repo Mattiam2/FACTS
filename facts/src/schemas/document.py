@@ -1,7 +1,7 @@
 from pydantic import Json
 from sqlmodel import SQLModel, Field, JSON
 
-from facts_backoffice.src.schemas.shared import TimestampPublic, PageLinksPublic
+from facts.src.schemas.shared import TimestampPublic, PageLinksPublic
 
 
 class DocumentItemPublic(SQLModel):

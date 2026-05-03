@@ -1,6 +1,6 @@
 import httpx
 
-from facts_backoffice.src.core.config import settings
+from facts.src.core.config import settings
 
 
 class EBSIClient:

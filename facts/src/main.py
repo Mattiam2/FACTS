@@ -3,14 +3,14 @@ from typing import Callable, Awaitable
 from fastapi import FastAPI, Request, Response
 from sqlmodel import Session
 
-from facts_backoffice.src.core.db import engine, session_ctx
-from facts_backoffice.src.api.articles import router as articleapi
-from facts_backoffice.src.api.credentials import router as credentialapi
-from facts_backoffice.src.api.auth import router as authapi
+from facts.src.core.db import engine, session_ctx
+from facts.src.api.articles import router as articleapi
+from facts.src.api.credentials import router as credentialapi
+from facts.src.api.auth import router as authapi
 
 
-app = FastAPI(title="FACTS Publish",
-              description="FACTS Publisher tool")
+app = FastAPI(title="FACTS",
+              description="Facts Authenticity and Credibility Tracking System")
 
 app.include_router(articleapi)
 app.include_router(credentialapi)

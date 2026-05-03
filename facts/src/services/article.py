@@ -5,13 +5,13 @@ from urllib.parse import parse_qs, urlencode, urlsplit, urlunsplit
 
 from fastapi import Depends
 
-from facts_backoffice.src.core.auth import User
-from facts_backoffice.src.core.config import settings
-from facts_backoffice.src.core.exceptions import FACTSError, FACTSDuplicateError, FACTSAuthError, FACTSNotFoundError, \
+from facts.src.core.auth import User
+from facts.src.core.config import settings
+from facts.src.core.exceptions import FACTSError, FACTSDuplicateError, FACTSAuthError, FACTSNotFoundError, \
     FACTSRequestError
-from facts_backoffice.src.repositories.ebsi_tnt import TntRepository
-from facts_backoffice.src.schemas.article import ArticlePayload
-from facts_backoffice.src.schemas.shared import BuildTransactionResponse, SignedTransactionPayload, \
+from facts.src.repositories.ebsi_tnt import TntRepository
+from facts.src.schemas.article import ArticlePayload
+from facts.src.schemas.shared import BuildTransactionResponse, SignedTransactionPayload, \
     SignedTransactionResponse
 
 
