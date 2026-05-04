@@ -9,7 +9,7 @@ class Settings(BaseSettings):
     DB_PASSWORD: str = "password"
     DB_HOST: str = "localhost"
     DB_PORT: int = 5432
-    DB_NAME: str = "facts_indexer"
+    DB_NAME: str = "facts"
     DB_PROTOCOL: str = "postgresql"
 
     AUTH_SECRET_KEY: str = "secret"

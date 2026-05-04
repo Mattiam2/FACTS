@@ -10,7 +10,8 @@ class Article(SQLModel, table=True):
     url: str
     creator: str
     tx_hash: str
-    timestamp: datetime
+    data_hash: str
+    timestamp: datetime = Field(default=func.now())
     confirmed: bool
 
 
@@ -23,5 +24,6 @@ class Assessment(SQLModel, table=True):
     url: str
     creator: str
     tx_hash: str
-    timestamp: datetime
+    data_hash: str
+    timestamp: datetime = Field(default=func.now())
     confirmed: bool

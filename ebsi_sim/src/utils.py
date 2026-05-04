@@ -191,28 +191,28 @@ def exec_signed_transaction(current_user: User, eth_contract, register_address, 
     :raises RequestError: If any validation fails for the transaction data, signer, or addresses.
     :raises EBSIError: If an internal error occurs while executing the transaction.
     """
-    decoded_transaction: Transaction = rlp.decode(bytes.fromhex(signed_transaction), Transaction)
-    decoded_transaction_data = decoded_transaction['data']
-    signed_transaction_bytes = bytes.fromhex(unsigned_transaction['data'].replace("0x", ""))
-    if decoded_transaction['data'] != signed_transaction_bytes:
+    signed_transaction_bytes = bytes.fromhex(signed_transaction)
+    signed_decoded_transaction: Transaction = rlp.decode(signed_transaction_bytes, Transaction)
+    signed_transaction_data = signed_decoded_transaction['data']
+
+    unsigned_transaction_data = bytes.fromhex(unsigned_transaction['data'].replace("0x", ""))
+    if signed_transaction_data != unsigned_transaction_data:
         raise EBSIRequestError("Signed transaction mismatch with unsigned transaction")
 
     signer = Account.recover_transaction(bytes.fromhex(signed_transaction))
     if signer.lower() != unsigned_transaction['from'].lower():
         raise EBSIRequestError("Invalid transaction from")
 
-    if decoded_transaction['to'] != bytes.fromhex(register_address.replace("0x", "")):
+    if signed_decoded_transaction['to'] != bytes.fromhex(register_address.replace("0x", "")):
         raise EBSIRequestError("Invalid transaction to")
 
     if public_key_check:
-        eth_public_key = '0x04' + get_public_key_from_transaction(decoded_transaction, unsigned_transaction).replace('0x', '')
+        eth_public_key = '0x04' + get_public_key_from_transaction(signed_decoded_transaction, unsigned_transaction).replace('0x', '')
         if eth_public_key not in allowed_public_keys:
             raise EBSIRequestError("Transaction signer not allowed for this user")
 
-    data = decoded_transaction['data']
-
     try:
-        func_obj, params = eth_contract.decode_function_input(data=data)
+        func_obj, params = eth_contract.decode_function_input(data=signed_transaction_data)
     except Exception:
         raise EBSIRequestError("Impossible to decode and find transaction function (check function name and args)")
 
