@@ -13,7 +13,7 @@ from facts.src.core.exceptions import FACTSError, FACTSDuplicateError, FACTSAuth
     FACTSRequestError
 from facts.src.repositories.ebsi_tnt import TntRepository
 from facts.src.repositories.facts import ArticleRepository
-from facts.src.schemas.article import ArticlePayload
+from facts.src.schemas.article import ArticlePayload, ArticleMetadata
 from facts.src.schemas.shared import BuildTransactionResponse, SignedTransactionPayload, \
     SignedTransactionResponse
 
@@ -71,6 +71,13 @@ class ArticleService:
         :return: The normalized URL string.
         :rtype: str
         """
+        host, path, sorted_query = cls.split_url(url)
+        normalized = urlunsplit(('', host, path, sorted_query, ''))
+
+        return normalized
+
+    @classmethod
+    def split_url(cls, url: str) -> tuple[str, str, str]:
         # Parse the URL into components
         url_to_parse = url.strip()
         if not url_to_parse.startswith("http"):
@@ -91,37 +98,67 @@ class ArticleService:
         filtered_query_params = {key: value for key, value in query_params.items() if
                                  key not in settings.TRACKER_PARAMS}
         sorted_query = urlencode(sorted(filtered_query_params.items()), doseq=True)
+        return host, path, sorted_query
 
-        normalized = urlunsplit(('', host, path, sorted_query, ''))
-
-        return normalized
-
-    def hash_url(self, url: str):
-        normalized_url = ArticleService.normalize_url(url)
-        document_hash = "0x" + hashlib.sha256(normalized_url.encode()).hexdigest()
+    @classmethod
+    def hash_url(cls, url: str):
+        normalized_url = cls.normalize_url(url)
+        full_hashable_content = "FACTS_ARTICLE:" + normalized_url
+        document_hash = "0x" + hashlib.sha256(full_hashable_content.encode()).hexdigest()
         return document_hash
+
+    def get_article_by_hash(self, document_hash: str):
+        facts_article = self.article_repository.get(document_hash)
+        if not facts_article:
+            raise ArticleServiceNotFoundError(f"Article with hash {document_hash} not found")
+        return self.tnt_repository.get_document(document_hash)
 
     def get_article_by_url(self, url: str):
         """
         Retrieves an article based on its url.
         """
         document_hash = self.hash_url(url)
-        document_element = self.tnt_repository.get_document(document_hash)
+        document_element = self.get_article_by_hash(document_hash)
         return document_element.metadata_json if document_element.metadata_json else None
 
+    def get_articles_list(self, did_creator: str | None = None, offset: int = 0, page_size: int = 100):
+        articles = self.article_repository.list(creator=did_creator, offset=offset, limit=page_size, order_by="timestamp")
+        return articles
+
+    @classmethod
+    def check_authorized_hosts(cls, article_url: str, authorized_hosts: list[str]):
+        host, _, _ = cls.split_url(article_url)
+        return host in authorized_hosts
+
     def request_create_article(self, user: User, payload: ArticlePayload):
-        normalized_url = ArticleService.normalize_url(payload.article_metadata.article_info.url)
-        document_hash = self.hash_url(payload.article_metadata.article_info.url)
+        is_authorized = self.check_authorized_hosts(payload.article_info.url, user.credential_subject.authorized_hosts)
+
+        if not is_authorized:
+            raise ArticleServiceAuthError("Forbidden host")
+
+        normalized_url = ArticleService.normalize_url(payload.article_info.url)
+
+        document_hash = self.hash_url(payload.article_info.url)
+
+        existing_article = self.article_repository.get(document_hash)
+        if existing_article and existing_article.confirmed:
+            raise ArticleServiceDuplicateError(f"Article with URL {normalized_url} already exists")
+        elif existing_article and not existing_article.confirmed:
+            self.article_repository.delete(id=document_hash)
+
+        from_eth_address = payload.from_eth_address
         user_did = user.credential_subject.id
         user_vc = user.verifiable_credential
         ebsi_access_token = user.ebsi_access_token
 
-        build_response = self.build_create_transaction(user_did, user_vc, ebsi_access_token, document_hash, payload)
+        article_metadata = ArticleMetadata(version="1.0", article_info=payload.article_info, eth_address=from_eth_address, publisher_vc=user_vc)
+
+        build_response = self.build_create_transaction(from_eth_address, user_did, ebsi_access_token, document_hash, article_metadata)
         transaction: dict = build_response.transaction
 
         unsigned_transaction_data = bytes.fromhex(transaction['data'].replace("0x", ""))
         data_hash = hashlib.sha256(unsigned_transaction_data).hexdigest()
-        self.article_repository.create(hash=document_hash, url=normalized_url, creator=user_did, tx_hash=None, data_hash=data_hash, confirmed=False)
+        self.article_repository.create(hash=document_hash, url=normalized_url, creator=user_did, tx_hash=None, data_hash=data_hash, eth_address=from_eth_address, confirmed=False)
         return build_response
 
     def confirm_create_article(self, user: User, document_hash: str, transaction: SignedTransactionPayload):
@@ -143,14 +180,12 @@ class ArticleService:
             self.article_repository.update(id=document_hash, confirmed=True, tx_hash=signed_transaction_response.transaction_hash)
         return signed_transaction_response
 
-    def build_create_transaction(self, user_did: str, user_vc: str, ebsi_access_token: str, document_hash: str, payload: ArticlePayload) -> BuildTransactionResponse:
+    def build_create_transaction(self, from_eth_address: str, user_did: str, ebsi_access_token: str, document_hash: str, payload: ArticleMetadata) -> BuildTransactionResponse:
         transaction_id = random.randint(1, 999)
-        document_metadata = payload.article_metadata.model_dump(mode="json")
-        document_metadata["publisher_vc"] = user_vc
-        document_metadata_string = json.dumps(document_metadata)
-        document_metadata_hex = "0x" + document_metadata_string.encode().hex()
+        document_metadata_json = payload.model_dump_json()
+        document_metadata_hex = "0x" + document_metadata_json.encode().hex()
         json_rpc_response = self.tnt_repository.build_document_transaction(access_token=ebsi_access_token,
-                                                                           from_eth_address=payload.from_eth_address,
+                                                                           from_eth_address=from_eth_address,
                                                                            transaction_id=transaction_id,
                                                                            doc_hash=document_hash,
                                                                            doc_metadata=document_metadata_hex,

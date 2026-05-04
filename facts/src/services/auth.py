@@ -64,12 +64,24 @@ class AuthService:
         if vp_token_object.vp is None or vp_token_object.vp.verifiableCredential is None:
             raise FACTSAuthError("Invalid VP Token")
 
-        if scope == TokenScopeEnum.scope_write:
+        vc_token = vp_token_object.vp.verifiableCredential[0]
+        vc_token_decoded = jwt.decode(vc_token, options={"verify_signature": False, "verify_exp": False})
+        vc_token_object = VerifiableCredentialPayload.model_validate(vc_token_decoded)
+        credential_types = vc_token_object.vc.type
+        credential_object = vc_token_object.vc.credentialSubject
+
+        if scope == TokenScopeEnum.scope_publisher_write and "FACTSPublisherCredential" in credential_types:
             presentation_scope = "openid tnt_write"
             presentation_id = "tnt_write_presentation"
-        elif scope == TokenScopeEnum.scope_create:
+        elif scope == TokenScopeEnum.scope_publisher_create and "FACTSPublisherCredential" in credential_types:
             presentation_scope = "openid tnt_create"
             presentation_id = "tnt_create_presentation"
+        elif scope == TokenScopeEnum.scope_factchecker_create and "FACTSFactCheckerCredential" in credential_types:
+            presentation_scope = "openid tnt_create"
+            presentation_id = "tnt_create_presentation"
+        elif scope == TokenScopeEnum.scope_factchecker_write and "FACTSFactCheckerCredential" in credential_types:
+            presentation_scope = "openid tnt_write"
+            presentation_id = "tnt_write_presentation"
         else:
             raise AuthServiceRequestError("Invalid scope")
 
@@ -85,17 +97,6 @@ class AuthService:
         }
 
         ebsi_token_data: EBSITokenPublic = self.auth_repository.get_token(data=authorisation_payload)
-
-        vc_token = vp_token_object.vp.verifiableCredential[0]
-        vc_token_decoded = jwt.decode(vc_token, options={"verify_signature": False, "verify_exp": False})
-        vc_token_object = VerifiableCredentialPayload.model_validate(vc_token_decoded)
-        credential_object = vc_token_object.vc.credentialSubject
-        """
-        scopes: list[str] | None = None
-        credential_subject: dict | None = None
-        verifiable_credential: str | None = None
-        ebsi_access_token: str | None = None
-        """
 
         user = User(ebsi_access_token=ebsi_token_data.access_token, scopes=ebsi_token_data.scope.split(" "),
                     credential_subject=credential_object, verifiable_credential=vc_token, exp="")

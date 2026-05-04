@@ -10,17 +10,37 @@ class CredentialSubject(SQLModel):
     company_name: str
     company_address: str
     company_vat: str
+    company_website: str
+    company_email: str
+    company_country: str
 
-router = APIRouter(prefix="/credentials")
+class PublisherSubject(CredentialSubject):
+    authorized_hosts: list[str]
 
-@router.post("/")
-def request_vc(payload: CredentialSubject, issuer_repo: IssuerRepository = Depends()):
+class FactCheckerSubject(CredentialSubject):
+    specialization: str
+    accredited_by: str | None
+
+router = APIRouter(prefix="/credentials", tags=["credentials"])
+
+@router.post("/publisher_vc")
+def request_vc_publisher(payload: PublisherSubject, issuer_repo: IssuerRepository = Depends()):
+    subject_did = payload.subject_did
+    credential_subject = payload.model_dump(mode="json")
+    credential_subject.pop("subject_did")
     return issuer_repo.request_vc({
-        "subject_did": payload.subject_did,
-        "credential_subject": {
-            "company_name": payload.company_name,
-            "company_address": payload.company_address,
-            "company_vat": payload.company_vat
-        },
+        "subject_did": subject_did,
+        "credential_subject": credential_subject,
         "credential_type": ['VerifiableCredential', 'VerifiableAuthorisationToOnboard', 'FACTSPublisherCredential']
+    })
+
+@router.post("/factchecker_vc")
+def request_vc_factchecker(payload: FactCheckerSubject, issuer_repo: IssuerRepository = Depends()):
+    subject_did = payload.subject_did
+    credential_subject = payload.model_dump(mode="json")
+    credential_subject.pop("subject_did")
+    return issuer_repo.request_vc({
+        "subject_did": subject_did,
+        "credential_subject": credential_subject,
+        "credential_type": ['VerifiableCredential', 'VerifiableAuthorisationToOnboard', 'FACTSFactCheckerCredential']
     })

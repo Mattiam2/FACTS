@@ -13,6 +13,7 @@ class Article(SQLModel, table=True):
     data_hash: str
     timestamp: datetime = Field(default=func.now())
     confirmed: bool
+    eth_address: str
 
 
 class Assessment(SQLModel, table=True):

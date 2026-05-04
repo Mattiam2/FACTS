@@ -9,20 +9,15 @@ class ArticleInfo(SQLModel):
     description: str
     publication_date: datetime
     language: str
+    sources: list[str]
 
-class ArticleMetadataCreate(SQLModel):
+class ArticleMetadata(SQLModel):
     version: str
-    type: str
+    type: str = "FACTS_ARTICLE"
     article_info: ArticleInfo
-    sources: list
-
-class ArticleMetadataPublic(SQLModel):
-    version: str
-    type: str
-    article_info: ArticleInfo
-    sources: list
+    eth_address: str
     publisher_vc: str
 
 class ArticlePayload(SQLModel):
     from_eth_address: str
-    article_metadata: ArticleMetadataCreate
+    article_info: ArticleInfo

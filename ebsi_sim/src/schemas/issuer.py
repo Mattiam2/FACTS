@@ -15,4 +15,4 @@ class CredentialCreate(SQLModel):
     """
     subject_did: str = Field(description="DID Subject of the request")
     credential_type: list[str] | str | None = Field(default=None, description="Credential type(s)")
-    credential_subject: dict[str, str] | None = Field(default=None, description="Credential subject")
+    credential_subject: dict[str, str | list[str]] | None = Field(default=None, description="Credential subject")

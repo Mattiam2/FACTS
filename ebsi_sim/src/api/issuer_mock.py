@@ -1,6 +1,5 @@
 import json
 from datetime import datetime, timedelta
-from typing import Annotated
 from uuid import uuid4
 
 import jwt

@@ -16,6 +16,9 @@ class UserCredentialSubject(SQLModel):
     company_name: str
     company_address: str
     company_vat: str
+    company_website: str
+    company_email: str
+    authorized_hosts: list[str]
 
 
 class User(SQLModel):

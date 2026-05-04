@@ -4,8 +4,10 @@ from sqlmodel import SQLModel, Field
 
 
 class TokenScopeEnum(str, Enum):
-    scope_create = "create"
-    scope_write = "write"
+    scope_publisher_create = "publisher_create"
+    scope_publisher_write = "publisher_write"
+    scope_factchecker_create = "factchecker_create"
+    scope_factchecker_write = "factchecker_write"
 
 class EBSITokenScopeEnum(str, Enum):
     didr_write = "openid didr_write"
