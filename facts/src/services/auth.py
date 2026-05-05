@@ -97,9 +97,13 @@ class AuthService:
         }
 
         ebsi_token_data: EBSITokenPublic = self.auth_repository.get_token(data=authorisation_payload)
-
-        user = User(ebsi_access_token=ebsi_token_data.access_token, scopes=ebsi_token_data.scope.split(" "),
-                    credential_subject=credential_object, verifiable_credential=vc_token, exp="")
+        user_dict = {
+            "ebsi_access_token": ebsi_token_data.access_token,
+            "scopes": [scope.value],
+            "credential_subject": credential_object,
+            "verifiable_credential": vc_token
+        }
+        user = User.model_validate(user_dict)
 
         facts_access_token = self.create_access_token(user.model_dump(), expires_delta=timedelta(minutes=120))
         token_data = TokenPublic(access_token=facts_access_token, token_type="Bearer")

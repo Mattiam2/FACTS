@@ -1,14 +1,18 @@
+import traceback
 from typing import Callable, Awaitable
 
 from fastapi import FastAPI, Request, Response
+from sqlalchemy.exc import SQLAlchemyError
 from sqlmodel import Session
+from starlette.responses import JSONResponse
 
 from facts.src.core.db import engine, session_ctx
 from facts.src.api.articles import router as articleapi
 from facts.src.api.assessments import router as assessmentapi
 from facts.src.api.credentials import router as credentialapi
 from facts.src.api.auth import router as authapi
-
+from facts.src.core.exceptions import FACTSError, FACTSRequestError, FACTSNotFoundError, FACTSAuthError, \
+    FACTSDuplicateError
 
 app = FastAPI(title="FACTS",
               description="Facts Authenticity and Credibility Tracking System")
@@ -17,6 +21,26 @@ app.include_router(articleapi)
 app.include_router(assessmentapi)
 app.include_router(credentialapi)
 app.include_router(authapi)
+
+def handle_exception(exc: Exception):
+    status_code = 500
+    message = "Internal Server Error"
+    if isinstance(exc, FACTSError):
+        message = str(exc)
+    if isinstance(exc, FACTSRequestError):
+        status_code = 400
+    elif isinstance(exc, FACTSNotFoundError):
+        status_code = 404
+    elif isinstance(exc, FACTSAuthError):
+        status_code = 401
+    elif isinstance(exc, FACTSDuplicateError):
+        status_code = 409
+    elif isinstance(exc, SQLAlchemyError):
+        message = "Database error"
+
+    if status_code == 500 or not isinstance(exc, FACTSError):
+        traceback.print_exc()
+    return JSONResponse(status_code=status_code, content={"detail": message})
 
 @app.middleware("http")
 async def db_session_handler(request: Request, call_next: Callable[[Request], Awaitable[Response]]) -> Response:
@@ -39,7 +63,7 @@ async def db_session_handler(request: Request, call_next: Callable[[Request], Aw
             session.commit()
         except Exception as e:
             session.rollback()
-            raise
+            return handle_exception(e)
         else:
             return response
         finally:

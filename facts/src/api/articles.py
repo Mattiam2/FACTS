@@ -1,7 +1,11 @@
+from typing import Annotated
+
 from fastapi import APIRouter, Depends
+from fastapi.params import Security
 
 from facts.src.core.auth import get_current_user, User
 from facts.src.schemas.article import ArticlePayload
+from facts.src.schemas.auth import TokenScopeEnum
 from facts.src.schemas.shared import BuildTransactionResponse, SignedTransactionPayload, \
     SignedTransactionResponse
 from facts.src.services.article import ArticleService
@@ -27,13 +31,15 @@ def get_article(article_id: str, article_service: ArticleService = Depends()):
 
 @router.post("/")
 def create_article_transaction(payload: ArticlePayload,
-                               current_user: User = Depends(get_current_user),
+                               current_user: Annotated[
+                                   User, Security(get_current_user, scopes=[TokenScopeEnum.scope_publisher_create.value])],
                                article_service: ArticleService = Depends()) -> BuildTransactionResponse:
     return article_service.request_create_article(current_user, payload)
 
 
 @router.post("/{article_id}/signed")
 def confirm_article_transaction(article_id: str, signed_transaction: SignedTransactionPayload,
-                                current_user: User = Depends(get_current_user),
+                                current_user: Annotated[
+                                    User, Security(get_current_user, scopes=[TokenScopeEnum.scope_publisher_create.value])],
                                 article_service: ArticleService = Depends()) -> SignedTransactionResponse:
     return article_service.confirm_create_article(current_user, article_id, signed_transaction)

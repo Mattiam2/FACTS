@@ -1,9 +1,10 @@
 from typing import Annotated
 
 import jwt
-from fastapi import Depends
-from fastapi.security import OAuth2PasswordBearer, HTTPBearer, HTTPAuthorizationCredentials
+from fastapi import Depends, HTTPException
+from fastapi.security import OAuth2PasswordBearer, HTTPBearer, HTTPAuthorizationCredentials, SecurityScopes
 from sqlmodel import SQLModel
+from starlette import status
 
 from facts.src.core.config import settings
 from facts.src.core.exceptions import FACTSAuthError, FACTSRequestError
@@ -22,23 +23,25 @@ class UserCredentialSubject(SQLModel):
 class UserPublisherSubject(UserCredentialSubject):
     authorized_hosts: list[str]
 
-class FactCheckerSubject(UserCredentialSubject):
-    specialization: str | None
-    accredited_by: str | None
+class UserFactCheckerSubject(UserCredentialSubject):
+    specialization: str
+    accredited_by: str
 
 class User(SQLModel):
-    credential_subject: UserCredentialSubject | UserPublisherSubject | FactCheckerSubject
+    credential_subject: UserPublisherSubject | UserFactCheckerSubject | UserCredentialSubject
     verifiable_credential: str
     ebsi_access_token: str
     scopes: list[str]
 
 
-def get_current_user(token: Annotated[HTTPAuthorizationCredentials, Depends(facts_scheme)]):
+def get_current_user(security_scopes: SecurityScopes, token: Annotated[HTTPAuthorizationCredentials, Depends(facts_scheme)]):
     """
     Decodes and validates a provided token to authenticate a user and retrieve its
     information.
 
-    :param token: A signed token containing user claims utilized for authentication.
+    :param security_scopes: The security scopes required for the current request.
+    :type security_scopes: SecurityScopes
+    :param token: A signed token containing user claims used for authentication.
     :type token: str
     :return: An authenticated User object containing user scopes and subject
         (user identifier).
@@ -58,7 +61,12 @@ def get_current_user(token: Annotated[HTTPAuthorizationCredentials, Depends(fact
         raise FACTSAuthError("Impossible to authenticate user")
 
     user_data.pop("exp", None)
-    return User.model_validate(user_data)
+    user_obj = User.model_validate(user_data)
+    if security_scopes is not None:
+        for scope in security_scopes.scopes:
+            if scope not in user_obj.scopes:
+                raise FACTSAuthError("Not enough permissions")
+    return user_obj
 
 
 def check_scopes(user: User, method: str, method_scopes: dict[str, list[str]]):
