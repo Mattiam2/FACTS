@@ -8,6 +8,7 @@ import uuid
 from eth_account._utils.legacy_transactions import Transaction
 from fastapi import Depends
 
+from facts.src import utils
 from facts.src.core.auth import User
 from facts.src.core.config import settings
 from facts.src.core.exceptions import FACTSError, FACTSDuplicateError, FACTSAuthError, FACTSNotFoundError, \
@@ -77,8 +78,8 @@ class AssessmentService:
     #     document_element = self.get_article_by_hash(document_hash)
     #     return document_element.metadata_json if document_element.metadata_json else None
 
-    def get_assessments_list(self, did_creator: str | None = None, offset: int = 0, page_size: int = 100):
-        assessments = self.assessment_repository.list(creator=did_creator, offset=offset, limit=page_size, order_by="timestamp")
+    def get_assessments_list(self, did_creator: str | None = None, article_hash: str | None = None, article_url: str | None = None, offset: int = 0, page_size: int = 100):
+        assessments = self.assessment_repository.list(creator=did_creator, article_hash=article_hash, article_url=article_url, offset=offset, limit=page_size, order_by="timestamp")
         return assessments
 
     def request_create_assessment(self, user: User, payload: AssessmentPayload):
@@ -99,32 +100,37 @@ class AssessmentService:
         ebsi_access_token = user.ebsi_access_token
 
         assessment_metadata = AssessmentMetadata(version="1.0", assessed_article=payload.assessed_article, assessment_info=payload.assessment_info, eth_address=from_eth_address, fact_checker_vc=user_vc)
+        authenticity_score = assessment_metadata.assessment_info.authenticity_evaluation.score.value if assessment_metadata.assessment_info.authenticity_evaluation else None
+        credibility_score = assessment_metadata.assessment_info.credibility_evaluation.score.value if assessment_metadata.assessment_info.credibility_evaluation else None
 
         build_response = self.build_create_transaction(from_eth_address, user_did, ebsi_access_token, document_hash, assessment_metadata)
         transaction: dict = build_response.transaction
 
+        normalized_url = utils.normalize_url(payload.assessment_info.article_url)
+        article_hash = utils.hash_url(payload.assessment_info.article_url)
+
         unsigned_transaction_data = bytes.fromhex(transaction['data'].replace("0x", ""))
         data_hash = hashlib.sha256(unsigned_transaction_data).hexdigest()
-        self.assessment_repository.create(hash=document_hash, url=payload.assessment_info.article_url, creator=user_did, tx_hash=None, data_hash=data_hash, eth_address=from_eth_address, confirmed=False)
+        self.assessment_repository.create(hash=document_hash, article_hash=article_hash, url=normalized_url, creator=user_did, tx_hash=None, data_hash=data_hash, eth_address=from_eth_address, authenticity_score=authenticity_score, credibility_score=credibility_score, confirmed=False)
         return build_response
 
-    def confirm_create_article(self, user: User, document_hash: str, transaction: SignedTransactionPayload):
-        unconfirmed_article = self.article_repository.get(document_hash)
-        if unconfirmed_article is None:
-            raise AssessmentServiceNotFoundError(f"Article with hash {document_hash} not found")
-        if unconfirmed_article.confirmed:
-            raise AssessmentServiceRequestError("Article already confirmed")
-        if unconfirmed_article.creator != user.credential_subject.id:
-            raise AssessmentServiceRequestError("User does not own the article")
+    def confirm_create_assessment(self, user: User, document_hash: str, transaction: SignedTransactionPayload):
+        unconfirmed_assessment = self.assessment_repository.get(document_hash)
+        if unconfirmed_assessment is None:
+            raise AssessmentServiceNotFoundError(f"Assessment with hash {document_hash} not found")
+        if unconfirmed_assessment.confirmed:
+            raise AssessmentServiceRequestError("Assessment already confirmed")
+        if unconfirmed_assessment.creator != user.credential_subject.id:
+            raise AssessmentServiceRequestError("User does not own the unconfirmed assessment")
         signed_transaction_bytes = bytes.fromhex(transaction.signedRawTransaction)
         signed_decoded_transaction: Transaction = rlp.decode(signed_transaction_bytes, Transaction)
         signed_transaction_data = signed_decoded_transaction['data']
         signed_data_hash = hashlib.sha256(signed_transaction_data).hexdigest()
-        if unconfirmed_article.data_hash != signed_data_hash:
+        if unconfirmed_assessment.data_hash != signed_data_hash:
             raise AssessmentServiceRequestError("Transaction data hash does not match the expected hash")
         signed_transaction_response = self.send_signed_transaction(user, transaction)
         if signed_transaction_response.transaction_hash is not None:
-            self.article_repository.update(id=document_hash, confirmed=True, tx_hash=signed_transaction_response.transaction_hash)
+            self.assessment_repository.update(id=document_hash, confirmed=True, tx_hash=signed_transaction_response.transaction_hash)
         return signed_transaction_response
 
     def build_create_transaction(self, from_eth_address: str, user_did: str, ebsi_access_token: str, document_hash: str, payload: AssessmentMetadata) -> BuildTransactionResponse:

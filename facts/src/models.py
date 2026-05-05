@@ -22,8 +22,10 @@ class Assessment(SQLModel, table=True):
 
     hash: str = Field(default=None, primary_key=True)
     article_hash: str = Field(foreign_key="public.articles.hash")
-    url: str
+    article_url: str
     creator: str
+    credibility_score: int
+    authenticity_score: int
     tx_hash: str
     data_hash: str
     timestamp: datetime = Field(default=func.now())

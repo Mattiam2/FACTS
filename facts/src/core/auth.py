@@ -18,11 +18,16 @@ class UserCredentialSubject(SQLModel):
     company_vat: str
     company_website: str
     company_email: str
+
+class UserPublisherSubject(UserCredentialSubject):
     authorized_hosts: list[str]
 
+class FactCheckerSubject(UserCredentialSubject):
+    specialization: str | None
+    accredited_by: str | None
 
 class User(SQLModel):
-    credential_subject: UserCredentialSubject
+    credential_subject: UserCredentialSubject | UserPublisherSubject | FactCheckerSubject
     verifiable_credential: str
     ebsi_access_token: str
     scopes: list[str]

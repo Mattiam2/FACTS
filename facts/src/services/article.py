@@ -1,12 +1,11 @@
 import hashlib
 import json
 import random
-from urllib.parse import parse_qs, urlencode, urlsplit, urlunsplit
-
 import rlp
 from eth_account._utils.legacy_transactions import Transaction
 from fastapi import Depends
 
+from facts.src import utils
 from facts.src.core.auth import User
 from facts.src.core.config import settings
 from facts.src.core.exceptions import FACTSError, FACTSDuplicateError, FACTSAuthError, FACTSNotFoundError, \
@@ -61,52 +60,6 @@ class ArticleService:
         self.tnt_repository = tnt_repository
         self.article_repository = article_repository
 
-    @classmethod
-    def normalize_url(cls, url: str) -> str:
-        """
-        Normalizes a URL to ensure that identical URLs produce the same hash.
-
-        :param url: The URL to normalize.
-        :type url: str
-        :return: The normalized URL string.
-        :rtype: str
-        """
-        host, path, sorted_query = cls.split_url(url)
-        normalized = urlunsplit(('', host, path, sorted_query, ''))
-
-        return normalized
-
-    @classmethod
-    def split_url(cls, url: str) -> tuple[str, str, str]:
-        # Parse the URL into components
-        url_to_parse = url.strip()
-        if not url_to_parse.startswith("http"):
-            url_to_parse = "//" + url_to_parse
-
-        parsed = urlsplit(url_to_parse)
-        host = parsed.netloc.lower()
-        if ":" in host:
-            host, port = host.rsplit(':', 1)
-
-        path = parsed.path
-        if path and path != '/' and path.endswith('/'):
-            path = path.rstrip('/')
-        if not path:
-            path = '/'
-
-        query_params = parse_qs(parsed.query, keep_blank_values=False)
-        filtered_query_params = {key: value for key, value in query_params.items() if
-                                 key not in settings.TRACKER_PARAMS}
-        sorted_query = urlencode(sorted(filtered_query_params.items()), doseq=True)
-        return host, path, sorted_query
-
-    @classmethod
-    def hash_url(cls, url: str):
-        normalized_url = cls.normalize_url(url)
-        full_hashable_content = "FACTS_ARTICLE:" + normalized_url
-        document_hash = "0x" + hashlib.sha256(full_hashable_content.encode()).hexdigest()
-        return document_hash
-
     def get_article_by_hash(self, document_hash: str):
         facts_article = self.article_repository.get(document_hash)
         if not facts_article:
@@ -117,7 +70,7 @@ class ArticleService:
         """
         Retrieves an article based on its url.
         """
-        document_hash = self.hash_url(url)
+        document_hash = utils.hash_url(url)
         document_element = self.get_article_by_hash(document_hash)
         return document_element.metadata_json if document_element.metadata_json else None
 
@@ -127,7 +80,7 @@ class ArticleService:
 
     @classmethod
     def check_authorized_hosts(cls, article_url: str, authorized_hosts: list[str]):
-        host, _, _ = cls.split_url(article_url)
+        host, _, _ = utils.split_url(article_url)
         return host in authorized_hosts
 
     def request_create_article(self, user: User, payload: ArticlePayload):
@@ -136,9 +89,9 @@ class ArticleService:
         if not is_authorized:
             raise ArticleServiceAuthError("Forbidden host")
 
-        normalized_url = ArticleService.normalize_url(payload.article_info.url)
+        normalized_url = utils.normalize_url(payload.article_info.url)
 
-        document_hash = self.hash_url(payload.article_info.url)
+        document_hash = utils.hash_url(payload.article_info.url)
 
         existing_article = self.article_repository.get(document_hash)
         if existing_article and existing_article.confirmed:
@@ -158,7 +111,7 @@ class ArticleService:
 
         unsigned_transaction_data = bytes.fromhex(transaction['data'].replace("0x", ""))
         data_hash = hashlib.sha256(unsigned_transaction_data).hexdigest()
-        self.article_repository.create(hash=document_hash, url=normalized_url, creator=user_did, tx_hash=None, data_hash=data_hash, eth_address=from_eth_address, confirmed=False)
+        self.article_repository.create(hash=document_hash, article_url=normalized_url, creator=user_did, tx_hash=None, data_hash=data_hash, eth_address=from_eth_address, confirmed=False)
         return build_response
 
     def confirm_create_article(self, user: User, document_hash: str, transaction: SignedTransactionPayload):

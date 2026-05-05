@@ -5,6 +5,7 @@ from sqlmodel import Session
 
 from facts.src.core.db import engine, session_ctx
 from facts.src.api.articles import router as articleapi
+from facts.src.api.assessments import router as assessmentapi
 from facts.src.api.credentials import router as credentialapi
 from facts.src.api.auth import router as authapi
 
@@ -13,6 +14,7 @@ app = FastAPI(title="FACTS",
               description="Facts Authenticity and Credibility Tracking System")
 
 app.include_router(articleapi)
+app.include_router(assessmentapi)
 app.include_router(credentialapi)
 app.include_router(authapi)
 

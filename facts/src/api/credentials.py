@@ -18,7 +18,7 @@ class PublisherSubject(CredentialSubject):
     authorized_hosts: list[str]
 
 class FactCheckerSubject(CredentialSubject):
-    specialization: str
+    specialization: str | None
     accredited_by: str | None
 
 router = APIRouter(prefix="/credentials", tags=["credentials"])
