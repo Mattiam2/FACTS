@@ -29,6 +29,11 @@ def get_article(article_id: str, article_service: ArticleService = Depends()):
     return article_service.get_article_by_hash(article_id)
 
 
+@router.get("/{article_id}/sources")
+def get_article_sources(article_id: str, article_service: ArticleService = Depends()):
+    return article_service.get_article_sources_chain(article_id)
+
+
 @router.post("/")
 def create_article_transaction(payload: ArticlePayload,
                                current_user: Annotated[

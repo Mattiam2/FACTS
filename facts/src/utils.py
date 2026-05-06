@@ -36,6 +36,8 @@ def normalize_url(url: str) -> str:
     :rtype: str
     """
     host, path, sorted_query = split_url(url)
+    host = host.replace('www.', '')
+    path = path.rstrip('/')
     normalized = urlunsplit(('https', host, path, sorted_query, ''))
 
     return normalized

@@ -26,6 +26,10 @@ def get_assessments(did_creator: str | None = None, article_hash: str | None = N
 def get_assessment(assessment_id: str, assessment_service: AssessmentService = Depends()):
     return assessment_service.get_assessment_by_hash(assessment_id)
 
+@router.get("/{assessment_id}/evidences")
+def get_assessment_evidences(assessment_id: str, assessment_service: AssessmentService = Depends()):
+    return assessment_service.get_assessments_evidences(assessment_id)
+
 
 @router.post("/")
 def create_assessment_transaction(payload: AssessmentPayload,

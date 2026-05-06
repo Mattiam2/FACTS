@@ -15,6 +15,8 @@ class Article(SQLModel, table=True):
     confirmed: bool
     eth_address: str
 
+    sources: list["ArticleSource"] = Relationship()
+
 
 class ArticleSource(SQLModel, table=True):
     __tablename__ = "article_sources"
@@ -22,7 +24,7 @@ class ArticleSource(SQLModel, table=True):
 
     article_hash: str = Field(foreign_key="public.articles.hash", primary_key=True)
     source_value: str = Field(primary_key=True)
-    source_hash: str | None = Field(default=None)
+    source_hash: str | None = Field(default=None, index=True)
 
 
 class Assessment(SQLModel, table=True):
@@ -30,7 +32,7 @@ class Assessment(SQLModel, table=True):
     __table_args__ = {'schema': 'public'}
 
     hash: str = Field(default=None, primary_key=True)
-    article_hash: str = Field(foreign_key="public.articles.hash")
+    article_hash: str = Field(foreign_key="public.articles.hash", index=True)
     article_url: str
     creator: str
     credibility_score: int
@@ -40,6 +42,8 @@ class Assessment(SQLModel, table=True):
     timestamp: datetime = Field(default=func.now())
     confirmed: bool
 
+    evidences: list["AssessmentEvidence"] = Relationship()
+
 
 class AssessmentEvidence(SQLModel, table=True):
     __tablename__ = "assessment_evidences"
@@ -47,4 +51,4 @@ class AssessmentEvidence(SQLModel, table=True):
 
     assessment_hash: str = Field(foreign_key="public.assessments.hash", primary_key=True)
     evidence_value: str = Field(primary_key=True)
-    evidence_hash: str | None = Field(default=None)
+    evidence_hash: str | None = Field(default=None, index=True)

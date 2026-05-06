@@ -1,4 +1,5 @@
 import traceback
+from contextlib import asynccontextmanager
 from typing import Callable, Awaitable
 
 from fastapi import FastAPI, Request, Response
@@ -13,8 +14,15 @@ from facts.src.api.credentials import router as credentialapi
 from facts.src.api.auth import router as authapi
 from facts.src.core.exceptions import FACTSError, FACTSRequestError, FACTSNotFoundError, FACTSAuthError, \
     FACTSDuplicateError
+from facts.src.repositories import create_db_and_tables
 
-app = FastAPI(title="FACTS",
+
+@asynccontextmanager
+async def lifespan(app):
+    create_db_and_tables()
+    yield
+
+app = FastAPI(lifespan=lifespan, title="FACTS",
               description="Facts Authenticity and Credibility Tracking System")
 
 app.include_router(articleapi)

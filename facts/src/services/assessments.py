@@ -13,7 +13,7 @@ from facts.src.core.auth import User
 from facts.src.core.exceptions import FACTSError, FACTSDuplicateError, FACTSAuthError, FACTSNotFoundError, \
     FACTSRequestError
 from facts.src.repositories.ebsi_tnt import TntClient
-from facts.src.repositories.facts import AssessmentRepository, AssessmentEvidenceRepository
+from facts.src.repositories.facts import AssessmentRepository
 from facts.src.schemas.assessment import AssessmentPayload, AssessmentMetadata
 from facts.src.schemas.shared import BuildTransactionResponse, SignedTransactionPayload, \
     SignedTransactionResponse
@@ -57,12 +57,10 @@ class AssessmentServiceRequestError(AssessmentServiceError, FACTSRequestError):
 class AssessmentService:
     tnt_client: TntClient
     assessment_repository: AssessmentRepository
-    assessment_evidence_repository: AssessmentEvidenceRepository
 
-    def __init__(self, tnt_client: TntClient = Depends(), assessment_repository: AssessmentRepository = Depends(), assessment_evidence_repository: AssessmentEvidenceRepository = Depends()):
+    def __init__(self, tnt_client: TntClient = Depends(), assessment_repository: AssessmentRepository = Depends()):
         self.tnt_client = tnt_client
         self.assessment_repository = assessment_repository
-        self.assessment_evidence_repository = assessment_evidence_repository
 
     def get_assessment_by_hash(self, document_hash: str):
         facts_assessment = self.assessment_repository.get(document_hash)
@@ -82,6 +80,12 @@ class AssessmentService:
         assessments = self.assessment_repository.list(creator=did_creator, confirmed=True, article_hash=article_hash, article_url=article_url, offset=offset, limit=page_size, order_by="timestamp")
         return assessments
 
+    def get_assessments_evidences(self, document_hash: str):
+        assessment = self.assessment_repository.get(document_hash)
+        if not assessment or not assessment.confirmed:
+            raise AssessmentServiceNotFoundError(f"Assessment with hash {document_hash} not found")
+        return assessment.evidences
+
     def request_create_assessment(self, user: User, payload: AssessmentPayload):
 
         assessment_uuid = uuid.uuid4()
@@ -93,10 +97,6 @@ class AssessmentService:
             raise AssessmentServiceDuplicateError(f"Assessment already exists")
         elif existing_assessment and not existing_assessment.confirmed:
             self.assessment_repository.delete(id=document_hash)
-            evidences = self.assessment_evidence_repository.list(assessment_hash=document_hash)
-            for evidence in evidences:
-                self.assessment_evidence_repository.delete(
-                    id={'assessment_hash': document_hash, 'evidence_value': evidence.evidence_value})
 
         from_eth_address = payload.from_eth_address
         user_did = user.credential_subject.id
@@ -115,12 +115,13 @@ class AssessmentService:
 
         unsigned_transaction_data = bytes.fromhex(transaction['data'].replace("0x", ""))
         data_hash = hashlib.sha256(unsigned_transaction_data).hexdigest()
-        self.assessment_repository.create(hash=document_hash, article_hash=article_hash, url=normalized_url, creator=user_did, tx_hash=None, data_hash=data_hash, eth_address=from_eth_address, authenticity_score=authenticity_score, credibility_score=credibility_score, confirmed=False)
-        for evidence_value in payload.assessment_info.authenticity_evaluation.evidences:
+        self.assessment_repository.create(hash=document_hash, article_hash=article_hash, article_url=normalized_url, creator=user_did, tx_hash=None, data_hash=data_hash, eth_address=from_eth_address, authenticity_score=authenticity_score, credibility_score=credibility_score, confirmed=False)
+        for evidence_value in payload.assessment_info.evidences:
             evidence_hash = None
             if evidence_value.startswith("http"):
                 evidence_hash = utils.hash_url(evidence_value)
-            self.assessment_evidence_repository.create(assessment_hash=document_hash, evidence_value=evidence_value, evidence_hash=evidence_hash)
+                evidence_value = utils.normalize_url(evidence_value)
+            self.assessment_repository.add_evidence(assessment_hash=document_hash, evidence_value=evidence_value, evidence_hash=evidence_hash)
         return build_response
 
     def confirm_create_assessment(self, user: User, document_hash: str, transaction: SignedTransactionPayload):

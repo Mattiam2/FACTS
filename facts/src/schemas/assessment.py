@@ -31,7 +31,6 @@ class AuthenticityScore(IntEnum):
 
 class BaseEvaluation(SQLModel):
     note: str
-    evidences: list[str]
 
 
 class AssessmentCredibilityEvaluation(BaseEvaluation):
@@ -47,6 +46,7 @@ class AssessmentInfo(SQLModel):
     assessment_date: datetime
     credibility_evaluation: AssessmentCredibilityEvaluation
     authenticity_evaluation: AssessmentAuthenticityEvaluation
+    evidences: list[str]
 
 
 class AssessmentMetadata(SQLModel):
