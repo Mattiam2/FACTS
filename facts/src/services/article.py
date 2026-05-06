@@ -10,8 +10,8 @@ from facts.src.core.auth import User
 from facts.src.core.config import settings
 from facts.src.core.exceptions import FACTSError, FACTSDuplicateError, FACTSAuthError, FACTSNotFoundError, \
     FACTSRequestError
-from facts.src.repositories.ebsi_tnt import TntRepository
-from facts.src.repositories.facts import ArticleRepository
+from facts.src.repositories.ebsi_tnt import TntClient
+from facts.src.repositories.facts import ArticleRepository, ArticleSourceRepository
 from facts.src.schemas.article import ArticlePayload, ArticleMetadata
 from facts.src.schemas.shared import BuildTransactionResponse, SignedTransactionPayload, \
     SignedTransactionResponse
@@ -53,18 +53,20 @@ class ArticleServiceRequestError(ArticleServiceError, FACTSRequestError):
 
 
 class ArticleService:
-    tnt_repository: TntRepository
+    tnt_client: TntClient
     article_repository: ArticleRepository
+    article_source_repository: ArticleSourceRepository
 
-    def __init__(self, tnt_repository: TntRepository = Depends(), article_repository: ArticleRepository = Depends()):
-        self.tnt_repository = tnt_repository
+    def __init__(self, tnt_client: TntClient = Depends(), article_repository: ArticleRepository = Depends(), article_source_repository: ArticleSourceRepository = Depends()):
+        self.tnt_client = tnt_client
         self.article_repository = article_repository
+        self.article_source_repository = article_source_repository
 
     def get_article_by_hash(self, document_hash: str):
         facts_article = self.article_repository.get(document_hash)
-        if not facts_article:
+        if not facts_article or not facts_article.confirmed:
             raise ArticleServiceNotFoundError(f"Article with hash {document_hash} not found")
-        return self.tnt_repository.get_document(document_hash)
+        return self.tnt_client.get_document(document_hash)
 
     def get_article_by_url(self, url: str):
         """
@@ -75,7 +77,7 @@ class ArticleService:
         return document_element.metadata_json if document_element.metadata_json else None
 
     def get_articles_list(self, did_creator: str | None = None, offset: int = 0, page_size: int = 100):
-        articles = self.article_repository.list(creator=did_creator, offset=offset, limit=page_size, order_by="timestamp")
+        articles = self.article_repository.list(creator=did_creator, confirmed=True, offset=offset, limit=page_size, order_by="timestamp")
         return articles
 
     @classmethod
@@ -98,6 +100,9 @@ class ArticleService:
             raise ArticleServiceDuplicateError(f"Article with URL {normalized_url} already exists")
         elif existing_article and not existing_article.confirmed:
             self.article_repository.delete(id=document_hash)
+            sources = self.article_source_repository.list(article_hash=document_hash)
+            for source in sources:
+                self.article_source_repository.delete(id={'article_hash': document_hash, 'source_value': source.source_value})
 
         from_eth_address = payload.from_eth_address
         user_did = user.credential_subject.id
@@ -112,6 +117,11 @@ class ArticleService:
         unsigned_transaction_data = bytes.fromhex(transaction['data'].replace("0x", ""))
         data_hash = hashlib.sha256(unsigned_transaction_data).hexdigest()
         self.article_repository.create(hash=document_hash, article_url=normalized_url, creator=user_did, tx_hash=None, data_hash=data_hash, eth_address=from_eth_address, confirmed=False)
+        for source_value in payload.article_info.sources:
+            source_hash = None
+            if source_value.startswith("http"):
+                source_hash = utils.hash_url(source_value)
+            self.article_source_repository.create(article_hash=document_hash, source_value=source_value, source_hash=source_hash)
         return build_response
 
     def confirm_create_article(self, user: User, document_hash: str, transaction: SignedTransactionPayload):
@@ -137,18 +147,18 @@ class ArticleService:
         transaction_id = random.randint(1, 999)
         document_metadata_json = payload.model_dump_json()
         document_metadata_hex = "0x" + document_metadata_json.encode().hex()
-        json_rpc_response = self.tnt_repository.build_document_transaction(access_token=ebsi_access_token,
-                                                                           from_eth_address=from_eth_address,
-                                                                           transaction_id=transaction_id,
-                                                                           doc_hash=document_hash,
-                                                                           doc_metadata=document_metadata_hex,
-                                                                           did_ebsi_creator=user_did)
+        json_rpc_response = self.tnt_client.build_document_transaction(access_token=ebsi_access_token,
+                                                                       from_eth_address=from_eth_address,
+                                                                       transaction_id=transaction_id,
+                                                                       doc_hash=document_hash,
+                                                                       doc_metadata=document_metadata_hex,
+                                                                       did_ebsi_creator=user_did)
         return BuildTransactionResponse(document_hash=document_hash, transaction=json_rpc_response[
             "result"] if "result" in json_rpc_response else None)
 
     def send_signed_transaction(self, user: User, transaction: SignedTransactionPayload):
         transaction_dict = transaction.model_dump(mode="json")
-        json_rpc_response = self.tnt_repository.send_signed_transaction(access_token=user.ebsi_access_token,
-                                                                        transaction=transaction_dict)
+        json_rpc_response = self.tnt_client.send_signed_transaction(access_token=user.ebsi_access_token,
+                                                                    transaction=transaction_dict)
         return SignedTransactionResponse(
             transaction_hash=json_rpc_response["result"] if "result" in json_rpc_response else None)

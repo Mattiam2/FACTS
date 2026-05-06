@@ -1,7 +1,7 @@
 from facts.src.repositories.ebsi_base import EBSIClient
 
 
-class DidrRepository(EBSIClient):
+class DidrClient(EBSIClient):
 
     def __init__(self):
         super().__init__("did-registry")

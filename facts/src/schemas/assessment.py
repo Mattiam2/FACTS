@@ -31,7 +31,7 @@ class AuthenticityScore(IntEnum):
 
 class BaseEvaluation(SQLModel):
     note: str
-    evidence: list[str]
+    evidences: list[str]
 
 
 class AssessmentCredibilityEvaluation(BaseEvaluation):

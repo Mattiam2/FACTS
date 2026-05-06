@@ -2,7 +2,7 @@ from facts.src.repositories.ebsi_base import EBSIClient
 from facts.src.schemas.document import DocumentPublic
 
 
-class TntRepository(EBSIClient):
+class TntClient(EBSIClient):
     root_path: str
 
     def __init__(self):

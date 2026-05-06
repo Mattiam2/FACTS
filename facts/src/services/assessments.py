@@ -10,12 +10,10 @@ from fastapi import Depends
 
 from facts.src import utils
 from facts.src.core.auth import User
-from facts.src.core.config import settings
 from facts.src.core.exceptions import FACTSError, FACTSDuplicateError, FACTSAuthError, FACTSNotFoundError, \
     FACTSRequestError
-from facts.src.repositories.ebsi_tnt import TntRepository
-from facts.src.repositories.facts import ArticleRepository, AssessmentRepository
-from facts.src.schemas.article import ArticlePayload, ArticleMetadata
+from facts.src.repositories.ebsi_tnt import TntClient
+from facts.src.repositories.facts import AssessmentRepository, AssessmentEvidenceRepository
 from facts.src.schemas.assessment import AssessmentPayload, AssessmentMetadata
 from facts.src.schemas.shared import BuildTransactionResponse, SignedTransactionPayload, \
     SignedTransactionResponse
@@ -57,18 +55,20 @@ class AssessmentServiceRequestError(AssessmentServiceError, FACTSRequestError):
 
 
 class AssessmentService:
-    tnt_repository: TntRepository
+    tnt_client: TntClient
     assessment_repository: AssessmentRepository
+    assessment_evidence_repository: AssessmentEvidenceRepository
 
-    def __init__(self, tnt_repository: TntRepository = Depends(), assessment_repository: AssessmentRepository = Depends()):
-        self.tnt_repository = tnt_repository
+    def __init__(self, tnt_client: TntClient = Depends(), assessment_repository: AssessmentRepository = Depends(), assessment_evidence_repository: AssessmentEvidenceRepository = Depends()):
+        self.tnt_client = tnt_client
         self.assessment_repository = assessment_repository
+        self.assessment_evidence_repository = assessment_evidence_repository
 
     def get_assessment_by_hash(self, document_hash: str):
         facts_assessment = self.assessment_repository.get(document_hash)
-        if not facts_assessment:
+        if not facts_assessment or not facts_assessment.confirmed:
             raise AssessmentServiceNotFoundError(f"Assessment with hash {document_hash} not found")
-        return self.tnt_repository.get_document(document_hash)
+        return self.tnt_client.get_document(document_hash)
 
     # def get_assessments_by_url(self, url: str):
     #     """
@@ -79,7 +79,7 @@ class AssessmentService:
     #     return document_element.metadata_json if document_element.metadata_json else None
 
     def get_assessments_list(self, did_creator: str | None = None, article_hash: str | None = None, article_url: str | None = None, offset: int = 0, page_size: int = 100):
-        assessments = self.assessment_repository.list(creator=did_creator, article_hash=article_hash, article_url=article_url, offset=offset, limit=page_size, order_by="timestamp")
+        assessments = self.assessment_repository.list(creator=did_creator, confirmed=True, article_hash=article_hash, article_url=article_url, offset=offset, limit=page_size, order_by="timestamp")
         return assessments
 
     def request_create_assessment(self, user: User, payload: AssessmentPayload):
@@ -93,6 +93,10 @@ class AssessmentService:
             raise AssessmentServiceDuplicateError(f"Assessment already exists")
         elif existing_assessment and not existing_assessment.confirmed:
             self.assessment_repository.delete(id=document_hash)
+            evidences = self.assessment_evidence_repository.list(assessment_hash=document_hash)
+            for evidence in evidences:
+                self.assessment_evidence_repository.delete(
+                    id={'assessment_hash': document_hash, 'evidence_value': evidence.evidence_value})
 
         from_eth_address = payload.from_eth_address
         user_did = user.credential_subject.id
@@ -112,6 +116,11 @@ class AssessmentService:
         unsigned_transaction_data = bytes.fromhex(transaction['data'].replace("0x", ""))
         data_hash = hashlib.sha256(unsigned_transaction_data).hexdigest()
         self.assessment_repository.create(hash=document_hash, article_hash=article_hash, url=normalized_url, creator=user_did, tx_hash=None, data_hash=data_hash, eth_address=from_eth_address, authenticity_score=authenticity_score, credibility_score=credibility_score, confirmed=False)
+        for evidence_value in payload.assessment_info.authenticity_evaluation.evidences:
+            evidence_hash = None
+            if evidence_value.startswith("http"):
+                evidence_hash = utils.hash_url(evidence_value)
+            self.assessment_evidence_repository.create(assessment_hash=document_hash, evidence_value=evidence_value, evidence_hash=evidence_hash)
         return build_response
 
     def confirm_create_assessment(self, user: User, document_hash: str, transaction: SignedTransactionPayload):
@@ -137,18 +146,18 @@ class AssessmentService:
         transaction_id = random.randint(1, 999)
         document_metadata_json = payload.model_dump_json()
         document_metadata_hex = "0x" + document_metadata_json.encode().hex()
-        json_rpc_response = self.tnt_repository.build_document_transaction(access_token=ebsi_access_token,
-                                                                           from_eth_address=from_eth_address,
-                                                                           transaction_id=transaction_id,
-                                                                           doc_hash=document_hash,
-                                                                           doc_metadata=document_metadata_hex,
-                                                                           did_ebsi_creator=user_did)
+        json_rpc_response = self.tnt_client.build_document_transaction(access_token=ebsi_access_token,
+                                                                       from_eth_address=from_eth_address,
+                                                                       transaction_id=transaction_id,
+                                                                       doc_hash=document_hash,
+                                                                       doc_metadata=document_metadata_hex,
+                                                                       did_ebsi_creator=user_did)
         return BuildTransactionResponse(document_hash=document_hash, transaction=json_rpc_response[
             "result"] if "result" in json_rpc_response else None)
 
     def send_signed_transaction(self, user: User, transaction: SignedTransactionPayload):
         transaction_dict = transaction.model_dump(mode="json")
-        json_rpc_response = self.tnt_repository.send_signed_transaction(access_token=user.ebsi_access_token,
-                                                                        transaction=transaction_dict)
+        json_rpc_response = self.tnt_client.send_signed_transaction(access_token=user.ebsi_access_token,
+                                                                    transaction=transaction_dict)
         return SignedTransactionResponse(
             transaction_hash=json_rpc_response["result"] if "result" in json_rpc_response else None)

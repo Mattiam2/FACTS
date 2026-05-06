@@ -4,7 +4,7 @@ from facts.src.repositories.ebsi_base import EBSIClient
 from facts.src.schemas.auth import EBSITokenPublic
 
 
-class AuthRepository(EBSIClient):
+class AuthClient(EBSIClient):
 
     def __init__(self):
         super().__init__(root_path="authorisation")

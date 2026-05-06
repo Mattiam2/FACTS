@@ -7,7 +7,7 @@ from facts.src.core.auth import User
 from facts.src.core.config import settings
 from facts.src.core.exceptions import FACTSError, FACTSDuplicateError, FACTSAuthError, FACTSNotFoundError, \
     FACTSRequestError
-from facts.src.repositories.ebsi_auth import AuthRepository
+from facts.src.repositories.ebsi_auth import AuthClient
 from facts.src.schemas.auth import TokenScopeEnum, EBSITokenPublic, TokenPublic
 from facts.src.schemas.verifiable_credential import VerifiableCredentialPayload
 from facts.src.schemas.verifiable_presentation import VerifiablePresentationPayload
@@ -49,10 +49,10 @@ class AuthServiceRequestError(AuthServiceError, FACTSRequestError):
 
 
 class AuthService:
-    auth_repository: AuthRepository
+    auth_client: AuthClient
 
-    def __init__(self, auth_repository: AuthRepository = Depends()):
-        self.auth_repository = auth_repository
+    def __init__(self, auth_client: AuthClient = Depends()):
+        self.auth_client = auth_client
 
     def request_token(self, vp_token: str, scope: TokenScopeEnum) -> TokenPublic:
         vp_token_decoded = jwt.decode(vp_token, options={"verify_signature": False, "verify_exp": False})
@@ -96,7 +96,7 @@ class AuthService:
             "scope": presentation_scope
         }
 
-        ebsi_token_data: EBSITokenPublic = self.auth_repository.get_token(data=authorisation_payload)
+        ebsi_token_data: EBSITokenPublic = self.auth_client.get_token(data=authorisation_payload)
         user_dict = {
             "ebsi_access_token": ebsi_token_data.access_token,
             "scopes": [scope.value],

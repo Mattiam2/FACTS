@@ -1,7 +1,7 @@
 from facts.src.repositories.ebsi_base import EBSIClient
 
 
-class IssuerRepository(EBSIClient):
+class IssuerClient(EBSIClient):
 
     def __init__(self):
         super().__init__(root_path="issuer-mock")

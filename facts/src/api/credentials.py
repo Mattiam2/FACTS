@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends
 from sqlmodel import SQLModel
 
-from facts.src.repositories.ebsi_issuer import IssuerRepository
+from facts.src.repositories.ebsi_issuer import IssuerClient
 
 # TODO: In reality for FACTS Issuer!
 
@@ -24,7 +24,7 @@ class FactCheckerSubject(CredentialSubject):
 router = APIRouter(prefix="/credentials", tags=["credentials"])
 
 @router.post("/publisher_vc")
-def request_vc_publisher(payload: PublisherSubject, issuer_repo: IssuerRepository = Depends()):
+def request_vc_publisher(payload: PublisherSubject, issuer_repo: IssuerClient = Depends()):
     subject_did = payload.subject_did
     credential_subject = payload.model_dump(mode="json")
     credential_subject.pop("subject_did")
@@ -35,7 +35,7 @@ def request_vc_publisher(payload: PublisherSubject, issuer_repo: IssuerRepositor
     })
 
 @router.post("/factchecker_vc")
-def request_vc_factchecker(payload: FactCheckerSubject, issuer_repo: IssuerRepository = Depends()):
+def request_vc_factchecker(payload: FactCheckerSubject, issuer_repo: IssuerClient = Depends()):
     subject_did = payload.subject_did
     credential_subject = payload.model_dump(mode="json")
     credential_subject.pop("subject_did")
