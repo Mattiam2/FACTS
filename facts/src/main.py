@@ -3,6 +3,8 @@ from contextlib import asynccontextmanager
 from typing import Callable, Awaitable
 
 from fastapi import FastAPI, Request, Response
+from fastapi.middleware.cors import CORSMiddleware
+
 from sqlalchemy.exc import SQLAlchemyError
 from sqlmodel import Session
 from starlette.responses import JSONResponse
@@ -24,6 +26,14 @@ async def lifespan(app):
 
 app = FastAPI(lifespan=lifespan, title="FACTS",
               description="Facts Authenticity and Credibility Tracking System")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 app.include_router(articleapi)
 app.include_router(assessmentapi)
