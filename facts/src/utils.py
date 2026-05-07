@@ -1,7 +1,14 @@
 import hashlib
+import random
 from urllib.parse import urlunsplit, urlsplit, parse_qs, urlencode
 
+from facts.src.core.auth import User
 from facts.src.core.config import settings
+from facts.src.repositories.ebsi_tnt import TntClient
+from facts.src.schemas.article import ArticleMetadataPublic
+from facts.src.schemas.assessment import AssessmentMetadataPublic
+from facts.src.schemas.shared import BuildTransactionResponse, SignedTransactionPayload, SignedTransactionResponse
+
 
 def split_url(url: str) -> tuple[str, str, str]:
     # Parse the URL into components
@@ -48,3 +55,24 @@ def hash_url(url: str):
     full_hashable_content = "FACTS_ARTICLE:" + normalized_url
     document_hash = "0x" + hashlib.sha256(full_hashable_content.encode()).hexdigest()
     return document_hash
+
+
+def build_create_transaction(tnt_client: TntClient, from_eth_address: str, user_did: str, ebsi_access_token: str, document_hash: str, payload: AssessmentMetadataPublic | ArticleMetadataPublic) -> BuildTransactionResponse:
+    transaction_id = random.randint(1, 999)
+    document_metadata_json = payload.model_dump_json()
+    document_metadata_hex = "0x" + document_metadata_json.encode().hex()
+    json_rpc_response = tnt_client.build_document_transaction(access_token=ebsi_access_token,
+                                                                   from_eth_address=from_eth_address,
+                                                                   transaction_id=transaction_id,
+                                                                   doc_hash=document_hash,
+                                                                   doc_metadata=document_metadata_hex,
+                                                                   did_ebsi_creator=user_did)
+    return BuildTransactionResponse(document_hash=document_hash, transaction=json_rpc_response[
+        "result"] if "result" in json_rpc_response else None)
+
+def send_signed_transaction(tnt_client: TntClient, user: User, transaction: SignedTransactionPayload):
+    transaction_dict = transaction.model_dump(mode="json")
+    json_rpc_response = tnt_client.send_signed_transaction(access_token=user.ebsi_access_token,
+                                                                transaction=transaction_dict)
+    return SignedTransactionResponse(
+        transaction_hash=json_rpc_response["result"] if "result" in json_rpc_response else None)

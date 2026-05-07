@@ -1,31 +1,31 @@
 services:
-  ebsi_sim:
+  facts_backend:
     build:
       context: .
       target: builder
     depends_on:
-      ebsi_db:
+      facts_db:
         condition: service_healthy
     environment:
-      DB_HOST: 'ebsi_db'
-      DB_USER: 'ebsi'
+      DB_HOST: 'facts_db'
+      DB_USER: 'facts'
       DB_PASSWORD: 'password'
-      DB_NAME: 'ebsi'
+      DB_NAME: 'facts'
     ports:
-      - '8000:8000'
+      - '8001:8000'
     restart: "no"
-  ebsi_db:
+  facts_db:
     image: postgres:13.2-alpine
     restart: always
     shm_size: 128mb
     volumes:
       - ./db:/var/lib/postgresql/data
     environment:
-      POSTGRES_USER: 'ebsi'
+      POSTGRES_USER: 'facts'
       POSTGRES_PASSWORD: 'password'
-      POSTGRES_DB: 'ebsi'
+      POSTGRES_DB: 'facts'
     healthcheck:
-      test: [ "CMD-SHELL", "pg_isready -U ebsi -d ebsi" ]
+      test: [ "CMD-SHELL", "pg_isready -U facts -d facts" ]
       interval: 5s
       timeout: 5s
       retries: 5

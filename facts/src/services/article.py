@@ -1,5 +1,4 @@
 import hashlib
-import json
 import random
 import rlp
 from eth_account._utils.legacy_transactions import Transaction
@@ -7,12 +6,11 @@ from fastapi import Depends
 
 from facts.src import utils
 from facts.src.core.auth import User
-from facts.src.core.config import settings
 from facts.src.core.exceptions import FACTSError, FACTSDuplicateError, FACTSAuthError, FACTSNotFoundError, \
     FACTSRequestError
 from facts.src.repositories.ebsi_tnt import TntClient
 from facts.src.repositories.facts import ArticleRepository
-from facts.src.schemas.article import ArticlePayload, ArticleMetadata, ArticleSourceChainResponse
+from facts.src.schemas.article import ArticleCreate, ArticleMetadataPublic, ArticleSourceChainPublic
 from facts.src.schemas.shared import BuildTransactionResponse, SignedTransactionPayload, \
     SignedTransactionResponse
 
@@ -79,7 +77,7 @@ class ArticleService:
         if not article:
             raise ArticleServiceNotFoundError(f"Article with hash {article_hash} not found")
         sources_nodes = self.article_repository.get_source_chain(article_hash, 10)
-        response = ArticleSourceChainResponse.model_validate({
+        response = ArticleSourceChainPublic.model_validate({
             'root_article_hash': article_hash,
             'max_depth': 10,
             'nodes': sources_nodes
@@ -97,7 +95,7 @@ class ArticleService:
         host, _, _ = utils.split_url(normalized_url)
         return host in authorized_hosts
 
-    def request_create_article(self, user: User, payload: ArticlePayload):
+    def request_create_article(self, user: User, payload: ArticleCreate):
         is_authorized = self.check_authorized_hosts(payload.article_info.url, user.credential_subject.authorized_hosts)
 
         if not is_authorized:
@@ -118,7 +116,7 @@ class ArticleService:
         user_vc = user.verifiable_credential
         ebsi_access_token = user.ebsi_access_token
 
-        article_metadata = ArticleMetadata(version="1.0", article_info=payload.article_info, eth_address=from_eth_address, publisher_vc=user_vc)
+        article_metadata = ArticleMetadataPublic(version="1.0", article_info=payload.article_info, eth_address=from_eth_address, publisher_vc=user_vc)
 
         build_response = self.build_create_transaction(from_eth_address, user_did, ebsi_access_token, document_hash, article_metadata)
         transaction: dict = build_response.transaction
@@ -153,22 +151,8 @@ class ArticleService:
             self.article_repository.update(id=document_hash, confirmed=True, tx_hash=signed_transaction_response.transaction_hash)
         return signed_transaction_response
 
-    def build_create_transaction(self, from_eth_address: str, user_did: str, ebsi_access_token: str, document_hash: str, payload: ArticleMetadata) -> BuildTransactionResponse:
-        transaction_id = random.randint(1, 999)
-        document_metadata_json = payload.model_dump_json()
-        document_metadata_hex = "0x" + document_metadata_json.encode().hex()
-        json_rpc_response = self.tnt_client.build_document_transaction(access_token=ebsi_access_token,
-                                                                       from_eth_address=from_eth_address,
-                                                                       transaction_id=transaction_id,
-                                                                       doc_hash=document_hash,
-                                                                       doc_metadata=document_metadata_hex,
-                                                                       did_ebsi_creator=user_did)
-        return BuildTransactionResponse(document_hash=document_hash, transaction=json_rpc_response[
-            "result"] if "result" in json_rpc_response else None)
+    def build_create_transaction(self, from_eth_address: str, user_did: str, ebsi_access_token: str, document_hash: str, payload: ArticleMetadataPublic) -> BuildTransactionResponse:
+        return utils.build_create_transaction(self.tnt_client, from_eth_address, user_did, ebsi_access_token, document_hash, payload=payload)
 
     def send_signed_transaction(self, user: User, transaction: SignedTransactionPayload):
-        transaction_dict = transaction.model_dump(mode="json")
-        json_rpc_response = self.tnt_client.send_signed_transaction(access_token=user.ebsi_access_token,
-                                                                    transaction=transaction_dict)
-        return SignedTransactionResponse(
-            transaction_hash=json_rpc_response["result"] if "result" in json_rpc_response else None)
+        return utils.send_signed_transaction(self.tnt_client, user, transaction)

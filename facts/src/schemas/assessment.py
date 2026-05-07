@@ -41,7 +41,7 @@ class AssessmentAuthenticityEvaluation(BaseEvaluation):
     score: AuthenticityScore
 
 
-class AssessmentInfo(SQLModel):
+class AssessmentInfoPublic(SQLModel):
     article_url: str
     assessment_date: datetime
     credibility_evaluation: AssessmentCredibilityEvaluation
@@ -49,16 +49,16 @@ class AssessmentInfo(SQLModel):
     evidences: list[str]
 
 
-class AssessmentMetadata(SQLModel):
+class AssessmentMetadataPublic(SQLModel):
     version: str
     type: str = "FACTS_ASSESSMENT"
     assessed_article: AssessedArticleInfo | None
-    assessment_info: AssessmentInfo
+    assessment_info: AssessmentInfoPublic
     eth_address: str
     fact_checker_vc: str
 
 
-class AssessmentPayload(SQLModel):
+class AssessmentCreate(SQLModel):
     from_eth_address: str
     assessed_article: AssessedArticleInfo | None
-    assessment_info: AssessmentInfo
+    assessment_info: AssessmentInfoPublic

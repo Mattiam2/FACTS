@@ -1,7 +1,4 @@
 import hashlib
-import json
-import random
-from urllib.parse import parse_qs, urlencode, urlsplit, urlunsplit
 
 import rlp
 import uuid
@@ -14,9 +11,8 @@ from facts.src.core.exceptions import FACTSError, FACTSDuplicateError, FACTSAuth
     FACTSRequestError
 from facts.src.repositories.ebsi_tnt import TntClient
 from facts.src.repositories.facts import AssessmentRepository
-from facts.src.schemas.assessment import AssessmentPayload, AssessmentMetadata
-from facts.src.schemas.shared import BuildTransactionResponse, SignedTransactionPayload, \
-    SignedTransactionResponse
+from facts.src.schemas.assessment import AssessmentCreate, AssessmentMetadataPublic
+from facts.src.schemas.shared import BuildTransactionResponse, SignedTransactionPayload
 
 
 class AssessmentServiceError(FACTSError):
@@ -62,19 +58,11 @@ class AssessmentService:
         self.tnt_client = tnt_client
         self.assessment_repository = assessment_repository
 
-    def get_assessment_by_hash(self, document_hash: str):
+    def get_assessment_document(self, document_hash: str):
         facts_assessment = self.assessment_repository.get(document_hash)
         if not facts_assessment or not facts_assessment.confirmed:
             raise AssessmentServiceNotFoundError(f"Assessment with hash {document_hash} not found")
         return self.tnt_client.get_document(document_hash)
-
-    # def get_assessments_by_url(self, url: str):
-    #     """
-    #     Retrieves an article based on its url.
-    #     """
-    #     document_hash = self.hash_url(url)
-    #     document_element = self.get_article_by_hash(document_hash)
-    #     return document_element.metadata_json if document_element.metadata_json else None
 
     def get_assessments_list(self, did_creator: str | None = None, article_hash: str | None = None, article_url: str | None = None, offset: int = 0, page_size: int = 100):
         assessments = self.assessment_repository.list(creator=did_creator, confirmed=True, article_hash=article_hash, article_url=article_url, offset=offset, limit=page_size, order_by="timestamp")
@@ -86,7 +74,7 @@ class AssessmentService:
             raise AssessmentServiceNotFoundError(f"Assessment with hash {document_hash} not found")
         return assessment.evidences
 
-    def request_create_assessment(self, user: User, payload: AssessmentPayload):
+    def request_create_assessment(self, user: User, payload: AssessmentCreate):
 
         assessment_uuid = uuid.uuid4()
         full_hashable_content = "FACTS_ASSESSMENT:" + str(assessment_uuid)
@@ -103,7 +91,7 @@ class AssessmentService:
         user_vc = user.verifiable_credential
         ebsi_access_token = user.ebsi_access_token
 
-        assessment_metadata = AssessmentMetadata(version="1.0", assessed_article=payload.assessed_article, assessment_info=payload.assessment_info, eth_address=from_eth_address, fact_checker_vc=user_vc)
+        assessment_metadata = AssessmentMetadataPublic(version="1.0", assessed_article=payload.assessed_article, assessment_info=payload.assessment_info, eth_address=from_eth_address, fact_checker_vc=user_vc)
         authenticity_score = assessment_metadata.assessment_info.authenticity_evaluation.score.value if assessment_metadata.assessment_info.authenticity_evaluation else None
         credibility_score = assessment_metadata.assessment_info.credibility_evaluation.score.value if assessment_metadata.assessment_info.credibility_evaluation else None
 
@@ -143,22 +131,8 @@ class AssessmentService:
             self.assessment_repository.update(id=document_hash, confirmed=True, tx_hash=signed_transaction_response.transaction_hash)
         return signed_transaction_response
 
-    def build_create_transaction(self, from_eth_address: str, user_did: str, ebsi_access_token: str, document_hash: str, payload: AssessmentMetadata) -> BuildTransactionResponse:
-        transaction_id = random.randint(1, 999)
-        document_metadata_json = payload.model_dump_json()
-        document_metadata_hex = "0x" + document_metadata_json.encode().hex()
-        json_rpc_response = self.tnt_client.build_document_transaction(access_token=ebsi_access_token,
-                                                                       from_eth_address=from_eth_address,
-                                                                       transaction_id=transaction_id,
-                                                                       doc_hash=document_hash,
-                                                                       doc_metadata=document_metadata_hex,
-                                                                       did_ebsi_creator=user_did)
-        return BuildTransactionResponse(document_hash=document_hash, transaction=json_rpc_response[
-            "result"] if "result" in json_rpc_response else None)
+    def build_create_transaction(self, from_eth_address: str, user_did: str, ebsi_access_token: str, document_hash: str, payload: AssessmentMetadataPublic) -> BuildTransactionResponse:
+        return utils.build_create_transaction(self.tnt_client, from_eth_address, user_did, ebsi_access_token, document_hash, payload=payload)
 
     def send_signed_transaction(self, user: User, transaction: SignedTransactionPayload):
-        transaction_dict = transaction.model_dump(mode="json")
-        json_rpc_response = self.tnt_client.send_signed_transaction(access_token=user.ebsi_access_token,
-                                                                    transaction=transaction_dict)
-        return SignedTransactionResponse(
-            transaction_hash=json_rpc_response["result"] if "result" in json_rpc_response else None)
+        return utils.send_signed_transaction(self.tnt_client, user, transaction)

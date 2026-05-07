@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, Security
 
 from facts.src import utils
 from facts.src.core.auth import get_current_user, User
-from facts.src.schemas.assessment import AssessmentPayload
+from facts.src.schemas.assessment import AssessmentCreate
 from facts.src.schemas.auth import TokenScopeEnum
 from facts.src.schemas.shared import BuildTransactionResponse, SignedTransactionPayload, \
     SignedTransactionResponse
@@ -24,7 +24,7 @@ def get_assessments(did_creator: str | None = None, article_hash: str | None = N
 
 @router.get("/{assessment_id}")
 def get_assessment(assessment_id: str, assessment_service: AssessmentService = Depends()):
-    return assessment_service.get_assessment_by_hash(assessment_id)
+    return assessment_service.get_assessment_document(assessment_id)
 
 @router.get("/{assessment_id}/evidences")
 def get_assessment_evidences(assessment_id: str, assessment_service: AssessmentService = Depends()):
@@ -32,7 +32,7 @@ def get_assessment_evidences(assessment_id: str, assessment_service: AssessmentS
 
 
 @router.post("/")
-def create_assessment_transaction(payload: AssessmentPayload,
+def create_assessment_transaction(payload: AssessmentCreate,
                                   current_user: Annotated[User, Security(get_current_user, scopes=[TokenScopeEnum.scope_factchecker_create.value])],
                                   assessment_service: AssessmentService = Depends()) -> BuildTransactionResponse:
     return assessment_service.request_create_assessment(current_user, payload)

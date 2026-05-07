@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends
 from fastapi.params import Security
 
 from facts.src.core.auth import get_current_user, User
-from facts.src.schemas.article import ArticlePayload
+from facts.src.schemas.article import ArticleCreate
 from facts.src.schemas.auth import TokenScopeEnum
 from facts.src.schemas.shared import BuildTransactionResponse, SignedTransactionPayload, \
     SignedTransactionResponse
@@ -35,7 +35,7 @@ def get_article_sources(article_id: str, article_service: ArticleService = Depen
 
 
 @router.post("/")
-def create_article_transaction(payload: ArticlePayload,
+def create_article_transaction(payload: ArticleCreate,
                                current_user: Annotated[
                                    User, Security(get_current_user, scopes=[TokenScopeEnum.scope_publisher_create.value])],
                                article_service: ArticleService = Depends()) -> BuildTransactionResponse:

@@ -2,7 +2,7 @@ from datetime import datetime
 
 from sqlmodel import SQLModel
 
-class ArticleInfo(SQLModel):
+class ArticleInfoPublic(SQLModel):
     url: str
     title: str
     author: str
@@ -11,24 +11,24 @@ class ArticleInfo(SQLModel):
     language: str
     sources: list[str]
 
-class ArticleMetadata(SQLModel):
+class ArticleMetadataPublic(SQLModel):
     version: str
     type: str = "FACTS_ARTICLE"
-    article_info: ArticleInfo
+    article_info: ArticleInfoPublic
     eth_address: str
     publisher_vc: str
 
-class ArticlePayload(SQLModel):
+class ArticleCreate(SQLModel):
     from_eth_address: str
-    article_info: ArticleInfo
+    article_info: ArticleInfoPublic
 
-class ArticleSourceChainNode(SQLModel):
+class ArticleSourceNodePublic(SQLModel):
     article_hash: str
     source_value: str
     source_hash: str | None
     depth: int
 
-class ArticleSourceChainResponse(SQLModel):
+class ArticleSourceChainPublic(SQLModel):
     root_article_hash: str
     max_depth: int
-    nodes: list[ArticleSourceChainNode]
+    nodes: list[ArticleSourceNodePublic]
