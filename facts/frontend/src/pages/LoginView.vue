@@ -1,5 +1,5 @@
 <template>
-  <VContainer fluid>
+  <VContainer>
     <VRow justify="center" align="center">
       <VCol cols="12">
         <VCard>

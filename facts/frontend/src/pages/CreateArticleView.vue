@@ -1,5 +1,5 @@
 <template>
-  <AppLayout>
+  <VContainer>
     <VRow justify="center" align="center">
       <VCol cols="12">
         <VCard>
@@ -68,7 +68,7 @@
         </VCardActions>
       </VCard>
     </VDialog>
-  </AppLayout>
+  </VContainer>
 </template>
 
 <script lang="ts" setup>

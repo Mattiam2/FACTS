@@ -1,5 +1,5 @@
 <template>
-  <AppLayout>
+  <VContainer>
     <VRow justify="center" align="center">
       <VCol cols="12">
         <VCard>
@@ -26,20 +26,20 @@
       </VCol>
     </VRow>
 
-  </AppLayout>
+  </VContainer>
 </template>
 
 <script lang="ts" setup>
 import {onMounted, ref} from "vue";
 import AppLayout from "@/layouts/AppLayout.vue";
-import {useAppStore} from "@/stores/app.ts";
 import router from "@/router";
+import {useAppStore} from "@/stores/app.ts";
 
 const appStore = useAppStore()
 const articles = ref([])
 
 const articleHeaders = [
-  {title: 'Article ID', key: 'hash'},
+  {title: 'Article ID', key: 'hash', value: (article: any) => article.hash.slice(0, 10) + '...'},
   {title: 'Date', key: 'timestamp'},
   {title: 'Url', key: 'url'},
   {title: 'DID Creator', key: 'creator'},

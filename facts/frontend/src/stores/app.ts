@@ -1,5 +1,7 @@
 import type {ArticleInfo, AssessedArticleInfo, AssessmentInfo, FactsSubjectCredential} from "@/types";
 import {defineStore} from 'pinia'
+import ArticleRepo from '@/repositories/facts_article.ts'
+import AssessmentRepo from '@/repositories/facts_assessment.ts'
 import AuthRepo from '@/repositories/facts_auth.ts'
 
 export const useAppStore = defineStore('app', {
@@ -19,15 +21,15 @@ export const useAppStore = defineStore('app', {
             this.factsAccessToken = response.data.access_token
         },
         async getArticleByUrl(articleUrl: string) {
-            const response = await AuthRepo.getArticleByUrl(articleUrl)
+            const response = await ArticleRepo.getArticleByUrl(articleUrl)
             return response?.data
         },
         async getArticle(articleId: string) {
-            const response = await AuthRepo.getArticle(articleId)
+            const response = await ArticleRepo.getArticle(articleId)
             return response?.data
         },
         async getArticles() {
-            const response = await AuthRepo.getArticles()
+            const response = await ArticleRepo.getArticles()
             return response?.data
         },
         async createArticleTransaction(articleInfo: ArticleInfo) {
@@ -37,7 +39,7 @@ export const useAppStore = defineStore('app', {
             if (!this.ethWalletAddress) {
                 return
             }
-            const response = await AuthRepo.createArticleTransaction(this.factsAccessToken, this.ethWalletAddress, articleInfo)
+            const response = await ArticleRepo.createArticleTransaction(this.factsAccessToken, this.ethWalletAddress, articleInfo)
             console.log("R" + response)
             return response?.data
         },
@@ -48,15 +50,15 @@ export const useAppStore = defineStore('app', {
             if (!this.ethWalletAddress) {
                 return
             }
-            const response = await AuthRepo.confirmArticleTransaction(this.factsAccessToken, articleId, signedTransaction)
+            const response = await ArticleRepo.confirmArticleTransaction(this.factsAccessToken, articleId, signedTransaction)
             return response?.data
         },
         async getAssessment(assessmentId: string) {
-            const response = await AuthRepo.getAssessment(assessmentId)
+            const response = await AssessmentRepo.getAssessment(assessmentId)
             return response?.data
         },
         async getAssessments(articleId: string) {
-            const response = await AuthRepo.getAssessments(articleId)
+            const response = await AssessmentRepo.getAssessments(articleId)
             return response?.data
         },
         async createAssessmentTransaction(assessedArticle: AssessedArticleInfo, assessment: AssessmentInfo) {
@@ -66,7 +68,7 @@ export const useAppStore = defineStore('app', {
             if (!this.ethWalletAddress) {
                 return
             }
-            const response = await AuthRepo.createAssessmentTransaction(this.factsAccessToken, this.ethWalletAddress, assessedArticle, assessment)
+            const response = await AssessmentRepo.createAssessmentTransaction(this.factsAccessToken, this.ethWalletAddress, assessedArticle, assessment)
             console.log("R" + response)
             return response?.data
         },
@@ -77,7 +79,7 @@ export const useAppStore = defineStore('app', {
             if (!this.ethWalletAddress) {
                 return
             }
-            const response = await AuthRepo.confirmAssessmentTransaction(this.factsAccessToken, assessmentId, signedTransaction)
+            const response = await AssessmentRepo.confirmAssessmentTransaction(this.factsAccessToken, assessmentId, signedTransaction)
             return response?.data
         },
         extractSubjectCredential(vc: string): FactsSubjectCredential {

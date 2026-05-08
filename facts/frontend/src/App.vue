@@ -1,6 +1,6 @@
 <template>
   <VApp>
-    <VMain>
+    <AppLayout>
       <RouterView/>
       <VSnackbarQueue
           v-model="toastMessages"
@@ -8,12 +8,13 @@
           :timeout="1000"
           closable
       />
-    </VMain>
+    </AppLayout>
   </VApp>
 </template>
 
 <script lang="ts" setup>
   import {storeToRefs} from "pinia";
+  import AppLayout from "@/layouts/AppLayout.vue";
   import {useAppStore} from "@/stores/app.ts";
 
   const appStore = useAppStore()

@@ -1,5 +1,5 @@
 <template>
-  <AppLayout>
+  <VContainer>
     <VRow justify="center" align="center">
       <VCol cols="12">
         <VCard>
@@ -21,9 +21,8 @@
                 <VBtn color="primary" @click="checkArticle">Check</VBtn>
               </div>
               <div class="d-flex flex-column ga-3 mt-10" v-if="articleFoundOnEBSI !== undefined">
-                <VCard class="mb-5" v-if="claimedByPublisher">
+                <VCard class="mb-5" v-if="claimedByPublisher" title="Publisher">
                   <VCardText>
-                    Article claimed by<br>
                     <b>DID</b>: {{ claimedByPublisher.id }}<br>
                     <b>Company</b>: {{ claimedByPublisher.company_name }}<br>
                     <b>Website</b>: <a :href="claimedByPublisher.company_website"
@@ -115,7 +114,7 @@
         </VCardActions>
       </VCard>
     </VDialog>
-  </AppLayout>
+  </VContainer>
 </template>
 
 <script lang="ts" setup>

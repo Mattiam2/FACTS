@@ -1,5 +1,5 @@
 <template>
-  <AppLayout>
+  <VContainer>
     <VRow justify="center" align="center">
       <VCol cols="12">
         <VCard>
@@ -145,15 +145,13 @@
         </VCard>
       </VCol>
     </VRow>
-
-  </AppLayout>
+  </VContainer>
 </template>
 
 <script lang="ts" setup>
 import type {Assessment, EbsiArticleDocument, EbsiAssessmentDocument, FactsSubjectCredential} from "@/types";
 import {onMounted, type Ref, ref} from "vue";
 import {useRoute} from "vue-router";
-import AppLayout from "@/layouts/AppLayout.vue";
 import {useAppStore} from "@/stores/app.ts";
 
 const route = useRoute()
@@ -166,7 +164,7 @@ const averageCredibilityScore = ref(0)
 const averageManipulationScore = ref(0)
 
 const assessmentHeaders = [
-  {title: 'Assessment ID', key: 'hash'},
+  {title: 'Assessment ID', key: 'hash', value: (assessment: any) => assessment.hash.slice(0, 10) + '...'},
   {title: 'Date', key: 'timestamp'},
   {title: 'Credibility Score', key: 'credibility_score'},
   {title: 'Manipulation Score', key: 'manipulation_score'},
@@ -191,11 +189,11 @@ onMounted(async () => {
   let manipulationScoreSum = 0
   let manipulationScoreCount = 0
   for (const assessment of assessments.value) {
-    if(assessment.credibility_score !== undefined) {
+    if (assessment.credibility_score !== undefined) {
       credibilityScoreSum += assessment.credibility_score
       credibilityScoreCount++
     }
-    if(assessment.manipulation_score !== undefined) {
+    if (assessment.manipulation_score !== undefined) {
       manipulationScoreSum += assessment.manipulation_score
       manipulationScoreCount++
     }
