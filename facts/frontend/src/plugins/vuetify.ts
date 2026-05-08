@@ -19,6 +19,6 @@ export default createVuetify({
     VDateInput,
   },
   theme: {
-    defaultTheme: 'dark',
+    defaultTheme: 'system',
   },
 })

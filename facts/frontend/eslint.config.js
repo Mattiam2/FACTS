@@ -14,6 +14,8 @@ export default vuetify({
             'vue/html-closing-bracket-spacing': 'off',
             'vue/script-indent': 'off',
             'vue/first-attribute-linebreak': 'off',
+            'unicorn/numeric-separators-style': 'off',
+            'vue/html-closing-bracket-newline': 'off',
             '@stylistic/indent': 'off',
         },
     })

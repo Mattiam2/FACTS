@@ -6,6 +6,7 @@ from fastapi.params import Security
 from facts.src.core.auth import get_current_user, User
 from facts.src.schemas.article import ArticleCreate
 from facts.src.schemas.auth import TokenScopeEnum
+from facts.src.schemas.document import DocumentPublic
 from facts.src.schemas.shared import BuildTransactionResponse, SignedTransactionPayload, \
     SignedTransactionResponse
 from facts.src.services.article import ArticleService
@@ -25,7 +26,7 @@ def get_article_by_url(url: str, article_service: ArticleService = Depends()):
 
 
 @router.get("/{article_id}")
-def get_article(article_id: str, article_service: ArticleService = Depends()):
+def get_article(article_id: str, article_service: ArticleService = Depends()) -> DocumentPublic:
     return article_service.get_article_by_hash(article_id)
 
 

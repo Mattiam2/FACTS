@@ -26,15 +26,6 @@ async def lifespan(app):
 
 app = FastAPI(lifespan=lifespan, title="FACTS",
               description="Facts Authenticity and Credibility Tracking System")
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
 app.include_router(articleapi)
 app.include_router(assessmentapi)
 app.include_router(credentialapi)
@@ -87,3 +78,11 @@ async def db_session_handler(request: Request, call_next: Callable[[Request], Aw
         finally:
             session_ctx.reset(session_token)
             session.close()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)

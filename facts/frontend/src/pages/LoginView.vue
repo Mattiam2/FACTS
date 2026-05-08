@@ -26,8 +26,6 @@
             <VCard>
               <VCardText>
                 <VTextField label="ETH Address" placeholder="0x..." class="mb-2" hide-details v-model="ethAddress"/>
-                <VTextField label="ETH Private Key" placeholder="0x..." type="password" class="my-2" v-model="ethPrivateKey" hide-details/>
-                <VIcon icon="mdi-lock-outline" size="12"/> Your private key never leaves this device.
               </VCardText>
             </VCard>
             <VBtn color="primary" class="mt-4" @click="validateWallet">SIGN IN</VBtn>
@@ -46,7 +44,6 @@ import {useAppStore} from "@/stores/app.ts";
 const appStore = useAppStore()
 const vpToken = ref('') as Ref<string>
 const ethAddress = ref('') as Ref<string>
-const ethPrivateKey = ref('') as Ref<string>
 
 async function validateVP() {
   if (!vpToken.value.trim()) {
@@ -64,30 +61,21 @@ async function validateVP() {
 
     appStore.vcToken = payload.vp.verifiableCredential[0]
 
-    const vcData = JSON.parse(atob(payload.vp.verifiableCredential[0].split('.')[1].replace(/-/g, '+').replace(/_/g, '/'))).vc
-
-    if (!vcData.type.includes('VerifiableCredential') || !vcData.type.includes('FACTSFactCheckerCredential') && !vcData.type.includes('FACTSPublisherCredential')) {
-      appStore.addToastMessage('Invalid Verifiable Presentation type', 'error')
+    if(!appStore.vcToken){
+      appStore.addToastMessage('Invalid Verifiable Presentation JWT: Missing Credential', 'error')
       return
     }
+    appStore.factsCredentialSubject = appStore.extractSubjectCredential(appStore.vcToken)
 
     let userScope = undefined
-    let role = undefined
-    if (vcData.type.includes('FACTSPublisherCredential')) {
+    if (appStore.factsCredentialSubject?.role == "PUBLISHER") {
       userScope = 'publisher_create'
-      role = "PUBLISHER"
-    } else if (vcData.type.includes('FACTSFactCheckerCredential')) {
+    } else if (appStore.factsCredentialSubject?.role == "FACT CHECKER") {
       userScope = 'factchecker_create'
-      role = "FACT CHECKER"
     }
 
     await appStore.requestAccessToken(vpToken.value, userScope as string)
 
-    appStore.factsCredentialSubject = payload?.vp?.verifiableCredential?.[0]
-        ? JSON.parse(atob(payload.vp.verifiableCredential[0].split('.')[1].replace(/-/g, '+').replace(/_/g, '/'))).vc?.credentialSubject
-        : payload?.vc?.credentialSubject
-    if (appStore.factsCredentialSubject)
-      appStore.factsCredentialSubject.role = role
   } catch {
     appStore.addToastMessage('Invalid or malformed Verifiable Presentation JWT', 'error')
     return
@@ -95,7 +83,7 @@ async function validateVP() {
 }
 
 function validateWallet () {
-  if (!ethAddress.value.trim() || !ethPrivateKey.value.trim()) {
+  if (!ethAddress.value.trim()) {
     appStore.addToastMessage('Please enter your ETH address and private key', 'error')
     return
   }
@@ -106,7 +94,7 @@ function validateWallet () {
     appStore.addToastMessage('Please validate your Verifiable Presentation first', 'error')
   }
   if (!appStore.vcToken || !appStore.factsCredentialSubject) return
-  appStore.ethWallet = { eth_address: ethAddress.value, eth_private_key: ethPrivateKey.value }
+  appStore.ethWalletAddress = ethAddress.value
   if(appStore.factsCredentialSubject.role == "PUBLISHER")
     router.push('/articles/submit')
   else

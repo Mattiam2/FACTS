@@ -1,98 +1,210 @@
 <template>
-  <VContainer fluid>
-    <VAppBar>
-      <VAppBarTitle>
-        FACTS: Publisher
-      </VAppBarTitle>
-      <template #append>
-        <VBtn color="primary" variant="tonal" class="me-2">
-          <VIcon>mdi-badge-account</VIcon>
-          <b>{{ appStore.factsCredentialSubject?.company_name }}</b>
-          <VMenu activator="parent">
-            <VCard rounded="lg" width="400" class="mt-1">
-              <VCardText>
-                <div class="d-flex align-center gap-2 mb-3">
-                  <v-icon icon="mdi-shield-check" color="primary" size="16"/>
-                  <span style="font-size:12px; font-weight:600; color:#00e5b4;">Credential Verified</span>
-                </div>
-                <b>Role</b>: {{ appStore.factsCredentialSubject?.role }}<br>
-                <b>DID</b>: {{ appStore.factsCredentialSubject?.id }}
-              </VCardText>
-            </VCard>
-          </VMenu>
-        </VBtn>
-      </template>
-    </VAppBar>
+  <AppLayout>
     <VRow justify="center" align="center">
       <VCol cols="12">
         <VCard>
           <VCardItem>
-            <VCardTitle>Claim an Article</VCardTitle>
-            <VCardSubtitle>Publish an article to FACTS for authenticity verification.</VCardSubtitle>
+            <VCardTitle>Article Claim</VCardTitle>
           </VCardItem>
           <VCardText>
-            <div class="d-flex flex-column ga-3">
-              <VTextField label="Canonical URL" variant="outlined" prepend-inner-icon="mdi-link"
-                          v-model="article_url"
-                          hide-details/>
-              <VTextField label="Article Title" variant="outlined" prepend-inner-icon="mdi-format-title"
-                          v-model="article_title"
-                          hide-details/>
-              <VTextField label="Article Author(s)" variant="outlined"
-                          v-model="article_author"
-                          prepend-inner-icon="mdi-account-edit" hide-details/>
-              <VTextarea label="Description" variant="outlined" prepend-inner-icon="mdi-text"
-                         v-model="article_description"
-                         hide-details/>
-              <VDateInput
-                  label="Publication Date"
-                  prepend-icon=""
-                  prepend-inner-icon="mdi-calendar"
-                  variant="outlined"
-                  v-model="article_publication_date"
-                  hide-details
-              />
-              <VSelect
-                  label="Language"
-                  prepend-inner-icon="mdi-translate"
-                  variant="outlined"
-                  v-model="article_language"
-                  :items="['BG', 'CS', 'DA', 'DE', 'EL', 'EN', 'ES', 'ET', 'FI', 'FR', 'GA', 'HR', 'HU', 'IT', 'LT', 'LV', 'MT', 'NL', 'PL', 'PT', 'RO', 'SK', 'SL', 'SV']"
-              />
-            </div>
-            <VBtn color="primary" @click="requestArticleCreation">Request</VBtn>
+            <VCard class="mb-5" v-if="claimedByPublisher" title="Publisher">
+              <VCardText>
+                <b>DID</b>: {{ claimedByPublisher.id }}<br>
+                <b>Company</b>: {{ claimedByPublisher.company_name }}<br>
+                <b>Website</b>: <a :href="claimedByPublisher.company_website"
+                                   target="_blank">{{ claimedByPublisher.company_website }}</a>
+              </VCardText>
+            </VCard>
+            <VCard v-if="article">
+              <VCardText>
+                <b>Title</b>: {{ article.metadata.article_info.title }}<br/>
+                <b>Author</b>: {{ article.metadata.article_info.author }}<br/>
+                <b>Description</b>: {{ article.metadata.article_info.description }}<br/>
+                <b>Publication Date</b>: {{ article.metadata.article_info.publication_date }}<br/>
+                <b>Language</b>: {{ article.metadata.article_info.language }}<br/>
+                <div v-if="article.metadata.article_info.sources && article.metadata.article_info.sources.length > 0">
+                  <b>Sources</b>:
+                  <div v-for="source in article.metadata.article_info.sources" :key="source" class="d-flex ga-2">
+                    <VIcon icon="mdi-link" color="primary" size="16"/>
+                    {{ source }}
+                  </div>
+                </div>
+
+              </VCardText>
+            </VCard>
+            <VCard v-else>
+              <VCardText>No publisher claim for this article, only fact-checking assessments found.</VCardText>
+            </VCard>
+            <VCard v-if="assessments && assessments.length > 0" class="mt-5" title="Fact-checking assessments">
+              <VCardText>
+                <VCard>
+                  <VCardText>
+                    Average Credibility Score:
+                    <VRating
+                        :model-value="averageCredibilityScore"
+                        color="orange-darken-2"
+                        density="comfortable"
+                        size="small"
+                        readonly
+                    ></VRating>
+                  </VCardText>
+                </VCard>
+                <VCard>
+                  <VCardText>
+                    Average Manipulation Score:
+                    <VRating
+                        :model-value="averageManipulationScore"
+                        color="orange-darken-2"
+                        density="comfortable"
+                        size="small"
+                        readonly
+                    ></VRating>
+                  </VCardText>
+                </VCard>
+                <VDataTable :items="assessments" :headers="assessmentHeaders" show-expand hide-default-footer>
+                  <template #item.data-table-expand="{ internalItem, isExpanded, toggleExpand, item }">
+                    <VBtn
+                        :append-icon="isExpanded(internalItem) ? 'mdi-chevron-up' : 'mdi-chevron-down'"
+                        :text="isExpanded(internalItem) ? 'Collapse' : 'More info'"
+                        class="text-none"
+                        color="medium-emphasis"
+                        size="small"
+                        variant="text"
+                        width="105"
+                        border
+                        slim
+                        @click="expandAssessment(item, toggleExpand)"
+                    />
+                  </template>
+                  <template #expanded-row="{ columns, item }">
+                    <tr>
+                      <td :colspan="columns.length">
+                        <VContainer>
+                          <VRow>
+                            <VCol cols="4">
+                              <VCard class="mb-5" v-if="item.subjectCredential" title="Issued by">
+                                <VCardText>
+                                  <b>DID</b>: {{ item.subjectCredential.id }}<br>
+                                  <b>Company</b>: {{ item.subjectCredential.company_name }}<br>
+                                  <b>Website</b>: <a :href="item.subjectCredential.company_website"
+                                                     target="_blank">{{ item.subjectCredential.company_website }}</a>
+                                </VCardText>
+                              </VCard>
+                            </VCol>
+                            <VCol cols="4" v-if="item.assessmentInfo?.credibility_evaluation">
+                              <VCard title="Credibility Evaluation">
+                                <VCardText>
+                                  <VRating
+                                      :model-value="item.assessmentInfo?.credibility_evaluation.score"
+                                      color="orange-darken-2"
+                                      density="comfortable"
+                                      size="small"
+                                      readonly
+                                  ></VRating>
+                                  <br>
+                                  Note: {{ item.assessmentInfo?.credibility_evaluation.note }}<br>
+                                </VCardText>
+                              </VCard>
+                            </VCol>
+                            <VCol cols="4" v-if="item.assessmentInfo?.manipulation_evaluation">
+                              <VCard title="Manipulation Evaluation">
+                                <VCardText>
+                                  <VRating
+                                      :model-value="item.assessmentInfo?.manipulation_evaluation.score"
+                                      color="orange-darken-2"
+                                      density="comfortable"
+                                      size="small"
+                                      readonly
+                                  ></VRating>
+                                  <br>
+                                  Note: {{ item.assessmentInfo?.manipulation_evaluation.note }}
+                                </VCardText>
+                              </VCard>
+                            </VCol>
+                          </VRow>
+                          <VRow>
+                            <VCol cols="12"
+                                  v-if="item.assessmentInfo?.evidences && item.assessmentInfo?.evidences.length > 0">
+                              Evidences:
+                              <div v-for="evidence in item.assessmentInfo?.evidences" :key="evidence"
+                                   class="d-flex ga-2">
+                                <VIcon icon="mdi-link" color="primary" size="16"/>
+                                {{ evidence }}
+                              </div>
+                            </VCol>
+                          </VRow>
+                        </VContainer>
+                      </td>
+                    </tr>
+                  </template>
+                </VDataTable>
+
+              </VCardText>
+            </VCard>
           </VCardText>
         </VCard>
       </VCol>
     </VRow>
-  </VContainer>
+
+  </AppLayout>
 </template>
 
 <script lang="ts" setup>
-import type {ArticleInfo} from "@/types";
-import {ref} from "vue";
+import type {Assessment, EbsiArticleDocument, EbsiAssessmentDocument, FactsSubjectCredential} from "@/types";
+import {onMounted, type Ref, ref} from "vue";
+import {useRoute} from "vue-router";
+import AppLayout from "@/layouts/AppLayout.vue";
 import {useAppStore} from "@/stores/app.ts";
 
+const route = useRoute()
+
 const appStore = useAppStore()
+const article = ref(undefined) as Ref<EbsiArticleDocument | undefined>
+const claimedByPublisher = ref(undefined) as Ref<FactsSubjectCredential | undefined>
+const assessments = ref([]) as Ref<Assessment[]>
+const averageCredibilityScore = ref(0)
+const averageManipulationScore = ref(0)
 
-const article_url = ref('')
-const article_title = ref('')
-const article_author = ref('')
-const article_description = ref('')
-const article_publication_date = ref('')
-const article_language = ref('')
+const assessmentHeaders = [
+  {title: 'Assessment ID', key: 'hash'},
+  {title: 'Date', key: 'timestamp'},
+  {title: 'Credibility Score', key: 'credibility_score'},
+  {title: 'Manipulation Score', key: 'manipulation_score'},
+  {title: 'DID Creator', key: 'creator'},
+  {title: '', key: 'data-table-expand'},
+]
 
-async function requestArticleCreation () {
-  const article: ArticleInfo = {
-    url: article_url.value,
-    title: article_title.value,
-    author: article_author.value,
-    description: article_description.value,
-    publication_date: article_publication_date.value,
-    language: article_language.value,
-    sources: []
-  }
-  const response = await appStore.createArticleTransaction(article)
-  appStore.addToastMessage(`Received: ${response}`, 'success')
+async function expandAssessment(item: Assessment, expand: any) {
+  const ebsi_document: EbsiAssessmentDocument = await appStore.getAssessment(item.hash)
+  item.assessmentInfo = ebsi_document.metadata.assessment_info
+  item.subjectCredential = appStore.extractSubjectCredential(ebsi_document.metadata.fact_checker_vc)
+  expand(item)
 }
+
+onMounted(async () => {
+  article.value = await appStore.getArticle(route.params.id as string)
+  if (article.value)
+    claimedByPublisher.value = appStore.extractSubjectCredential(article.value.metadata.publisher_vc)
+  assessments.value = await appStore.getAssessments(route.params.id as string)
+  let credibilityScoreSum = 0
+  let credibilityScoreCount = 0
+  let manipulationScoreSum = 0
+  let manipulationScoreCount = 0
+  for (const assessment of assessments.value) {
+    if(assessment.credibility_score !== undefined) {
+      credibilityScoreSum += assessment.credibility_score
+      credibilityScoreCount++
+    }
+    if(assessment.manipulation_score !== undefined) {
+      manipulationScoreSum += assessment.manipulation_score
+      manipulationScoreCount++
+    }
+  }
+  if (credibilityScoreCount > 0) {
+    averageCredibilityScore.value = credibilityScoreSum / credibilityScoreCount
+  }
+  if (manipulationScoreCount > 0) {
+    averageManipulationScore.value = manipulationScoreSum / manipulationScoreCount
+  }
+})
 </script>

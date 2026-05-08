@@ -5,6 +5,7 @@
       <VSnackbarQueue
           v-model="toastMessages"
           :total-visible="5"
+          :timeout="1000"
           closable
       />
     </VMain>

@@ -92,7 +92,7 @@ class AssessmentService:
         ebsi_access_token = user.ebsi_access_token
 
         assessment_metadata = AssessmentMetadataPublic(version="1.0", assessed_article=payload.assessed_article, assessment_info=payload.assessment_info, eth_address=from_eth_address, fact_checker_vc=user_vc)
-        authenticity_score = assessment_metadata.assessment_info.authenticity_evaluation.score.value if assessment_metadata.assessment_info.authenticity_evaluation else None
+        manipulation_score = assessment_metadata.assessment_info.manipulation_evaluation.score.value if assessment_metadata.assessment_info.manipulation_evaluation else None
         credibility_score = assessment_metadata.assessment_info.credibility_evaluation.score.value if assessment_metadata.assessment_info.credibility_evaluation else None
 
         build_response = self.build_create_transaction(from_eth_address, user_did, ebsi_access_token, document_hash, assessment_metadata)
@@ -103,7 +103,7 @@ class AssessmentService:
 
         unsigned_transaction_data = bytes.fromhex(transaction['data'].replace("0x", ""))
         data_hash = hashlib.sha256(unsigned_transaction_data).hexdigest()
-        self.assessment_repository.create(hash=document_hash, article_hash=article_hash, article_url=normalized_url, creator=user_did, tx_hash=None, data_hash=data_hash, eth_address=from_eth_address, authenticity_score=authenticity_score, credibility_score=credibility_score, confirmed=False)
+        self.assessment_repository.create(hash=document_hash, article_hash=article_hash, article_url=normalized_url, creator=user_did, tx_hash=None, data_hash=data_hash, eth_address=from_eth_address, manipulation_score=manipulation_score, credibility_score=credibility_score, confirmed=False)
         for evidence_value in payload.assessment_info.evidences:
             evidence_hash = None
             if evidence_value.startswith("http"):

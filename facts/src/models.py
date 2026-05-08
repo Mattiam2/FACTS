@@ -36,7 +36,7 @@ class Assessment(SQLModel, table=True):
     article_url: str
     creator: str
     credibility_score: int
-    authenticity_score: int
+    manipulation_score: int
     tx_hash: str
     data_hash: str
     timestamp: datetime = Field(default=func.now())

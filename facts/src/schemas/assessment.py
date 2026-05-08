@@ -5,12 +5,12 @@ from sqlmodel import SQLModel
 
 
 class AssessedArticleInfo(SQLModel):
-    title: str
-    author: str
-    description: str
-    publication_date: datetime
-    language: str
-    sources: list[str]
+    title: str | None = None
+    author: str | None = None
+    description: str | None = None
+    publication_date: datetime | None = None
+    language: str | None = None
+    sources: list[str] | None = None
 
 
 class CredibilityScore(IntEnum):
@@ -21,7 +21,7 @@ class CredibilityScore(IntEnum):
     TRUE = 5
 
 
-class AuthenticityScore(IntEnum):
+class ManipulationScore(IntEnum):
     TOTALLY_MANIPULATED = 1  # Exactly 100% of content is artificially produced
     HEAVILY_MANIPULATED = 2  # More than 75% of content is artificially produced
     PARTIALLY_MANIPULATED = 3  # 25% to 75% of content is artificially produced
@@ -37,15 +37,15 @@ class AssessmentCredibilityEvaluation(BaseEvaluation):
     score: CredibilityScore
 
 
-class AssessmentAuthenticityEvaluation(BaseEvaluation):
-    score: AuthenticityScore
+class AssessmentManipulationEvaluation(BaseEvaluation):
+    score: ManipulationScore
 
 
 class AssessmentInfoPublic(SQLModel):
     article_url: str
     assessment_date: datetime
     credibility_evaluation: AssessmentCredibilityEvaluation
-    authenticity_evaluation: AssessmentAuthenticityEvaluation
+    manipulation_evaluation: AssessmentManipulationEvaluation
     evidences: list[str]
 
 

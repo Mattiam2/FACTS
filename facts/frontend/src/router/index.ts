@@ -1,6 +1,4 @@
-import { createRouter, createWebHistory } from 'vue-router'
-import ArticleView from '@/pages/ArticleView.vue'
-import LoginView from '@/pages/LoginView.vue'
+import {createRouter, createWebHistory} from 'vue-router'
 
 const router = createRouter({
     history: createWebHistory(import.meta.env.BASE_URL),
@@ -12,9 +10,28 @@ const router = createRouter({
         {
             path: '/login',
             name: 'login',
-            component: LoginView,
+            component: () => import('@/pages/LoginView.vue'),
         },
-        {path: '/articles/submit', component: ArticleView, meta: {public: false}}
+        {
+            path: '/articles',
+            name: 'articles',
+            component: () => import('@/pages/ArticleListView.vue'),
+        },
+        {
+            path: '/articles/:id',
+            name: 'article',
+            component: () => import('@/pages/ArticleView.vue'),
+        },
+        {
+            path: '/articles/submit',
+            component: () => import('@/pages/CreateArticleView.vue'),
+            meta: {public: false}
+        },
+        {
+            path: '/assessments/submit',
+            component: () => import('@/pages/CreateAssessmentView.vue'),
+            meta: {public: false}
+        }
     ],
 })
 export default router
