@@ -1,3 +1,5 @@
+import type {JWTPayload} from "jose";
+
 export interface FactsSubjectCredential {
     id: string
     company_name: string
@@ -123,4 +125,24 @@ export interface Assessment {
     timestamp: string;       // ISO 8601
     subjectCredential?: FactsSubjectCredential;
     assessmentInfo?: AssessmentInfo;
+}
+
+export interface VerifiablePresentation {
+  '@context': string[];
+  id: string;
+  type: string[];
+  holder: string;
+  verifiableCredential: string[];
+}
+
+export interface VPPayload extends JWTPayload {
+  iss: string;
+  aud: string;
+  sub: string;
+  iat: number;
+  nbf: number;
+  exp: number;
+  nonce: string;
+  jti: string;
+  vp: VerifiablePresentation;
 }
