@@ -12,10 +12,12 @@
                 <div class="d-flex ga-2">
                   <VBtn
                       @click.stop="openArticleWebsite(item)"
-                  >Go to Website
+                      color="primary"
+                  >Open URL
                   </VBtn>
                   <VBtn
                       @click.stop="openArticleClaim(item)"
+                      color="primary"
                   >See Article Claim
                   </VBtn>
                 </div>

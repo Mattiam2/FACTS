@@ -9,7 +9,6 @@ from starlette.responses import JSONResponse
 
 from ebsi_sim.src.api.authorisation import router as authapp
 from ebsi_sim.src.api.didr import router as didrapp
-from ebsi_sim.src.api.issuer_mock import router as issuerapp
 from ebsi_sim.src.api.tnt import router as tntapp
 from ebsi_sim.src.api.wallet_mock import router as walletapp
 from ebsi_sim.src.core.db import engine, session_ctx
@@ -30,7 +29,6 @@ app.include_router(tntapp)
 app.include_router(didrapp)
 app.include_router(authapp)
 app.include_router(walletapp)
-app.include_router(issuerapp)
 
 
 def handle_exception(exc: Exception):

@@ -5,7 +5,7 @@ const router = createRouter({
     routes: [
         {
             path: '/',
-            redirect: '/login'
+            component: () => import('@/pages/HomeView.vue'),
         },
         {
             path: '/login',
@@ -30,6 +30,11 @@ const router = createRouter({
         {
             path: '/assessments/submit',
             component: () => import('@/pages/CreateAssessmentView.vue'),
+            meta: {public: false}
+        },
+        {
+            path: '/onboarding',
+            component: () => import('@/pages/OnboardView.vue'),
             meta: {public: false}
         }
     ],

@@ -121,7 +121,6 @@
 import type {AssessedArticleInfo, AssessmentInfo, FactsSubjectCredential} from "@/types";
 import {onMounted, type Ref, ref} from "vue";
 import {type Transaction, Web3} from "web3";
-import AppLayout from "@/layouts/AppLayout.vue";
 import {useAppStore} from "@/stores/app.ts";
 
 const appStore = useAppStore()

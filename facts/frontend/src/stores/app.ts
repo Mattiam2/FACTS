@@ -3,6 +3,7 @@ import {defineStore} from 'pinia'
 import ArticleRepo from '@/repositories/facts_article.ts'
 import AssessmentRepo from '@/repositories/facts_assessment.ts'
 import AuthRepo from '@/repositories/facts_auth.ts'
+import CredentialRepo from '@/repositories/facts_credential.ts'
 
 export const useAppStore = defineStore('app', {
     state: () => ({
@@ -97,6 +98,15 @@ export const useAppStore = defineStore('app', {
                 }
             }
             return credentialSubject
+        },
+        async requestCredential(credentialRequest: {}, userRole: string) {
+            let response = undefined
+            if (userRole == "publisher") {
+                response = await CredentialRepo.requestPublisherCredential(credentialRequest)
+            } else if (userRole == "factchecker") {
+                response = await CredentialRepo.requestFactCheckerCredential(credentialRequest)
+            }
+            return response?.data
         },
     },
     persist: true,

@@ -20,3 +20,6 @@
   const appStore = useAppStore()
   const {toastMessages} = storeToRefs(appStore)
 </script>
+
+<style>
+</style>

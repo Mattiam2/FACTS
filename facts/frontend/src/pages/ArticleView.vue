@@ -4,10 +4,10 @@
       <VCol cols="12">
         <VCard>
           <VCardItem>
-            <VCardTitle>Article Claim</VCardTitle>
+            <VCardTitle>Article Claim - HASH: {{ route.params.id }}</VCardTitle>
           </VCardItem>
           <VCardText>
-            <VCard class="mb-5" v-if="claimedByPublisher" title="Publisher">
+            <VCard class="mb-5" v-if="claimedByPublisher" title="Publisher" variant="tonal">
               <VCardText>
                 <b>DID</b>: {{ claimedByPublisher.id }}<br>
                 <b>Company</b>: {{ claimedByPublisher.company_name }}<br>
@@ -15,7 +15,7 @@
                                    target="_blank">{{ claimedByPublisher.company_website }}</a>
               </VCardText>
             </VCard>
-            <VCard v-if="article">
+            <VCard v-if="article" variant="tonal" title="Article">
               <VCardText>
                 <b>Title</b>: {{ article.metadata.article_info.title }}<br/>
                 <b>Author</b>: {{ article.metadata.article_info.author }}<br/>
@@ -32,35 +32,32 @@
 
               </VCardText>
             </VCard>
-            <VCard v-else>
+            <VCard variant="tonal" v-else>
               <VCardText>No publisher claim for this article, only fact-checking assessments found.</VCardText>
             </VCard>
-            <VCard v-if="assessments && assessments.length > 0" class="mt-5" title="Fact-checking assessments">
+            <VCard v-if="assessments && assessments.length > 0" class="mt-5" title="Fact-checking assessments"
+                   variant="tonal">
               <VCardText>
-                <VCard>
-                  <VCardText>
-                    Average Credibility Score:
-                    <VRating
-                        :model-value="averageCredibilityScore"
-                        color="orange-darken-2"
-                        density="comfortable"
-                        size="small"
-                        readonly
-                    ></VRating>
-                  </VCardText>
-                </VCard>
-                <VCard>
-                  <VCardText>
-                    Average Manipulation Score:
-                    <VRating
-                        :model-value="averageManipulationScore"
-                        color="orange-darken-2"
-                        density="comfortable"
-                        size="small"
-                        readonly
-                    ></VRating>
-                  </VCardText>
-                </VCard>
+                <VContainer>
+                  <VRow>
+                    <VCol cols="6">
+                      <VCard title="Average Credibility Score">
+                        <VCardText class="d-flex justify-center">
+                          <Gauge :value="averageCredibilityScore"/>
+                        </VCardText>
+                      </VCard>
+                    </VCol>
+                    <VCol cols="6">
+                      <VCard title="Average Manipulation Score">
+                        <VCardText class="d-flex justify-center">
+                          <Gauge :value="averageManipulationScore"/>
+                        </VCardText>
+                      </VCard>
+                    </VCol>
+                  </VRow>
+                </VContainer>
+
+
                 <VDataTable :items="assessments" :headers="assessmentHeaders" show-expand hide-default-footer>
                   <template #item.data-table-expand="{ internalItem, isExpanded, toggleExpand, item }">
                     <VBtn
@@ -93,14 +90,8 @@
                             </VCol>
                             <VCol cols="4" v-if="item.assessmentInfo?.credibility_evaluation">
                               <VCard title="Credibility Evaluation">
-                                <VCardText>
-                                  <VRating
-                                      :model-value="item.assessmentInfo?.credibility_evaluation.score"
-                                      color="orange-darken-2"
-                                      density="comfortable"
-                                      size="small"
-                                      readonly
-                                  ></VRating>
+                                <VCardText class="d-flex flex-column align-center">
+                                  <Gauge :value="item.assessmentInfo?.credibility_evaluation.score"/>
                                   <br>
                                   Note: {{ item.assessmentInfo?.credibility_evaluation.note }}<br>
                                 </VCardText>
@@ -108,14 +99,8 @@
                             </VCol>
                             <VCol cols="4" v-if="item.assessmentInfo?.manipulation_evaluation">
                               <VCard title="Manipulation Evaluation">
-                                <VCardText>
-                                  <VRating
-                                      :model-value="item.assessmentInfo?.manipulation_evaluation.score"
-                                      color="orange-darken-2"
-                                      density="comfortable"
-                                      size="small"
-                                      readonly
-                                  ></VRating>
+                                <VCardText class="d-flex flex-column align-center">
+                                  <Gauge :value="item.assessmentInfo?.manipulation_evaluation.score"/>
                                   <br>
                                   Note: {{ item.assessmentInfo?.manipulation_evaluation.note }}
                                 </VCardText>
@@ -153,6 +138,7 @@ import type {Assessment, EbsiArticleDocument, EbsiAssessmentDocument, FactsSubje
 import {onMounted, type Ref, ref} from "vue";
 import {useRoute} from "vue-router";
 import {useAppStore} from "@/stores/app.ts";
+import Gauge from "@/components/Gauge.vue";
 
 const route = useRoute()
 

@@ -70,7 +70,7 @@ class ArticleService:
         """
         document_hash = utils.hash_url(url)
         document_element = self.get_article_by_hash(document_hash)
-        return document_element.metadata_json if document_element.metadata_json else None
+        return document_element if document_element else None
 
     def get_article_sources_chain(self, article_hash: str):
         article = self.article_repository.get(article_hash)

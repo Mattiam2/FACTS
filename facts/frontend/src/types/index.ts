@@ -64,12 +64,14 @@ export interface AssessmentInfo {
 }
 
 export interface EbsiArticleDocument {
+    hash: string;
     metadata: ArticleMetadata;
     timestamp: Timestamp;
     creator: string;
 }
 
 export interface EbsiAssessmentDocument {
+    hash: string;
     metadata: AssessmentMetadata;
     timestamp: Timestamp;
     creator: string;

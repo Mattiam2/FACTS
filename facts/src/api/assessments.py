@@ -8,7 +8,7 @@ from facts.src.schemas.assessment import AssessmentCreate
 from facts.src.schemas.auth import TokenScopeEnum
 from facts.src.schemas.shared import BuildTransactionResponse, SignedTransactionPayload, \
     SignedTransactionResponse
-from facts.src.services.assessments import AssessmentService
+from facts.src.services.assessment import AssessmentService
 
 router = APIRouter(prefix="/assessments", tags=["assessments"])
 

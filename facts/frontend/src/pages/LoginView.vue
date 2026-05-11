@@ -12,20 +12,16 @@
             <VBtn color="primary" @click="validateVP">VALIDATE VP</VBtn>
           </VCardText>
           <VCardText v-if="appStore.vcToken && appStore.factsCredentialSubject">
-            <VCard class="mb-5">
+            <VCard class="mb-5" prepend-icon="mdi-shield-check" title="Credential Verified" variant="tonal">
               <VCardText>
-                <div class="d-flex align-center gap-2 mb-3">
-                  <v-icon icon="mdi-shield-check" color="primary" size="16"/>
-                  <span style="font-size:12px; font-weight:600; color:#00e5b4;">Credential Verified</span>
-                </div>
                 <b>Company</b>: {{ appStore.factsCredentialSubject.company_name }}<br>
                 <b>Role</b>: {{ appStore.factsCredentialSubject.role }}<br>
                 <b>DID</b>: {{ appStore.factsCredentialSubject.id }}
               </VCardText>
             </VCard>
-            <VCard>
+            <VCard title="Wallet link" prepend-icon="mdi-ethereum" variant="tonal">
               <VCardText>
-                <VTextField label="ETH Address" placeholder="0x..." class="mb-2" hide-details v-model="ethAddress"/>
+                <VTextField label="ETH Address" placeholder="0x..." class="mb-2" variant="outlined" hide-details v-model="ethAddress"/>
               </VCardText>
             </VCard>
             <VBtn color="primary" class="mt-4" @click="validateWallet">SIGN IN</VBtn>
@@ -55,7 +51,8 @@ async function validateVP() {
     const parts = vpToken.value.split('.')
     if (parts.length !== 3) {
       appStore.addToastMessage('Invalid JWT format', 'error')
-      return
+      vpToken.value = ''
+      return false
     }
     const payload = JSON.parse(atob(parts[1].replace(/-/g, '+').replace(/_/g, '/')))
 
@@ -63,7 +60,8 @@ async function validateVP() {
 
     if(!appStore.vcToken){
       appStore.addToastMessage('Invalid Verifiable Presentation JWT: Missing Credential', 'error')
-      return
+      vpToken.value = ''
+      return false
     }
     appStore.factsCredentialSubject = appStore.extractSubjectCredential(appStore.vcToken)
 
@@ -78,27 +76,35 @@ async function validateVP() {
 
   } catch {
     appStore.addToastMessage('Invalid or malformed Verifiable Presentation JWT', 'error')
-    return
+    vpToken.value = ""
+    appStore.vcToken = undefined
+    appStore.factsCredentialSubject = undefined
+    return false
   }
 }
 
 function validateWallet () {
   if (!ethAddress.value.trim()) {
     appStore.addToastMessage('Please enter your ETH address and private key', 'error')
-    return
+    ethAddress.value = ''
+    return false
   }
   if (!appStore.vcToken) {
     appStore.addToastMessage('Please validate your Verifiable Presentation first', 'error')
+    ethAddress.value = ''
+    return false
   }
   if (!appStore.factsCredentialSubject) {
     appStore.addToastMessage('Please validate your Verifiable Presentation first', 'error')
+    ethAddress.value = ''
+    return false
   }
   if (!appStore.vcToken || !appStore.factsCredentialSubject) return
   appStore.ethWalletAddress = ethAddress.value
   if(appStore.factsCredentialSubject.role == "PUBLISHER")
-    router.push('/articles/submit')
+    router.push('/articles')
   else
-    router.push('/assessments/submit')
+    router.push('/assessments')
 }
 </script>
 

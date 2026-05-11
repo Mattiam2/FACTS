@@ -60,6 +60,7 @@ class DocumentPublic(SQLModel):
     :type creator: str
     """
 
+    hash: str | None = None
     metadata_json: dict | str | None = Field(default=None, alias="metadata", schema_extra={'serialization_alias': 'metadata'}, description="Document's metadata")
     timestamp: TimestampPublic | None = Field(default=None, description="Document's metadata")
     creator: str | None = Field(default=None, description="The `did:key` or `did:ebsi` that created the document")

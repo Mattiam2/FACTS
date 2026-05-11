@@ -8,16 +8,11 @@ class TntClient(EBSIClient):
     def __init__(self):
         super().__init__("track-and-trace")
 
-    def get_documents(self) -> list[DocumentPublic]:
-        response = self.get(f"/documents")
-        docs = []
-        for doc in response:
-            docs.append(DocumentPublic.model_validate(doc))
-        return docs
-
     def get_document(self, doc_hash: str) -> DocumentPublic:
         response = self.get(f"/documents/{doc_hash}")
-        return DocumentPublic.model_validate(response)
+        document = DocumentPublic.model_validate(response)
+        document.hash = doc_hash
+        return document
 
     def get_document_events(self, doc_hash: str):
         response = self.get(f"/documents/{doc_hash}/events")
