@@ -1,17 +1,17 @@
 <template>
   <VAppBar>
-    <VAppBarTitle class="text-green-accent-2" style="font-size: 35px; font-weight: 900">
+    <VAppBarTitle class="text-green-accent-2 flex-0-0" style="font-size: 35px; font-weight: 900">
       <RouterLink to="/" class="text-decoration-none" style="color: inherit">F</RouterLink>
     </VAppBarTitle>
-    <div class="flex-grow-1">
-      <VBtn icon="mdi-home" :to="{path: '/'}" active-color="primary"/>
-      <VBtn icon="mdi-newspaper" :to="{path: '/articles'}" active-color="primary"/>
-      <VBtn icon="mdi-account-group" :to="{path: '/assessments'}" active-color="primary"/>
+    <div class="d-flex flex-1-1 justify-center">
+      <VBtn prepend-icon="mdi-home" :to="{path: '/'}" active-color="primary">Home</VBtn>
+      <VBtn prepend-icon="mdi-newspaper" :to="{path: '/articles'}" active-color="primary">Articles</VBtn>
+      <VBtn prepend-icon="mdi-account-group" :to="{path: '/assessments'}" active-color="primary">Assessments</VBtn>
     </div>
     <template #append>
-      <VBtn color="primary" variant="tonal" class="me-2" v-if="appStore.factsCredentialSubject">
-        <VIcon>mdi-badge-account</VIcon>
-        <b>{{ appStore.factsCredentialSubject?.company_name }}</b>
+      <VBtn prepend-icon="mdi-badge-account" color="primary" variant="tonal" class="me-2"
+            v-if="authStore.factsCredentialSubject">
+        <b>{{ authStore.factsCredentialSubject?.company_name }}</b>
         <VMenu activator="parent">
           <VCard rounded="lg" width="400" class="mt-1">
             <VCardText>
@@ -19,19 +19,45 @@
                 <v-icon icon="mdi-shield-check" color="primary" size="16"/>
                 <span style="font-size:12px; font-weight:600; color:#00e5b4;">Credential Verified</span>
               </div>
-              <b>Company</b>: {{ appStore.factsCredentialSubject?.company_name }}<br>
-              <b>Role</b>: {{ appStore.factsCredentialSubject?.role }}<br>
-              <b>DID</b>: {{ appStore.factsCredentialSubject?.id }}
+              <b>Company</b>: {{ authStore.factsCredentialSubject?.company_name }}<br>
+              <b>Role</b>: {{ authStore.factsCredentialSubject?.role }}<br>
+              <b>DID</b>: {{ authStore.factsCredentialSubject?.id }}
             </VCardText>
           </VCard>
         </VMenu>
       </VBtn>
-      <VBtn color="secondary" variant="tonal" class="me-2" @click="logout" v-if="appStore.factsCredentialSubject">Logout</VBtn>
-      <VBtn color="primary" variant="tonal" class="me-2" :to="{path: '/login'}" v-if="!appStore.factsCredentialSubject">
+      <VBtn color="primary" variant="tonal" class="me-2" prepend-icon="mdi-wallet"
+            v-if="walletStore.ethWallet.ethAddress">
+        <b>Wallet Info</b>
+        <VMenu activator="parent">
+          <VCard rounded="lg" width="auto" class="mt-1">
+            <VCardText>
+              <b>ETH Address</b>: {{ walletStore.ethWallet.ethAddress }}
+            </VCardText>
+            <VCardActions>
+              <VBtn variant="tonal" :to="{path: '/wallet'}" color="primary">Operations</VBtn>
+              <VBtn variant="tonal" prepend-icon="mdi-link-variant-off"
+                    @click="walletStore.ethWallet = { ethAddress: undefined, privateKey: undefined}" color="primary">
+                Unlink
+              </VBtn>
+            </VCardActions>
+          </VCard>
+        </VMenu>
+      </VBtn>
+      <VBtn color="primary" variant="tonal" class="me-2" :to="{path: '/login'}"
+            v-if="!authStore.factsCredentialSubject">
         Login
       </VBtn>
-      <VBtn color="primary" variant="tonal" class="me-2" :to="{path: '/onboarding'}" v-if="!appStore.factsCredentialSubject">
+      <VBtn color="primary" variant="tonal" class="me-2" :to="{path: '/wallet'}"
+            v-if="!walletStore.ethWallet.ethAddress">
+        Link Wallet
+      </VBtn>
+      <VBtn color="primary" variant="tonal" class="me-2" :to="{path: '/onboarding'}"
+            v-if="!authStore.factsCredentialSubject">
         Onboarding
+      </VBtn>
+      <VBtn color="secondary" variant="tonal" class="me-2" @click="logout" v-if="authStore.factsCredentialSubject">
+        Logout
       </VBtn>
     </template>
   </VAppBar>
@@ -44,12 +70,15 @@
 </template>
 <script setup lang="ts">
 import router from "@/router";
-import {useAppStore} from "@/stores/app.ts";
+import {useAuthStore} from "@/stores/auth.ts";
+import {useWalletStore} from "@/stores/wallet.ts";
 
-const appStore = useAppStore()
+const authStore = useAuthStore()
+const walletStore = useWalletStore()
 
 function logout() {
-  appStore.$reset()
+  authStore.$reset()
+  walletStore.$reset()
   router.push('/login')
 }
 
@@ -61,7 +90,7 @@ function logout() {
   left: 0;
   width: 100vw;
   height: 100vh;
-  background: radial-gradient(ellipse at center, rgba(0, 229, 180, 0.05) 0%, transparent 70%);
+  background: radial-gradient(ellipse at center, rgba(0, 229, 180, 0.2) 0%, transparent 90%);
   pointer-events: none;
   z-index: 0;
 }

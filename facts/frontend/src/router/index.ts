@@ -28,13 +28,23 @@ const router = createRouter({
             meta: {public: false}
         },
         {
+            path: '/assessments',
+            name: 'assessments',
+            component: () => import('@/pages/AssessmentListView.vue'),
+        },
+        {
             path: '/assessments/submit',
             component: () => import('@/pages/CreateAssessmentView.vue'),
             meta: {public: false}
         },
         {
             path: '/onboarding',
-            component: () => import('@/pages/OnboardView.vue'),
+            component: () => import('../pages/IssuerView.vue'),
+            meta: {public: false}
+        },
+        {
+            path: '/wallet',
+            component: () => import('../pages/WalletView.vue'),
             meta: {public: false}
         }
     ],

@@ -4,10 +4,10 @@
       <VCol cols="12">
         <VCard variant="tonal">
           <VCardItem>
-            <VCardTitle>Article list</VCardTitle>
+            <VCardTitle>Assessment list</VCardTitle>
           </VCardItem>
           <VCardText>
-            <VDataTable :items="articles" :headers="articleHeaders" class="bg-transparent">
+            <VDataTable :items="assessments" :headers="assessmentHeaders" class="bg-transparent">
               <template #item.actions="{ item }">
                 <div class="d-flex ga-2">
                   <VBtn
@@ -32,33 +32,35 @@
 </template>
 
 <script lang="ts" setup>
-import type {IndexedArticle} from "@/types";
+import type {IndexedAssessment} from "@/types";
 import {storeToRefs} from "pinia";
 import {onMounted} from "vue";
 import router from "@/router";
-import {useArticleStore} from "@/stores/article.ts";
+import {useAssessmentStore} from "@/stores/assessment.ts";
 
-const articleStore = useArticleStore()
+const assessmentStore = useAssessmentStore()
 
-const { articles } = storeToRefs(articleStore)
+const {assessments} = storeToRefs(assessmentStore)
 
-const articleHeaders = [
-  {title: 'Article ID', key: 'hash', value: (article: any) => article.hash.slice(0, 10) + '...'},
+const assessmentHeaders = [
+  {title: 'Assess. ID', key: 'hash', value: (assessment: any) => assessment.hash.slice(0, 10) + '...'},
   {title: 'Date', key: 'timestamp'},
-  {title: 'Url', key: 'url'},
+  {title: 'Url', key: 'article_url'},
+  {title: 'Credibility Score', key: 'credibility_score'},
+  {title: 'Manipulation Score', key: 'manipulation_score'},
   {title: 'DID Creator', key: 'creator'},
   {title: '', key: 'actions'},
 ]
 
-function openArticleWebsite(article: IndexedArticle) {
-  window.open(article.url, '_blank')
+function openArticleWebsite(assessment: IndexedAssessment) {
+  window.open(assessment.article_url, '_blank')
 }
 
-function openArticleClaim(article: IndexedArticle) {
-  router.push(`/articles/${article.hash}`)
+function openArticleClaim(assessment: IndexedAssessment) {
+  router.push(`/articles/${assessment.article_hash}`)
 }
 
 onMounted(async () => {
-  await articleStore.loadArticles()
+  await assessmentStore.loadAssessments()
 })
 </script>

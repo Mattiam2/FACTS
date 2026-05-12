@@ -99,7 +99,7 @@
           prepend-icon="mdi-update"
       >
         <VCardText>
-          ETH Address: {{ appStore.ethWalletAddress }}
+          ETH Address: {{ walletStore.ethWallet.ethAddress }}
           <VTextField label="ETH Private Key" placeholder="0x..." type="password" class="ma-2" v-model="ethPrivateKey"
                       hide-details/>
           <VIcon icon="mdi-lock-outline" size="12"/>
@@ -122,8 +122,18 @@ import type {AssessedArticleInfo, AssessmentInfo, FactsSubjectCredential} from "
 import {onMounted, type Ref, ref} from "vue";
 import {type Transaction, Web3} from "web3";
 import {useAppStore} from "@/stores/app.ts";
+import {useArticleStore} from "@/stores/article.ts";
+import {useAssessmentStore} from "@/stores/assessment.ts";
+import {useAuthStore} from "@/stores/auth.ts";
+import {useWalletStore} from "@/stores/wallet.ts";
+import {extractSubjectCredential} from "@/utility.ts";
 
 const appStore = useAppStore()
+const articleStore = useArticleStore()
+const authStore = useAuthStore()
+const walletStore = useWalletStore()
+const assessmentStore = useAssessmentStore()
+
 const ethPrivateKey = ref('')
 const transactionSignatureDialog = ref(false)
 
@@ -161,7 +171,11 @@ const claimedByPublisher = ref(undefined) as Ref<FactsSubjectCredential | undefi
 const articleFoundOnEBSI = ref(undefined) as Ref<boolean | undefined>
 
 async function requestAssessmentCreation() {
-  const response = await appStore.createAssessmentTransaction(assessedArticle.value, assessmentInfo.value)
+  if(!authStore.factsAccessToken){
+    appStore.addToastMessage(`Please login to FACTS`, 'error')
+    return
+  }
+  const response = await assessmentStore.createAssessmentTransaction(authStore.factsAccessToken, walletStore.ethWallet.ethAddress, assessedArticle.value, assessmentInfo.value)
   appStore.addToastMessage(`Received transaction`, 'success')
   console.log(response)
   transactionToSign.value = response.transaction
@@ -170,16 +184,16 @@ async function requestAssessmentCreation() {
 }
 
 async function checkArticle() {
-  const article = await appStore.getArticleByUrl(articleUrl.value)
+  await articleStore.loadArticleByUrl(articleUrl.value)
   assessmentInfo.value.article_url = articleUrl.value
-  if (article) {
-    claimedByPublisher.value = appStore.extractSubjectCredential(article.publisher_vc)
-    articleUrl.value = article.article_info.url
-    assessedArticle.value.title = article.article_info.title
-    assessedArticle.value.author = article.article_info.author
-    assessedArticle.value.description = article.article_info.description
-    assessedArticle.value.publication_date = article.article_info.publication_date
-    assessedArticle.value.language = article.article_info.language
+  if (articleStore.article) {
+    claimedByPublisher.value = extractSubjectCredential(articleStore.article.metadata.publisher_vc)
+    articleUrl.value = articleStore.article.metadata.article_info.url ?? articleUrl.value
+    assessedArticle.value.title = articleStore.article.metadata.article_info.title
+    assessedArticle.value.author = articleStore.article.metadata.article_info.author
+    assessedArticle.value.description = articleStore.article.metadata.article_info.description
+    assessedArticle.value.publication_date = articleStore.article.metadata.article_info.publication_date
+    assessedArticle.value.language = articleStore.article.metadata.article_info.language
     articleFoundOnEBSI.value = true
   } else {
     claimedByPublisher.value = undefined
@@ -193,6 +207,10 @@ async function checkArticle() {
 }
 
 async function signTransaction() {
+  if(!authStore.factsAccessToken){
+    appStore.addToastMessage(`Please login to FACTS`, 'error')
+    return
+  }
   if (!transactionDocumentHash.value || !transactionToSign.value) {
     appStore.addToastMessage(`No transaction to sign`, 'error')
     return
@@ -202,21 +220,12 @@ async function signTransaction() {
     transactionSignatureDialog.value = true
     return
   }
-  const web3 = new Web3()
   transactionSignatureDialog.value = false
   const transaction: Transaction = transactionToSign.value as Transaction
   transaction.gas = 103972
-  const privateKey = ethPrivateKey.value
-  const signedTx = await web3.eth.accounts.signTransaction(transaction, privateKey);
-  const factsSignedTransaction = {
-    protocol: "eth",
-    unsignedTransaction: transaction,
-    r: signedTx.r,
-    s: signedTx.s,
-    v: Number.parseInt(signedTx.v),
-    signedRawTransaction: signedTx.rawTransaction.slice(2),
-  }
-  const response = await appStore.confirmAssessmentTransaction(transactionDocumentHash.value, factsSignedTransaction)
+  const factsSignedTransaction = await walletStore.signTransaction(transaction, ethPrivateKey.value)
+
+  const response = await assessmentStore.confirmAssessmentTransaction(authStore.factsAccessToken, transactionDocumentHash.value, factsSignedTransaction)
   if (response) {
     appStore.addToastMessage(`Assessment created`, 'success')
   }

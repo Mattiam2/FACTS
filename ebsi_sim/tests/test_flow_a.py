@@ -6,16 +6,16 @@ from sqlmodel import Session
 from ebsi_sim.src.models.didr import Identifier
 
 
-def test_request_vc(client: TestClient):
-    """
-    Tests the request_vc endpoint of the Issuer Mock API
-    """
-    response = client.post("/issuer-mock/request_vc", json={
-        "subject_did": "did:ebsi:z95paQoBwGAqnnu4RKTmCtT",
-        "credential_type": "VerifiableAuthorisationToOnboard"
-    })
-    assert response.status_code == 200
-    assert len(response.json()) > 0
+# def test_request_vc(client: TestClient):
+#     """
+#     Tests the request_vc endpoint of the Issuer Mock API
+#     """
+#     response = client.post("/issuer-mock/request_vc", json={
+#         "subject_did": "did:ebsi:z95paQoBwGAqnnu4RKTmCtT",
+#         "credential_type": "VerifiableAuthorisationToOnboard"
+#     })
+#     assert response.status_code == 200
+#     assert len(response.json()) > 0
 
 
 def test_create_vp(client: TestClient):

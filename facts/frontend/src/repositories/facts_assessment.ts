@@ -6,12 +6,14 @@ export default {
     async getAssessment(assessmentId: string){
         return await factsClient.get(`/assessments/${assessmentId}`)
     },
-    async getAssessments(articleId: string){
-        return await factsClient.get('/assessments', {
-            params: {
+    async getAssessments(articleId?: string){
+        let params = {}
+        if(articleId){
+            params = {
                 article_hash: articleId
             }
-        })
+        }
+        return await factsClient.get('/assessments', {params})
     },
 
     async createAssessmentTransaction(accessToken: string, ethAddress: string, assessedArticle: AssessedArticleInfo, assessment: AssessmentInfo) {

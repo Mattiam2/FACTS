@@ -1,5 +1,3 @@
-import type {JWTPayload} from "jose";
-
 export interface FactsSubjectCredential {
     id: string
     company_name: string
@@ -13,12 +11,12 @@ export interface FactsSubjectCredential {
 }
 
 export interface ArticleInfo {
-    url: string,
-    title: string,
-    author: string,
-    description: string,
-    publication_date: string,
-    language: string,
+    url?: string,
+    title?: string,
+    author?: string,
+    description?: string,
+    publication_date?: string,
+    language?: string,
     sources: string[]
 }
 
@@ -96,23 +94,13 @@ export interface AssessmentMetadata {
     fact_checker_vc: string;
 }
 
-export interface ArticleInfo {
-    url: string;
-    title: string;
-    author: string;
-    description: string;
-    publication_date: string; // ISO 8601
-    language: string;         // BCP 47 / ISO 639-1
-    sources: string[];
-}
-
 export interface Timestamp {
     datetime: string;         // ISO 8601
     source: "block" | "ntp" | "manual" | string;
     proof: string | null;
 }
 
-export interface Assessment {
+export interface IndexedAssessment {
     article_hash: string;    // keccak256 hex, 0x-prefixed
     creator: string;         // DID
     manipulation_score: number;
@@ -127,6 +115,16 @@ export interface Assessment {
     assessmentInfo?: AssessmentInfo;
 }
 
+export interface IndexedArticle {
+    hash: string;
+    url: string;
+    creator: string;
+    tx_hash: string;
+    timestamp: string;
+    data_hash: string;
+    eth_address: string;
+}
+
 export interface VerifiablePresentation {
   '@context': string[];
   id: string;
@@ -135,7 +133,7 @@ export interface VerifiablePresentation {
   verifiableCredential: string[];
 }
 
-export interface VPPayload extends JWTPayload {
+export interface VPPayload {
   iss: string;
   aud: string;
   sub: string;

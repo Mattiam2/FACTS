@@ -18,14 +18,13 @@
     "@fontsource/roboto": "^5.2.10",
     "@fontsource/roboto-mono": "^5.2.8",
     "@mdi/font": "7.4.47",
-    "@noble/secp256k1": "^3.1.0",
     "axios": "^1.16.0",
     "pinia": "^3.0.4",
     "pinia-plugin-persistedstate": "^4.7.1",
     "vue": "^3.5.30",
     "vue-i18n": "^11.3.0",
     "vue-router": "^5.0.3",
-    "vuetify": "^4.0.2",
+    "vuetify": "^4.0.7",
     "web3": "^4.16.0"
   },
   "devDependencies": {

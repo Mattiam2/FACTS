@@ -2,7 +2,7 @@
   <VContainer>
     <VRow justify="center" align="center">
       <VCol cols="12">
-        <VCard>
+        <VCard variant="tonal">
           <VCardItem>
             <VCardTitle>Article Claim - HASH: {{ route.params.id }}</VCardTitle>
           </VCardItem>
@@ -41,14 +41,14 @@
                 <VContainer>
                   <VRow>
                     <VCol cols="6">
-                      <VCard title="Average Credibility Score">
+                      <VCard title="Average Credibility Score" variant="tonal">
                         <VCardText class="d-flex justify-center">
                           <Gauge :value="averageCredibilityScore"/>
                         </VCardText>
                       </VCard>
                     </VCol>
                     <VCol cols="6">
-                      <VCard title="Average Manipulation Score">
+                      <VCard title="Average Manipulation Score" variant="tonal">
                         <VCardText class="d-flex justify-center">
                           <Gauge :value="averageManipulationScore"/>
                         </VCardText>
@@ -58,7 +58,7 @@
                 </VContainer>
 
 
-                <VDataTable :items="assessments" :headers="assessmentHeaders" show-expand hide-default-footer>
+                <VDataTable :items="assessments" :headers="assessmentHeaders" class="bg-transparent" show-expand hide-default-footer>
                   <template #item.data-table-expand="{ internalItem, isExpanded, toggleExpand, item }">
                     <VBtn
                         :append-icon="isExpanded(internalItem) ? 'mdi-chevron-up' : 'mdi-chevron-down'"
@@ -79,7 +79,7 @@
                         <VContainer>
                           <VRow>
                             <VCol cols="4">
-                              <VCard class="mb-5" v-if="item.subjectCredential" title="Issued by">
+                              <VCard variant="tonal" class="mb-5" v-if="item.subjectCredential" title="Issued by">
                                 <VCardText>
                                   <b>DID</b>: {{ item.subjectCredential.id }}<br>
                                   <b>Company</b>: {{ item.subjectCredential.company_name }}<br>
@@ -89,7 +89,7 @@
                               </VCard>
                             </VCol>
                             <VCol cols="4" v-if="item.assessmentInfo?.credibility_evaluation">
-                              <VCard title="Credibility Evaluation">
+                              <VCard variant="tonal" title="Credibility Evaluation">
                                 <VCardText class="d-flex flex-column align-center">
                                   <Gauge :value="item.assessmentInfo?.credibility_evaluation.score"/>
                                   <br>
@@ -98,7 +98,7 @@
                               </VCard>
                             </VCol>
                             <VCol cols="4" v-if="item.assessmentInfo?.manipulation_evaluation">
-                              <VCard title="Manipulation Evaluation">
+                              <VCard variant="tonal" title="Manipulation Evaluation">
                                 <VCardText class="d-flex flex-column align-center">
                                   <Gauge :value="item.assessmentInfo?.manipulation_evaluation.score"/>
                                   <br>
@@ -134,23 +134,31 @@
 </template>
 
 <script lang="ts" setup>
-import type {Assessment, EbsiArticleDocument, EbsiAssessmentDocument, FactsSubjectCredential} from "@/types";
+import type {EbsiAssessmentDocument, FactsSubjectCredential, IndexedAssessment} from "@/types";
+import {storeToRefs} from "pinia";
 import {onMounted, type Ref, ref} from "vue";
 import {useRoute} from "vue-router";
-import {useAppStore} from "@/stores/app.ts";
 import Gauge from "@/components/Gauge.vue";
+import {useArticleStore} from "@/stores/article.ts";
+import {useAssessmentStore} from "@/stores/assessment.ts";
+import {extractSubjectCredential} from "@/utility.ts";
+
 
 const route = useRoute()
 
-const appStore = useAppStore()
-const article = ref(undefined) as Ref<EbsiArticleDocument | undefined>
+const articleStore = useArticleStore()
+const assessmentStore = useAssessmentStore()
+
+const { article } = storeToRefs(articleStore)
+const { assessments } = storeToRefs(assessmentStore)
+
 const claimedByPublisher = ref(undefined) as Ref<FactsSubjectCredential | undefined>
-const assessments = ref([]) as Ref<Assessment[]>
+
 const averageCredibilityScore = ref(0)
 const averageManipulationScore = ref(0)
 
 const assessmentHeaders = [
-  {title: 'Assessment ID', key: 'hash', value: (assessment: any) => assessment.hash.slice(0, 10) + '...'},
+  {title: 'Assessment ID', key: 'hash', value: (assessment: IndexedAssessment) => assessment.hash.slice(0, 10) + '...'},
   {title: 'Date', key: 'timestamp'},
   {title: 'Credibility Score', key: 'credibility_score'},
   {title: 'Manipulation Score', key: 'manipulation_score'},
@@ -158,18 +166,19 @@ const assessmentHeaders = [
   {title: '', key: 'data-table-expand'},
 ]
 
-async function expandAssessment(item: Assessment, expand: any) {
-  const ebsi_document: EbsiAssessmentDocument = await appStore.getAssessment(item.hash)
+async function expandAssessment(item: IndexedAssessment, expand: any) {
+  const ebsi_document: EbsiAssessmentDocument = await assessmentStore.getAssessment(item.hash)
   item.assessmentInfo = ebsi_document.metadata.assessment_info
-  item.subjectCredential = appStore.extractSubjectCredential(ebsi_document.metadata.fact_checker_vc)
+  item.subjectCredential = extractSubjectCredential(ebsi_document.metadata.fact_checker_vc)
   expand(item)
 }
 
 onMounted(async () => {
-  article.value = await appStore.getArticle(route.params.id as string)
-  if (article.value)
-    claimedByPublisher.value = appStore.extractSubjectCredential(article.value.metadata.publisher_vc)
-  assessments.value = await appStore.getAssessments(route.params.id as string)
+  await articleStore.loadArticle(route.params.id as string)
+  await assessmentStore.loadAssessmentsByArticle(route.params.id as string)
+  if (articleStore.article)
+    claimedByPublisher.value = extractSubjectCredential(articleStore.article.metadata.publisher_vc)
+
   let credibilityScoreSum = 0
   let credibilityScoreCount = 0
   let manipulationScoreSum = 0

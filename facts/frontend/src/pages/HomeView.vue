@@ -27,16 +27,19 @@ import type {EbsiArticleDocument} from "@/types";
 import {ref} from "vue";
 import router from "@/router";
 import {useAppStore} from "@/stores/app.ts";
+import {useArticleStore} from "@/stores/article.ts";
 
+const articleStore = useArticleStore()
 const appStore = useAppStore()
 const articleUrl = ref("")
 
 async function searchArticle() {
-  const foundArticle: EbsiArticleDocument | undefined = await appStore.getArticleByUrl(articleUrl.value)
-  if (foundArticle)
-    router.push(`/articles/${foundArticle.hash}`)
-  else
+  const foundArticle: EbsiArticleDocument | undefined = await articleStore.getArticleByUrl(articleUrl.value)
+  if (foundArticle) {
+    await router.push(`/articles/${foundArticle.hash}`)
+  }else {
     appStore.addToastMessage('Article not found', 'error')
+  }
 }
 </script>
 

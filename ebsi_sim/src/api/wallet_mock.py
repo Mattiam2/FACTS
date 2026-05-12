@@ -4,7 +4,7 @@ from typing import Optional, Annotated
 from uuid import uuid4
 
 import jwt
-from cryptography.hazmat.primitives.asymmetric.ec import derive_private_key, SECP256K1
+from cryptography.hazmat.primitives.asymmetric.ec import derive_private_key, SECP256K1, SECP256R1
 from fastapi import APIRouter, HTTPException, Query
 from web3 import Web3
 
@@ -45,16 +45,16 @@ def create_vp(did: str, private_key: str, vc_token: str | None = None, verificat
     )
 
     client_private_key_bytes = bytes.fromhex(private_key.replace("0x", ''))
-    client_private_key = derive_private_key(int.from_bytes(client_private_key_bytes), SECP256K1())
+    client_private_key = derive_private_key(int.from_bytes(client_private_key_bytes), SECP256R1())
 
-    jwt_headers = {"typ": "JWT", "alg": "ES256K"}
+    jwt_headers = {"typ": "JWT", "alg": "ES256"}
     if verification_id:
         jwt_headers['kid'] = verification_id
 
     return jwt.encode(
         json.loads(vp_payload.model_dump_json()),
         client_private_key,
-        algorithm="ES256K",
+        algorithm="ES256",
         headers=jwt_headers
     )
 

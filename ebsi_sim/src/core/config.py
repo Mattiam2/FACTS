@@ -23,6 +23,7 @@ class Settings(BaseSettings):
     AUTH_PRIVATE_KEY: str = b"-----BEGIN PRIVATE KEY-----\nMIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQgakYUgjPQkhpF6/pp\nCo+2nd5kwMoYuyb+3J3ZkXqKcxahRANCAARvk/8XP4CC7gzUuOvGCfLXZTAmrpMu\nRUsEPsqblWgPhBeE4OKSUkW6ChNH4ebDCDOR2i1EoBJL3s1NDcqusF1M\n-----END PRIVATE KEY-----\n"
 
     ETH_ADDRESS: str = "0x823BBc0ceE3dE3B61AcfA0CEedb951AB9a013F05"
+    ISSUER_DID: str = "did:ebsi:zE971oT9esuKdcHspKdfAXg"
 
     PROJECT_ROOT: str = str(Path(__file__).resolve().parent.parent)
 

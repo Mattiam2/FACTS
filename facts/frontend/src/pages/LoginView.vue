@@ -7,24 +7,20 @@
             <VCardTitle>Access BackOffice</VCardTitle>
             <VCardSubtitle>Authenticate with your EBSI Wallet credentials</VCardSubtitle>
           </VCardItem>
-          <VCardText v-if="!appStore.factsCredentialSubject">
+          <VCardText v-if="!authStore.factsCredentialSubject">
             <VTextarea label="Verifiable Presentation" variant="outlined" v-model="vpToken"/>
             <VBtn color="primary" @click="validateVP">VALIDATE VP</VBtn>
           </VCardText>
-          <VCardText v-if="appStore.vcToken && appStore.factsCredentialSubject">
+          <VCardText v-if="vcToken && authStore.factsCredentialSubject">
             <VCard class="mb-5" prepend-icon="mdi-shield-check" title="Credential Verified" variant="tonal">
               <VCardText>
-                <b>Company</b>: {{ appStore.factsCredentialSubject.company_name }}<br>
-                <b>Role</b>: {{ appStore.factsCredentialSubject.role }}<br>
-                <b>DID</b>: {{ appStore.factsCredentialSubject.id }}
+                <b>Company</b>: {{ authStore.factsCredentialSubject.company_name }}<br>
+                <b>Role</b>: {{ authStore.factsCredentialSubject.role }}<br>
+                <b>DID</b>: {{ authStore.factsCredentialSubject.id }}
               </VCardText>
             </VCard>
-            <VCard title="Wallet link" prepend-icon="mdi-ethereum" variant="tonal">
-              <VCardText>
-                <VTextField label="ETH Address" placeholder="0x..." class="mb-2" variant="outlined" hide-details v-model="ethAddress"/>
-              </VCardText>
-            </VCard>
-            <VBtn color="primary" class="mt-4" @click="validateWallet">SIGN IN</VBtn>
+            <VBtn color="primary" prepend-icon="mdi-wallet" :to="{path: '/wallet'}" v-if="!walletStore.ethWallet.ethAddress">Link Wallet</VBtn>
+            <VBtn color="primary" class="mt-4" @click="completeLogin" v-if="walletStore.ethWallet.ethAddress">Go to home</VBtn>
           </VCardText>
         </VCard>
       </VCol>
@@ -36,9 +32,14 @@
 import {type Ref, ref} from "vue";
 import router from "@/router";
 import {useAppStore} from "@/stores/app.ts";
+import {useAuthStore} from "@/stores/auth.ts";
+import {useWalletStore} from "@/stores/wallet.ts";
 
 const appStore = useAppStore()
+const authStore = useAuthStore()
+const walletStore = useWalletStore()
 const vpToken = ref('') as Ref<string>
+const vcToken = ref('') as Ref<string>
 const ethAddress = ref('') as Ref<string>
 
 async function validateVP() {
@@ -56,55 +57,55 @@ async function validateVP() {
     }
     const payload = JSON.parse(atob(parts[1].replace(/-/g, '+').replace(/_/g, '/')))
 
-    appStore.vcToken = payload.vp.verifiableCredential[0]
+    vcToken.value = payload.vp.verifiableCredential[0]
 
-    if(!appStore.vcToken){
+    if(!vcToken.value){
       appStore.addToastMessage('Invalid Verifiable Presentation JWT: Missing Credential', 'error')
       vpToken.value = ''
       return false
     }
-    appStore.factsCredentialSubject = appStore.extractSubjectCredential(appStore.vcToken)
+    authStore.loadSubjectCredential(vcToken.value)
 
     let userScope = undefined
-    if (appStore.factsCredentialSubject?.role == "PUBLISHER") {
+    if (authStore.factsCredentialSubject?.role == "PUBLISHER") {
       userScope = 'publisher_create'
-    } else if (appStore.factsCredentialSubject?.role == "FACT CHECKER") {
+    } else if (authStore.factsCredentialSubject?.role == "FACT CHECKER") {
       userScope = 'factchecker_create'
     }
 
-    await appStore.requestAccessToken(vpToken.value, userScope as string)
+    await authStore.requestFactsAccessToken(vpToken.value, userScope as string)
 
   } catch {
     appStore.addToastMessage('Invalid or malformed Verifiable Presentation JWT', 'error')
     vpToken.value = ""
-    appStore.vcToken = undefined
-    appStore.factsCredentialSubject = undefined
+    vcToken.value = ""
+    authStore.factsCredentialSubject = undefined
     return false
   }
 }
 
-function validateWallet () {
-  if (!ethAddress.value.trim()) {
-    appStore.addToastMessage('Please enter your ETH address and private key', 'error')
+function completeLogin () {
+  if (!walletStore.ethWallet.ethAddress?.trim()) {
+    appStore.addToastMessage('Please enter your ETH address', 'error')
     ethAddress.value = ''
     return false
   }
-  if (!appStore.vcToken) {
+  if (!vcToken.value.trim()) {
     appStore.addToastMessage('Please validate your Verifiable Presentation first', 'error')
     ethAddress.value = ''
     return false
   }
-  if (!appStore.factsCredentialSubject) {
+  if (!authStore.factsCredentialSubject) {
     appStore.addToastMessage('Please validate your Verifiable Presentation first', 'error')
     ethAddress.value = ''
     return false
   }
-  if (!appStore.vcToken || !appStore.factsCredentialSubject) return
-  appStore.ethWalletAddress = ethAddress.value
-  if(appStore.factsCredentialSubject.role == "PUBLISHER")
+
+  if(authStore.factsCredentialSubject.role == "PUBLISHER") {
     router.push('/articles')
-  else
+  }else {
     router.push('/assessments')
+  }
 }
 </script>
 
