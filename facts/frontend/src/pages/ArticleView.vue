@@ -17,11 +17,11 @@
             </VCard>
             <VCard v-if="article" variant="tonal" title="Article">
               <VCardText>
-                <b>Title</b>: {{ article.metadata.article_info.title }}<br/>
-                <b>Author</b>: {{ article.metadata.article_info.author }}<br/>
-                <b>Description</b>: {{ article.metadata.article_info.description }}<br/>
-                <b>Publication Date</b>: {{ article.metadata.article_info.publication_date }}<br/>
-                <b>Language</b>: {{ article.metadata.article_info.language }}<br/>
+                <b>Title</b>: {{ article.metadata.article_info.title }}<br>
+                <b>Author</b>: {{ article.metadata.article_info.author }}<br>
+                <b>Description</b>: {{ article.metadata.article_info.description }}<br>
+                <b>Publication Date</b>: {{ article.metadata.article_info.publication_date }}<br>
+                <b>Language</b>: {{ article.metadata.article_info.language }}<br>
                 <div v-if="article.metadata.article_info.sources && article.metadata.article_info.sources.length > 0">
                   <b>Sources</b>:
                   <div v-for="source in article.metadata.article_info.sources" :key="source" class="d-flex ga-2">
@@ -41,16 +41,18 @@
                 <VContainer>
                   <VRow>
                     <VCol cols="6">
-                      <VCard title="Average Credibility Score" variant="tonal">
-                        <VCardText class="d-flex justify-center">
+                      <VCard title="Average Credibility Score" variant="tonal" class="h-100">
+                        <VCardText class="d-flex flex-column align-center">
                           <Gauge :value="averageCredibilityScore"/>
+                          <h2>Probably {{ credibilityDescription }}</h2>
                         </VCardText>
                       </VCard>
                     </VCol>
                     <VCol cols="6">
-                      <VCard title="Average Manipulation Score" variant="tonal">
-                        <VCardText class="d-flex justify-center">
+                      <VCard title="Average Manipulation Score" variant="tonal" class="h-100">
+                        <VCardText class="d-flex flex-column align-center">
                           <Gauge :value="averageManipulationScore"/>
+                          <h2>Probably {{ manipulationDescription }}</h2>
                         </VCardText>
                       </VCard>
                     </VCol>
@@ -58,7 +60,8 @@
                 </VContainer>
 
 
-                <VDataTable :items="assessments" :headers="assessmentHeaders" class="bg-transparent" show-expand hide-default-footer>
+                <VDataTable :items="assessments" :headers="assessmentHeaders" class="bg-transparent" show-expand
+                            hide-default-footer>
                   <template #item.data-table-expand="{ internalItem, isExpanded, toggleExpand, item }">
                     <VBtn
                         :append-icon="isExpanded(internalItem) ? 'mdi-chevron-up' : 'mdi-chevron-down'"
@@ -75,11 +78,11 @@
                   </template>
                   <template #expanded-row="{ columns, item }">
                     <tr>
-                      <td :colspan="columns.length">
-                        <VContainer>
+                      <td :colspan="columns.length" style="background-color: rgba(0,0,10,0.5)">
+                        <VContainer fluid class="px-0">
                           <VRow>
-                            <VCol cols="4">
-                              <VCard variant="tonal" class="mb-5" v-if="item.subjectCredential" title="Issued by">
+                            <VCol cols="12">
+                              <VCard variant="tonal" v-if="item.subjectCredential" title="Issued by">
                                 <VCardText>
                                   <b>DID</b>: {{ item.subjectCredential.id }}<br>
                                   <b>Company</b>: {{ item.subjectCredential.company_name }}<br>
@@ -88,21 +91,37 @@
                                 </VCardText>
                               </VCard>
                             </VCol>
-                            <VCol cols="4" v-if="item.assessmentInfo?.credibility_evaluation">
+                          </VRow>
+                          <VRow>
+                            <VCol cols="6" v-if="item.assessmentInfo?.credibility_evaluation">
                               <VCard variant="tonal" title="Credibility Evaluation">
-                                <VCardText class="d-flex flex-column align-center">
-                                  <Gauge :value="item.assessmentInfo?.credibility_evaluation.score"/>
-                                  <br>
-                                  Note: {{ item.assessmentInfo?.credibility_evaluation.note }}<br>
+                                <VCardText class="d-flex py-2">
+                                  <div class="text-center mx-10 mt-2">
+                                    <Gauge :value="item.assessmentInfo?.credibility_evaluation.score"/>
+                                    <h2>{{
+                                        getCredibilityDescription(item.assessmentInfo?.credibility_evaluation.score ?? 0)
+                                      }}</h2>
+                                  </div>
+                                  <VTextarea class="my-auto" label="Comment"
+                                             :model-value="item.assessmentInfo?.credibility_evaluation.note" no-resize
+                                             rows="4"
+                                             variant="outlined" readonly/>
                                 </VCardText>
                               </VCard>
                             </VCol>
-                            <VCol cols="4" v-if="item.assessmentInfo?.manipulation_evaluation">
+                            <VCol cols="6" v-if="item.assessmentInfo?.manipulation_evaluation">
                               <VCard variant="tonal" title="Manipulation Evaluation">
-                                <VCardText class="d-flex flex-column align-center">
-                                  <Gauge :value="item.assessmentInfo?.manipulation_evaluation.score"/>
-                                  <br>
-                                  Note: {{ item.assessmentInfo?.manipulation_evaluation.note }}
+                                <VCardText class="d-flex py-2">
+                                  <div class="text-center mx-10 mt-2">
+                                    <Gauge :value="item.assessmentInfo?.manipulation_evaluation.score"/>
+                                    <h2>{{
+                                        getManipulationDescription(item.assessmentInfo?.manipulation_evaluation.score ?? 0)
+                                      }}</h2>
+                                  </div>
+                                  <VTextarea label="Comment"
+                                             :model-value="item.assessmentInfo?.manipulation_evaluation.note" no-resize
+                                             rows="4"
+                                             variant="outlined" readonly/>
                                 </VCardText>
                               </VCard>
                             </VCol>
@@ -134,13 +153,19 @@
 </template>
 
 <script lang="ts" setup>
-import type {EbsiAssessmentDocument, FactsSubjectCredential, IndexedAssessment} from "@/types";
 import {storeToRefs} from "pinia";
 import {onMounted, type Ref, ref} from "vue";
 import {useRoute} from "vue-router";
 import Gauge from "@/components/Gauge.vue";
 import {useArticleStore} from "@/stores/article.ts";
 import {useAssessmentStore} from "@/stores/assessment.ts";
+import {
+  CredibilityScore,
+  type EbsiAssessmentDocument,
+  type FactsSubjectCredential,
+  type IndexedAssessment,
+  ManipulationScore
+} from "@/types";
 import {extractSubjectCredential} from "@/utility.ts";
 
 
@@ -149,13 +174,16 @@ const route = useRoute()
 const articleStore = useArticleStore()
 const assessmentStore = useAssessmentStore()
 
-const { article } = storeToRefs(articleStore)
-const { assessments } = storeToRefs(assessmentStore)
+const {article} = storeToRefs(articleStore)
+const {assessments} = storeToRefs(assessmentStore)
 
 const claimedByPublisher = ref(undefined) as Ref<FactsSubjectCredential | undefined>
 
 const averageCredibilityScore = ref(0)
 const averageManipulationScore = ref(0)
+
+const credibilityDescription = ref('')
+const manipulationDescription = ref('')
 
 const assessmentHeaders = [
   {title: 'Assessment ID', key: 'hash', value: (assessment: IndexedAssessment) => assessment.hash.slice(0, 10) + '...'},
@@ -171,6 +199,48 @@ async function expandAssessment(item: IndexedAssessment, expand: any) {
   item.assessmentInfo = ebsi_document.metadata.assessment_info
   item.subjectCredential = extractSubjectCredential(ebsi_document.metadata.fact_checker_vc)
   expand(item)
+}
+
+function getCredibilityDescription(average: number) {
+  switch (average) {
+    case CredibilityScore.FALSE: {
+      return 'False'
+    }
+    case CredibilityScore.PARTIALLY_FALSE: {
+      return 'Partially False'
+    }
+    case CredibilityScore.MISSING_CONTEXT: {
+      return 'Missing Context'
+    }
+    case CredibilityScore.SUBJECTIVE: {
+      return 'Subjective'
+    }
+    case CredibilityScore.TRUE: {
+      return 'True'
+    }
+  }
+  return ''
+}
+
+function getManipulationDescription(average: number) {
+  switch (average) {
+    case ManipulationScore.TOTALLY_MANIPULATED: {
+      return 'Totally Manipulated'
+    }
+    case ManipulationScore.HEAVILY_MANIPULATED: {
+      return 'Heavily Manipulated'
+    }
+    case ManipulationScore.PARTIALLY_MANIPULATED: {
+      return 'Partially Manipulated'
+    }
+    case ManipulationScore.MINOR_EDITS: {
+      return 'Minor Edits'
+    }
+    case ManipulationScore.AUTHENTIC: {
+      return 'Authentic'
+    }
+  }
+  return ''
 }
 
 onMounted(async () => {
@@ -195,9 +265,11 @@ onMounted(async () => {
   }
   if (credibilityScoreCount > 0) {
     averageCredibilityScore.value = credibilityScoreSum / credibilityScoreCount
+    credibilityDescription.value = getCredibilityDescription(Math.floor(averageCredibilityScore.value))
   }
   if (manipulationScoreCount > 0) {
     averageManipulationScore.value = manipulationScoreSum / manipulationScoreCount
+    manipulationDescription.value = getManipulationDescription(Math.floor(averageManipulationScore.value))
   }
 })
 </script>

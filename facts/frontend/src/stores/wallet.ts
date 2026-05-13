@@ -1,7 +1,6 @@
-import type {AssessedArticleInfo, AssessmentInfo} from "@/types";
+import type {AssessedArticleInfo, AssessmentInfo, FactsSubjectCredential} from "@/types";
 import {defineStore} from 'pinia'
 import {type Transaction, Web3} from "web3";
-import { isAddress } from 'web3-validator'
 import EbsiAuthRepo from '@/repositories/ebsi_auth.ts'
 import EbsiDidrRepo from '@/repositories/ebsi_didr.ts'
 
@@ -44,15 +43,31 @@ export const useWalletStore = defineStore('wallet', {
             }
             return signedTransaction
         },
-        async createDidDocumentTransaction(assessedArticle: AssessedArticleInfo, assessment: AssessmentInfo) {
+        async createDidDocumentTransaction(credentialSubject: FactsSubjectCredential, vMethodId: string) {
             if (!this.ebsiAccessToken) {
                 return
             }
             if (!this.ethWallet.ethAddress) {
                 return
             }
-            const response = await EbsiDidrRepo.createDidDocumentTransaction(this.ebsiAccessToken, this.ethWallet.ethAddress, undefined)
-            console.log("R" + response)
+            const payloadInsertDidDocument = {
+                "jsonrpc": "2.0",
+                "method": "insertDidDocument",
+                "params": [
+                    {
+                        "from": this.ethWallet.ethAddress,
+                        "did": credentialSubject.id,
+                        "baseDocument": "{\"@context\":[\"https://www.w3.org/ns/did/v1\",\"https://w3id.org/security/suites/jws-2020/v1\"]}",
+                        vMethodId,
+                        "publicKey": this.ethWallet.publicKey,
+                        "isSecp256k1": true,
+                        "notBefore": Date.now(),
+                        "notAfter": Date.now() + 3600 * 1000,
+                    }
+                ],
+                "id": 474
+            }
+            const response = await EbsiDidrRepo.createDidDocumentTransaction(this.ebsiAccessToken, payloadInsertDidDocument)
             return response?.data
         },
         async confirmDidDocumentTransaction(assessmentId: string, signedTransaction: {}) {

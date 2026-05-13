@@ -1,5 +1,7 @@
 import ebsiClient from '@/repositories/ebsi_base.ts'
 
+
+
 const payloadInsertDidDocument = {
     "jsonrpc": "2.0",
     "method": "insertDidDocument",
@@ -37,7 +39,7 @@ const payloadSendSignedTransaction = {
 
 export default {
 
-    async createDidDocumentTransaction(accessToken: string, ethAddress: string, payload: any) {
+    async createDidDocumentTransaction(accessToken: string, payload: any) {
         return await ebsiClient.post('/did-registry/jsonrpc', payload,
             {
                 headers: {

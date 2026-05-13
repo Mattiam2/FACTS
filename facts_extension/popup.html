@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FACTS Extension</title>
+    <link rel="stylesheet" href="material-icons.css"/>
+    <style>
+        :root {
+            --bg-dark: #080d1a;
+            --card-bg: #1e2227;
+            --teal-accent: #4db6ac;
+            --text-main: #ffffff;
+            --text-dim: #9ca3af;
+            --border-color: #2d3239;
+        }
+
+        body {
+            width: 350px;
+            margin: 0;
+            font-family: 'Inter', -apple-system, sans-serif;
+            background-color: var(--bg-dark);
+            color: var(--text-main);
+            overflow-x: hidden;
+        }
+
+        /* Header con Logo */
+        .header {
+            background-color: var(--card-bg);
+            padding: 14px 16px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .logo-container {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .logo-f {
+            background-color: var(--bg-dark);
+            color: var(--teal-accent);
+            font-weight: 900;
+            width: 24px;
+            height: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 4px;
+            font-size: 16px;
+        }
+
+        .brand-name {
+            font-size: 18px;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+        }
+
+        .container {
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        /* Card Stile Dashboard */
+        .card {
+            background: var(--card-bg);
+            border-radius: 12px;
+            padding: 10px;
+            border: 1px solid var(--border-color);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+        }
+
+        /* Sezione Gauges */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-top: 8px;
+        }
+
+        .gauge-wrapper {
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .gauge-label {
+            font-size: 11px;
+            color: var(--text-dim);
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+        }
+
+        /* SVG Gauge Style */
+        .gauge-svg {
+            width: 80px;
+            height: 50px;
+        }
+
+        .gauge-bg {
+            fill: none;
+            stroke: #374151;
+            stroke-width: 8;
+            stroke-linecap: round;
+        }
+
+        .gauge-fill {
+            fill: none;
+            stroke: var(--teal-accent);
+            stroke-width: 8;
+            stroke-linecap: round;
+            stroke-dasharray: 126; /* Lunghezza arco */
+            stroke-dashoffset: 63; /* Esempio al 50% */
+            transition: stroke-dashoffset 1s ease-out;
+        }
+
+        .gauge-value {
+            font-size: 14px;
+            font-weight: 700;
+            fill: var(--text-main);
+        }
+
+        /* Loading e Messaggi */
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 600;
+            background: rgba(77, 182, 172, 0.1);
+            color: var(--teal-accent);
+            border: 1px solid rgba(77, 182, 172, 0.2);
+        }
+
+        .loading-state {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 120px;
+            gap: 12px;
+            color: var(--text-dim);
+        }
+
+        .spinner {
+            width: 24px;
+            height: 24px;
+            border: 3px solid rgba(77, 182, 172, 0.2);
+            border-top-color: var(--teal-accent);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        .footer {
+            padding: 12px 16px;
+            font-size: 10px;
+            color: var(--text-dim);
+            text-align: center;
+            border-top: 1px solid var(--border-color);
+        }
+
+        .ambient-bg {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: radial-gradient(ellipse at center, rgba(0, 229, 180, 0.2) 0%, transparent 90%);
+            pointer-events: none;
+            z-index: 0;
+        }
+
+    </style>
+</head>
+<body>
+<div class="ambient-bg"></div>
+<div class="header">
+    <div class="logo-container">
+        <div class="logo-f">F</div>
+        <span class="brand-name">FACTS</span>
+    </div>
+    <div class="status-badge" id="status-text">EBSI Verified</div>
+</div>
+
+<div class="container">
+
+    <div id="main-content">
+        <div class="loading-state" id="loading-view">
+            <div class="spinner"></div>
+            <span>Looking on EBSI...</span>
+        </div>
+
+        <div id="article-view" style="display: none; margin: 0px auto 20px auto" class="card">
+            <div id="article-title" style="font-weight: 600; font-size: 14px; line-height: 1.4;">
+                Page not claimed yet on FACTS
+            </div>
+            <div id="publisher-view" style="display: none; position: relative; margin-top: 12px; " class="card">
+                <div class="material-symbols-outlined" style="font-size: 20px; position: absolute; top: 10px; right: 10px; color: var(--teal-accent);">
+                    verified_user
+                </div>
+                <div style="font-size: 12px; color: var(--text-dim); margin-bottom: 6px;">
+                    <span>
+                        Publisher Info
+                    </span>
+                </div>
+                <div>
+                    <b>DID</b>: <span id="publisher-did"></span>
+                </div>
+                <div>
+                    <b>Company</b>: <span id="publisher-company"></span>
+                </div>
+                <div>
+                    <b>Website</b>: <span id="publisher-website"></span>
+                </div>
+            </div>
+        </div>
+        <div id="assessments-view" style="display: none; margin: 20px auto 0px auto" class="card">
+            <div class="stats-grid">
+                <div class="gauge-wrapper">
+                    <span class="gauge-label">Credibility</span>
+                    <svg class="gauge-svg" viewBox="0 0 100 60">
+                        <path class="gauge-bg" d="M 10 50 A 40 40 0 0 1 90 50"/>
+                        <path id="credibility-gauge" class="gauge-fill" d="M 10 50 A 40 40 0 0 1 90 50"
+                              style="stroke-dashoffset: 1;"/>
+                        <text x="50" y="45" text-anchor="middle" class="gauge-value" id="credibility-avg-score"></text>
+                    </svg>
+                    <h3 id="credibility-description"></h3>
+                </div>
+
+                <div class="gauge-wrapper">
+                    <span class="gauge-label">Manipulation</span>
+                    <svg class="gauge-svg" viewBox="0 0 100 60">
+                        <path class="gauge-bg" d="M 10 50 A 40 40 0 0 1 90 50"/>
+                        <path id="manipulation-gauge" class="gauge-fill" d="M 10 50 A 40 40 0 0 1 90 50"
+                              style="stroke-dashoffset: 100;"/>
+                        <text x="50" y="45" text-anchor="middle" class="gauge-value" id="manipulation-avg-score"></text>
+                    </svg>
+                    <h3 id="manipulation-description"></h3>
+                </div>
+            </div>
+            Based on <span id="assessments-number"></span> assessments
+        </div>
+        <div id="assessments-not-found-view" style="display: none; margin: 20px auto 0px auto" class="card">
+            <div style="font-weight: 600; font-size: 14px; line-height: 1.4;">
+                No fact-checking assessments found
+            </div>
+        </div>
+    </div>
+
+    <div id="actions" style="display: flex; gap: 10px">
+        <button id="view-details"
+                style="display: none; width: 100%; background: var(--teal-accent); color: var(--bg-dark); border: none; padding: 10px; border-radius: 8px; font-weight: 700; cursor: pointer;">
+            More details
+        </button>
+        <button id="view-facts"
+                style="width: 100%; background: var(--teal-accent); color: var(--bg-dark); border: none; padding: 10px; border-radius: 8px; font-weight: 700; cursor: pointer;">
+            Open FACTS
+        </button>
+    </div>
+
+</div>
+
+<div class="footer">
+    FACTS v1.0 | Powered by EBSI & SSI
+</div>
+
+<script src="popup.js"></script>
+</body>
+</html>

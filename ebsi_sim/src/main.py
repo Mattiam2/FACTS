@@ -5,6 +5,7 @@ from typing import Callable, Awaitable
 from fastapi import FastAPI, Request, Response
 from sqlalchemy.exc import SQLAlchemyError
 from sqlmodel import Session
+from starlette.middleware.cors import CORSMiddleware
 from starlette.responses import JSONResponse
 
 from ebsi_sim.src.api.authorisation import router as authapp
@@ -79,3 +80,11 @@ async def db_session_handler(request: Request, call_next: Callable[[Request], Aw
         finally:
             session_ctx.reset(session_token)
             session.close()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)

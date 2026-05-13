@@ -37,7 +37,7 @@
             <VCardActions>
               <VBtn variant="tonal" :to="{path: '/wallet'}" color="primary">Operations</VBtn>
               <VBtn variant="tonal" prepend-icon="mdi-link-variant-off"
-                    @click="walletStore.ethWallet = { ethAddress: undefined, privateKey: undefined}" color="primary">
+                    @click="walletStore.$reset" color="primary">
                 Unlink
               </VBtn>
             </VCardActions>

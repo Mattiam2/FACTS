@@ -20,7 +20,7 @@ export interface ArticleInfo {
     sources: string[]
 }
 
-enum CredibilityScore {
+export enum CredibilityScore {
     FALSE = 1,
     PARTIALLY_FALSE = 2,
     MISSING_CONTEXT = 3,
@@ -33,7 +33,7 @@ export interface CredibilityEvaluation {
     score?: CredibilityScore
 }
 
-enum ManipulationScore {
+export enum ManipulationScore {
     TOTALLY_MANIPULATED = 1,  // Exactly 100% of content is artificially produced
     HEAVILY_MANIPULATED = 2,  // More than 75% of content is artificially produced
     PARTIALLY_MANIPULATED = 3,  // 25% to 75% of content is artificially produced

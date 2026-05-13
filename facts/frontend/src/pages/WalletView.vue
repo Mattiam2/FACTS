@@ -27,8 +27,15 @@
             </VCard>
             <VCard title="Operations" variant="tonal" class="my-4" v-if="walletStore.ethWallet.ethAddress">
               <VCardText>
-                <VBtn @click="openEncapsulation" color="primary" class="ma-1">Create Verifiable Presentation</VBtn>
-                <VBtn @click="openOnboardingEbsi" color="primary" class="ma-1">Onboard on EBSI DID Register</VBtn>
+                <VBtn @click="openEncapsulation" color="primary" class="ma-1" v-if="!authStore.factsAccessToken">Create
+                  Verifiable Presentation
+                </VBtn>
+                <VBtn @click="openOnboardingEbsi" color="primary" class="ma-1" v-if="!authStore.factsAccessToken">
+                  Onboard on EBSI DID Register
+                </VBtn>
+                <VBtn @click="openOnboardingEbsi" color="primary" class="ma-1" v-if="!authStore.factsAccessToken">
+                  Onboard on EBSI Track and Trace
+                </VBtn>
               </VCardText>
             </VCard>
           </VCardText>
@@ -85,8 +92,14 @@
 
             <template #item.2>
               <VSheet min-height="300">
-                <VProgressCircular indeterminate/>
-                Getting DIDR Invite Access Token...
+                <b>DID</b>: {{ subjectCredential?.id }}<br/>
+                <b>Company</b>: {{ subjectCredential?.company_name }}<br/>
+                <b>Role</b>: {{ subjectCredential?.role }}<br/><br/>
+
+                <div v-if="!walletStore.ebsiAccessToken">
+                  <VProgressCircular indeterminate/>
+                  Getting DIDR Invite Access Token...
+                </div>
               </VSheet>
             </template>
             <template #item.3>
@@ -116,9 +129,9 @@
             </template>
             <template #actions="{ prev, next }">
               <VStepperActions
-                @click:next="next"
-                @click:prev="prev">
-              </VStepperActions>
+                  @click:next="customNext(next)"
+                  :disabled="onboardingStep === 2 && !walletStore.ebsiAccessToken"
+                  @click:prev="prev"/>
             </template>
           </VStepper>
         </VCardText>
@@ -128,16 +141,19 @@
 </template>
 
 <script lang="ts" setup>
-import type {VerifiablePresentation, VPPayload} from "@/types";
+import type {FactsSubjectCredential, VerifiablePresentation, VPPayload} from "@/types";
 import {hexToBytes} from '@noble/curves/abstract/utils'
 import {p256} from '@noble/curves/p256';
 import {secp256k1} from '@noble/curves/secp256k1'
 import {type Ref, ref} from "vue";
 import {useAppStore} from "@/stores/app.ts";
+import {useAuthStore} from "@/stores/auth.ts";
 import {useWalletStore} from "@/stores/wallet.ts";
+import {extractSubjectCredential} from "@/utility.ts";
 
 const appStore = useAppStore()
 const walletStore = useWalletStore()
+const authStore = useAuthStore()
 
 const onboardingStep = ref(1) as Ref<number>
 const ethAddress = ref('')
@@ -161,6 +177,7 @@ const credentialToken = ref('')
 const privateKey = ref('')
 const verificationId = ref('')
 const vpToken = ref('')
+const subjectCredential = ref(undefined) as Ref<FactsSubjectCredential | undefined>
 
 const algorithmType = ref('ES256') as Ref<string>
 
@@ -183,6 +200,24 @@ function getDataFromVcToken(vcToken: string): { iss: string, sub: string } {
   return {iss: payload.iss, sub: payload.sub};
 }
 
+function customNext(next: () => void) {
+  if (onboardingStep.value == 1) {
+    const parts = vpToken.value.split('.')
+    if (parts.length !== 3) {
+      appStore.addToastMessage('Invalid JWT format', 'error')
+      vpToken.value = ''
+      return false
+    }
+    const payload = JSON.parse(atob(parts[1].replace(/-/g, '+').replace(/_/g, '/')))
+    subjectCredential.value = extractSubjectCredential(payload.vp.verifiableCredential[0])
+    walletStore.requestEbsiAccessToken(vpToken.value, "didr_invite")
+    next()
+
+  }
+  if (onboardingStep.value == 2) {
+    next()
+  }
+}
 
 function base64url(input: Uint8Array | string): string {
   const bytes =
