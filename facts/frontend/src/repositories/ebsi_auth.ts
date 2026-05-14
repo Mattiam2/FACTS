@@ -25,23 +25,13 @@ const payloadDidrInvite = {
 const payloadDidrWrite = {
     "grant_type": "vp_token",
     "presentation_submission": {
-        "definition_id": "didr_invite_presentation",
+        "definition_id": "didr_write_presentation",
         "descriptor_map": [
-            {
-                "format": "jwt_vp",
-                "id": "didr_invite_credential",
-                "path": "$",
-                "path_nested": {
-                    "format": "jwt_vc",
-                    "id": "didr_invite_credential",
-                    "path": "$.vp.verifiableCredential[0]"
-                }
-            }
         ],
         "id": undefined as string | undefined,
     },
-    "scope": "openid didr_invite",
-    "vp_token": undefined as string | undefined,
+    "scope": "openid didr_write",
+    "vp_token": undefined as string | undefined
 }
 
 
@@ -50,6 +40,8 @@ export default {
         let payload = undefined
         if(scope == "didr_invite"){
             payload = payloadDidrInvite
+        }else if(scope == "didr_write"){
+            payload = payloadDidrWrite
         }
         if(!payload){
             return

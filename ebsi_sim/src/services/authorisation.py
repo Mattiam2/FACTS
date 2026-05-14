@@ -246,7 +246,7 @@ class AuthService:
             if vmethod.did_controller != vmethod_issuer: #Issuer della credential corrisponde al did_controller del vmethod usato?
                 raise AuthServiceRequestError("Verification method is not owned by the issuer")
 
-            if vmethod.notafter < datetime.now():
+            if vmethod.notafter is not None and vmethod.notafter < datetime.now():
                 raise AuthServiceRequestError("Verification method is expired")
 
             vrels = self.verification_relationship_repository.list(identifier_did=vmethod_issuer,

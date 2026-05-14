@@ -39,7 +39,7 @@ const payloadSendSignedTransaction = {
 
 export default {
 
-    async createDidDocumentTransaction(accessToken: string, payload: any) {
+    async createDidrTransaction(accessToken: string, payload: any) {
         return await ebsiClient.post('/did-registry/jsonrpc', payload,
             {
                 headers: {
@@ -50,7 +50,7 @@ export default {
         )
     },
 
-    async confirmDidDocumentTransaction(accessToken: string, articleId: string, signedTransaction: {}) {
+    async confirmDidrTransaction(accessToken: string, signedTransaction: {}) {
         return await ebsiClient.post(`/did-registry/jsonrpc`, signedTransaction,
             {
                 headers: {

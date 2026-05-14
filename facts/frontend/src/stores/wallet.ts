@@ -1,4 +1,4 @@
-import type {AssessedArticleInfo, AssessmentInfo, FactsSubjectCredential} from "@/types";
+import type {FactsSubjectCredential} from "@/types";
 import {defineStore} from 'pinia'
 import {type Transaction, Web3} from "web3";
 import EbsiAuthRepo from '@/repositories/ebsi_auth.ts'
@@ -26,14 +26,17 @@ export const useWalletStore = defineStore('wallet', {
             }
             this.ethWallet.ethAddress = ethAddress
             this.ethWallet.privateKey = ethPrivateKey
-            this.ethWallet.publicKey = web3.eth.accounts.privateKeyToPublicKey(ethPrivateKey, false);
+            this.ethWallet.publicKey = web3.eth.accounts.privateKeyToPublicKey(ethPrivateKey, false).replace("0x", "0x04");
         },
-        async signTransaction(transaction: Transaction, ethPrivateKey: string) {
+        async signTransaction(transaction: Transaction) {
+            if (!this.ethWallet.privateKey) {
+                throw new Error("Wallet not linked")
+            }
             const web3 = new Web3()
             transaction.gas = 103972
-            const signedTx = await web3.eth.accounts.signTransaction(transaction, ethPrivateKey);
+            const signedTx = await web3.eth.accounts.signTransaction(transaction, this.ethWallet.privateKey);
 
-            const signedTransaction = {
+            return {
                 protocol: "eth",
                 unsignedTransaction: transaction,
                 r: signedTx.r,
@@ -41,7 +44,6 @@ export const useWalletStore = defineStore('wallet', {
                 v: Number.parseInt(signedTx.v),
                 signedRawTransaction: signedTx.rawTransaction.slice(2),
             }
-            return signedTransaction
         },
         async createDidDocumentTransaction(credentialSubject: FactsSubjectCredential, vMethodId: string) {
             if (!this.ebsiAccessToken) {
@@ -61,25 +63,82 @@ export const useWalletStore = defineStore('wallet', {
                         vMethodId,
                         "publicKey": this.ethWallet.publicKey,
                         "isSecp256k1": true,
-                        "notBefore": Date.now(),
-                        "notAfter": Date.now() + 3600 * 1000,
+                        "notBefore": Math.round(Date.now() / 1000),
+                        "notAfter": Math.round((Date.now() + 3600 * 24 * 365 * 1000) / 1000),
                     }
                 ],
                 "id": 474
             }
-            const response = await EbsiDidrRepo.createDidDocumentTransaction(this.ebsiAccessToken, payloadInsertDidDocument)
+            const response = await EbsiDidrRepo.createDidrTransaction(this.ebsiAccessToken, payloadInsertDidDocument)
             return response?.data
         },
-        async confirmDidDocumentTransaction(assessmentId: string, signedTransaction: {}) {
+        async confirmDidrTransaction(signedTransaction: {}) {
             if (!this.ebsiAccessToken) {
                 return
             }
             if (!this.ethWallet.ethAddress) {
                 return
             }
-            const response = await EbsiDidrRepo.confirmDidDocumentTransaction(this.ebsiAccessToken, assessmentId, signedTransaction)
+            const payloadInsertDidDocumentConfirmed = {
+                "jsonrpc": "2.0",
+                "method": "sendSignedTransaction",
+                "params": [
+                    signedTransaction
+                ],
+                "id": 575
+            }
+            const response = await EbsiDidrRepo.confirmDidrTransaction(this.ebsiAccessToken, payloadInsertDidDocumentConfirmed)
             return response?.data
         },
+        async createVerificationMethodTransaction(credentialSubject: FactsSubjectCredential, vMethodId: string, publicKey: string, isSecp256k1: boolean) {
+            if (!this.ebsiAccessToken) {
+                return
+            }
+            if (!this.ethWallet.ethAddress) {
+                return
+            }
+            const payloadAddVMethod = {
+                "jsonrpc": "2.0",
+                "method": "addVerificationMethod",
+                "params": [
+                    {
+                        "from": this.ethWallet.ethAddress,
+                        "did": credentialSubject.id,
+                        vMethodId,
+                        publicKey,
+                        isSecp256k1
+                    }
+                ],
+                "id": 575
+            }
+            const response = await EbsiDidrRepo.createDidrTransaction(this.ebsiAccessToken, payloadAddVMethod)
+            return response?.data
+        },
+        async createVerificationRelationshipTransaction(credentialSubject: FactsSubjectCredential, vMethodId: string, relationshipType: string) {
+            if (!this.ebsiAccessToken) {
+                return
+            }
+            if (!this.ethWallet.ethAddress) {
+                return
+            }
+            const payloadAddVMethod = {
+                "jsonrpc": "2.0",
+                "method": "addVerificationRelationship",
+                "params": [
+                    {
+                        "from": this.ethWallet.ethAddress,
+                        "did": credentialSubject.id,
+                        "name": relationshipType,
+                        vMethodId,
+                        "notBefore": Math.round(Date.now() / 1000),
+                        "notAfter": Math.round((Date.now() + 3600 * 24 * 365 * 10 * 1000) / 1000),
+                    }
+                ],
+                "id": 575
+            }
+            const response = await EbsiDidrRepo.createDidrTransaction(this.ebsiAccessToken, payloadAddVMethod)
+            return response?.data
+        }
     },
     persist: true,
 })

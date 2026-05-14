@@ -37,7 +37,7 @@
             <VCardActions>
               <VBtn variant="tonal" :to="{path: '/wallet'}" color="primary">Operations</VBtn>
               <VBtn variant="tonal" prepend-icon="mdi-link-variant-off"
-                    @click="walletStore.$reset" color="primary">
+                    @click="resetWalletStore()" color="primary">
                 Unlink
               </VBtn>
             </VCardActions>
@@ -75,6 +75,10 @@ import {useWalletStore} from "@/stores/wallet.ts";
 
 const authStore = useAuthStore()
 const walletStore = useWalletStore()
+
+function resetWalletStore(){
+  walletStore.$reset()
+}
 
 function logout() {
   authStore.$reset()

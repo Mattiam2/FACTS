@@ -126,6 +126,10 @@ async function requestArticleCreation() {
     appStore.addToastMessage(`Please login to FACTS`, 'error')
     return
   }
+  if(!walletStore.ethWallet.ethAddress){
+    appStore.addToastMessage(`Please connect your wallet`, 'error')
+    return
+  }
   article.value.sources = article.value.sources.filter(source => source.trim() !== '')
   const response = await articleStore.createArticleTransaction(authStore.factsAccessToken, walletStore.ethWallet.ethAddress, article.value)
   appStore.addToastMessage(`Received transaction`, 'success')
@@ -154,7 +158,7 @@ async function signTransaction() {
 
   const transaction: Transaction = transactionToSign.value as Transaction
   transaction.gas = 103972
-  const factsSignedTransaction = walletStore.signTransaction(transaction, ethPrivateKey.value)
+  const factsSignedTransaction = walletStore.signTransaction(transaction)
 
   const response = await articleStore.confirmArticleTransaction(authStore.factsAccessToken, transactionDocumentHash.value, factsSignedTransaction)
   if (response) {
