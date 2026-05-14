@@ -37,7 +37,7 @@
                       v-if="!authStore.factsAccessToken">
                   Add Verification Method
                 </VBtn>
-                <VBtn @click="openOnboardingEbsi" color="primary" class="ma-1" v-if="!authStore.factsAccessToken">
+                <VBtn @click="openAuthoriseDid" color="primary" class="ma-1" v-if="!authStore.factsAccessToken">
                   Onboard on EBSI Track and Trace
                 </VBtn>
               </VCardText>
@@ -116,7 +116,7 @@
                   Requesting transaction...
                 </div>
                 <div v-else-if="!txHash">
-                  <VBtn @click="signTransaction">Sign transaction</VBtn>
+                  <VBtn @click="signDidrTransaction">Sign transaction</VBtn>
                 </div>
                 <div v-else-if="txHash">
                   DID created in DID Registry!<br/>
@@ -222,9 +222,7 @@
                 </div>
                 <div v-else-if="txHash">
                   <VIcon>mdi-check-circle</VIcon>
-                  You've successfully onboarded on EBSI!<br><br>
-                  <b>Next step:</b> Create a new VP with your current credential signed with an ES256 verification
-                  method.
+                  Added Verification Method correctly
                 </div>
               </VSheet>
             </template>
@@ -250,7 +248,46 @@
           prepend-icon="mdi-certificate"
       >
         <VCardText>
-
+          <VStepper v-model="tntAuthoriseStep" :flat="true" elevation="0"
+                    :items="['Provide VP', 'Get TNT Authorise', 'Sign transaction']">
+            <template #item.1>
+              <VSheet min-height="300">
+                Please present a signed Verifiable Presentation onboarded on DID Registry
+                <VTextarea label="VP Token" v-model="stepOneVpToken" class="mt-5" variant="outlined"/>
+              </VSheet>
+            </template>
+            <template #item.2>
+              <VSheet min-height="300">
+                <div v-if="!walletStore.ebsiAccessToken">
+                  <VProgressCircular indeterminate/>
+                  Getting TNT Authorise Scope...
+                </div>
+                <div v-else>
+                  TNT Authorise Scope obtained, you can continue
+                </div>
+              </VSheet>
+            </template>
+            <template #item.3>
+              <VSheet min-height="300">
+                <div v-if="!transactionToSign">
+                  <VProgressCircular indeterminate/>
+                  Requesting transaction...
+                </div>
+                <div v-else-if="!txHash">
+                  <VBtn @click="signTntTransaction">Sign transaction</VBtn>
+                </div>
+                <div v-else-if="txHash">
+                  DID is now whitelisted on TNT!
+                </div>
+              </VSheet>
+            </template>
+            <template #actions="{ prev, next }">
+              <VStepperActions
+                  @click:next="tntAuthoriseCustomNext(next)"
+                  :disabled="(tntAuthoriseStep === 2 && !walletStore.ebsiAccessToken)"
+                  @click:prev="prev"/>
+            </template>
+          </VStepper>
         </VCardText>
       </VCard>
     </VDialog>
@@ -275,6 +312,7 @@ const authStore = useAuthStore()
 const loadingText = ref('Loading...')
 const onboardingStep = ref(1) as Ref<number>
 const addVMethodStep = ref(1) as Ref<number>
+const tntAuthoriseStep = ref(1) as Ref<number>
 const ethAddress = ref('')
 const ethPrivateKey = ref('')
 
@@ -321,6 +359,11 @@ function openOnboardingEbsi() {
 function openVerificationMethodCreation() {
   walletStore.ebsiAccessToken = undefined
   addVerificationMethodDialog.value = true
+}
+
+function openAuthoriseDid() {
+  walletStore.ebsiAccessToken = undefined
+  tntAuthoriseDialog.value = true
 }
 
 function getDataFromVcToken(vcToken: string): { iss: string, sub: string } {
@@ -420,7 +463,7 @@ async function addVMethodCustomNext(next: () => void) {
     const response = await walletStore.createVerificationMethodTransaction(subjectCredential.value, stepThreeVMethodId.value, stepThreePublicKey.value, algorithmType.value == "ES256K")
     transactionToSign.value = response.result
     loadingText.value = 'Signing addVerificationMethod transaction...'
-    const vMethodAddedResult = await signTransaction()
+    const vMethodAddedResult = await signDidrTransaction()
     loadingText.value = 'Verification method added!'
     if(vMethodAddedResult) {
       for(const rel of stepThreeVMethodRels.value) {
@@ -428,7 +471,7 @@ async function addVMethodCustomNext(next: () => void) {
         const response = await walletStore.createVerificationRelationshipTransaction(subjectCredential.value, stepThreeVMethodId.value, rel)
         transactionToSign.value = response.result
         loadingText.value = `Signing addVerificationRelationship transaction for ${rel}...`
-        const result = await signTransaction()
+        const result = await signDidrTransaction()
         if(!result){
           loadingText.value = `Error signing addVerificationRelationship transaction for ${rel}!`
           return
@@ -437,6 +480,38 @@ async function addVMethodCustomNext(next: () => void) {
       }
       addVMethodCompleted.value = true
     }
+  }
+}
+
+async function tntAuthoriseCustomNext(next: () => void) {
+  if (tntAuthoriseStep.value == 1) {
+    if (!stepOneVpToken.value.trim()) {
+      appStore.addToastMessage('Please enter the VP token', 'error')
+      return false
+    }
+    const parts = stepOneVpToken.value.split('.')
+    if (parts.length !== 3) {
+      appStore.addToastMessage('Invalid JWT format', 'error')
+      stepOneVpToken.value = ''
+      return false
+    }
+    const payload = JSON.parse(atob(parts[1].replace(/-/g, '+').replace(/_/g, '/')))
+    subjectCredential.value = extractSubjectCredential(payload.vp.verifiableCredential[0])
+    walletStore.requestEbsiAccessToken(stepOneVpToken.value, "tnt_authorise")
+    next()
+  } else if (tntAuthoriseStep.value == 2) {
+    if (!subjectCredential.value) {
+      appStore.addToastMessage("You've skipped step One!", 'error')
+      return false
+    }
+    if (!walletStore.ebsiAccessToken) {
+      appStore.addToastMessage('Please wait for the TNT Authorise access token to be received', 'error')
+      return false
+    }
+    walletStore.createAuthoriseDidTransaction(subjectCredential.value).then(response => {
+      transactionToSign.value = response.result
+    })
+    next()
   }
 }
 
@@ -497,13 +572,24 @@ async function signJwt(
   return `${signingInput}.${encodedSignature}`;
 }
 
-async function signTransaction() {
+async function signDidrTransaction() {
   if (!transactionToSign.value) {
     appStore.addToastMessage('No transaction to sign', 'error')
     return false
   }
   const signedTransaction = await walletStore.signTransaction(transactionToSign.value)
   const response = await walletStore.confirmDidrTransaction(signedTransaction)
+  txHash.value = response.result
+  return response.result
+}
+
+async function signTntTransaction() {
+  if (!transactionToSign.value) {
+    appStore.addToastMessage('No transaction to sign', 'error')
+    return false
+  }
+  const signedTransaction = await walletStore.signTransaction(transactionToSign.value)
+  const response = await walletStore.confirmTntTransaction(signedTransaction)
   txHash.value = response.result
   return response.result
 }

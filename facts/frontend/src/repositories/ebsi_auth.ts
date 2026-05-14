@@ -34,6 +34,28 @@ const payloadDidrWrite = {
     "vp_token": undefined as string | undefined
 }
 
+const payloadTntAuthorise = {
+    "grant_type": "vp_token",
+    "presentation_submission": {
+        "definition_id": "tnt_authorise_presentation",
+        "descriptor_map": [
+            {
+                "format": "jwt_vp",
+                "id": "tnt_authorise_credential",
+                "path": "$",
+                "path_nested": {
+                    "format": "jwt_vc",
+                    "id": "tnt_authorise_credential",
+                    "path": "$.vp.verifiableCredential[0]"
+                }
+            }
+        ],
+        "id": undefined as string | undefined,
+    },
+    "scope": "openid tnt_authorise",
+    "vp_token": undefined as string | undefined
+}
+
 
 export default {
     async authenticate(vpToken: string, scope: string) {
@@ -42,6 +64,8 @@ export default {
             payload = payloadDidrInvite
         }else if(scope == "didr_write"){
             payload = payloadDidrWrite
+        }else if(scope == "tnt_authorise"){
+            payload = payloadTntAuthorise
         }
         if(!payload){
             return

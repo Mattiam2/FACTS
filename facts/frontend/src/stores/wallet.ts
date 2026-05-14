@@ -3,6 +3,7 @@ import {defineStore} from 'pinia'
 import {type Transaction, Web3} from "web3";
 import EbsiAuthRepo from '@/repositories/ebsi_auth.ts'
 import EbsiDidrRepo from '@/repositories/ebsi_didr.ts'
+import EbsiTntRepo from '@/repositories/ebsi_tnt.ts'
 
 export const useWalletStore = defineStore('wallet', {
     state: () => ({
@@ -79,7 +80,7 @@ export const useWalletStore = defineStore('wallet', {
             if (!this.ethWallet.ethAddress) {
                 return
             }
-            const payloadInsertDidDocumentConfirmed = {
+            const payloadDidr = {
                 "jsonrpc": "2.0",
                 "method": "sendSignedTransaction",
                 "params": [
@@ -87,7 +88,7 @@ export const useWalletStore = defineStore('wallet', {
                 ],
                 "id": 575
             }
-            const response = await EbsiDidrRepo.confirmDidrTransaction(this.ebsiAccessToken, payloadInsertDidDocumentConfirmed)
+            const response = await EbsiDidrRepo.confirmDidrTransaction(this.ebsiAccessToken, payloadDidr)
             return response?.data
         },
         async createVerificationMethodTransaction(credentialSubject: FactsSubjectCredential, vMethodId: string, publicKey: string, isSecp256k1: boolean) {
@@ -138,7 +139,48 @@ export const useWalletStore = defineStore('wallet', {
             }
             const response = await EbsiDidrRepo.createDidrTransaction(this.ebsiAccessToken, payloadAddVMethod)
             return response?.data
-        }
+        },
+        async createAuthoriseDidTransaction(credentialSubject: FactsSubjectCredential) {
+            if (!this.ebsiAccessToken) {
+                return
+            }
+            if (!this.ethWallet.ethAddress) {
+                return
+            }
+            const payloadAuthoriseDid = {
+                "jsonrpc": "2.0",
+                "method": "authoriseDid",
+                "params": [
+                    {
+                        "from": this.ethWallet.ethAddress,
+                        "senderDid": credentialSubject.id,
+                        "authorisedDid": credentialSubject.id,
+                        "whiteList": "0x01"
+                    }
+                ],
+                "id": 575
+            }
+            const response = await EbsiTntRepo.createTntTransaction(this.ebsiAccessToken, payloadAuthoriseDid)
+            return response?.data
+        },
+        async confirmTntTransaction(signedTransaction: {}) {
+            if (!this.ebsiAccessToken) {
+                return
+            }
+            if (!this.ethWallet.ethAddress) {
+                return
+            }
+            const payloadTnt = {
+                "jsonrpc": "2.0",
+                "method": "sendSignedTransaction",
+                "params": [
+                    signedTransaction
+                ],
+                "id": 575
+            }
+            const response = await EbsiTntRepo.confirmTntTransaction(this.ebsiAccessToken, payloadTnt)
+            return response?.data
+        },
     },
     persist: true,
 })

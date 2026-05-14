@@ -39,7 +39,7 @@ def rpc(current_user: Annotated[User, Depends(get_current_user)], payload: JsonR
 
     capability_invocation_method_ids = [vrel.vmethodid for vrel in vrelationships if
                                         vrel.name == "capabilityInvocation"]
-    capability_invocation_methods = [vmethod for vmethod in vmethods if vmethod.id in capability_invocation_method_ids]
+    capability_invocation_methods = [vmethod for vmethod in vmethods if vmethod.id in capability_invocation_method_ids and vmethod.issecp256k1]
 
     json_rpc_result = tnt_service.handle_rpc(current_user, payload, capability_invocation_methods)
 

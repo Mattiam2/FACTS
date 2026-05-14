@@ -14,6 +14,7 @@ from ebsi_sim.src.models.didr import Identifier, VerificationMethod
 from ebsi_sim.src.repositories.didr import IdentifierRepository, IdentifierControllerRepository, \
     VerificationMethodRepository, VerificationRelationshipRepository
 from ebsi_sim.src.schemas import JsonRpcCreate, ScopeEnum
+from ebsi_sim.src.schemas.verification import VerificationRelationshipNameEnum
 from ebsi_sim.src.utils import build_unsigned_transaction, exec_signed_transaction
 
 
@@ -303,6 +304,13 @@ class DidrService:
         not_after_date = datetime.fromtimestamp(not_after)
 
         full_vmethod_id = f"{did}#{v_method_id}"
+        vmethod = self.verification_method_repository.get(id=full_vmethod_id)
+        if not vmethod:
+            raise DidrServiceNotFoundError("Verification method not found")
+        if vmethod.notafter < datetime.now():
+            raise DidrServiceRequestError("Cannot add a relationship with a method that has expired")
+        if not vmethod.issecp256k1 and name == VerificationRelationshipNameEnum.capabilityInvocation:
+            raise DidrServiceRequestError("Cannot add a capabilityInvocation relationship to a non-secp256k1 method")
         self.verification_relationship_repository.create(identifier_did=did, name=name,
                                                          vmethodid=full_vmethod_id,
                                                          notbefore=not_before_date, notafter=not_after_date)
