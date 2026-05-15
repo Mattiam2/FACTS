@@ -2,7 +2,7 @@
   <VContainer>
     <VRow justify="center" align="center">
       <VCol cols="12">
-        <VCard>
+        <VCard variant="tonal">
           <VCardItem>
             <VCardTitle>Access BackOffice</VCardTitle>
             <VCardSubtitle>Authenticate with your EBSI Wallet credentials</VCardSubtitle>

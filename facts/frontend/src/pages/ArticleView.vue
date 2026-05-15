@@ -17,6 +17,8 @@
             </VCard>
             <VCard v-if="article" variant="tonal" title="Article">
               <VCardText>
+                <b>URL</b>: <a :href="article.metadata.article_info.url"
+                               target="_blank">{{ article.metadata.article_info.url }}</a><br>
                 <b>Title</b>: {{ article.metadata.article_info.title }}<br>
                 <b>Author</b>: {{ article.metadata.article_info.author }}<br>
                 <b>Description</b>: {{ article.metadata.article_info.description }}<br>
@@ -25,15 +27,29 @@
                 <div v-if="article.metadata.article_info.sources && article.metadata.article_info.sources.length > 0">
                   <b>Sources</b>:
                   <div v-for="source in article.metadata.article_info.sources" :key="source" class="d-flex ga-2">
-                    <VIcon icon="mdi-link" color="primary" size="16"/>
-                    {{ source }}
+                    <a :href="source" target="_blank" v-if="source.startsWith('http')" class="text-decoration-none">
+                      <VIcon icon="mdi-link" color="primary" size="16"/>
+                      <span class="text-decoration-underline ms-1">{{ source }}</span>
+                    </a>
+                    <span v-else>{{ source }}</span>
+
                   </div>
                 </div>
 
               </VCardText>
             </VCard>
             <VCard variant="tonal" v-else>
-              <VCardText>No publisher claim for this article, only fact-checking assessments found.</VCardText>
+              <VCardText>
+                <div v-if="assessments.length > 0 && assessments[0].article_url" class="mb-3">
+                  <b>URL</b>: <a :href="assessments[0].article_url" target="_blank">{{ assessments[0].article_url }}</a>
+                </div>
+                <div v-if="assessments.length > 0">
+                  <VIcon class="me-1">mdi-alert</VIcon>No publisher claim for this article, only fact-checking assessments found.
+                </div>
+                <div v-else>
+                  <VIcon class="me-1">mdi-alert</VIcon> No publisher claim for this article and no fact-checking assessments found.
+                </div>
+              </VCardText>
             </VCard>
             <VCard v-if="assessments && assessments.length > 0" class="mt-5" title="Fact-checking assessments"
                    variant="tonal">

@@ -1,5 +1,5 @@
 <template>
-  <VAppBar>
+  <VAppBar variant="tonal" :style="{ backgroundColor: 'rgba(var(--v-theme-surface), 0.90)' }">
     <VAppBarTitle class="text-green-accent-2 flex-0-0" style="font-size: 35px; font-weight: 900">
       <RouterLink to="/" class="text-decoration-none" style="color: inherit">F</RouterLink>
     </VAppBarTitle>
@@ -54,7 +54,7 @@
       </VBtn>
       <VBtn color="primary" variant="tonal" class="me-2" :to="{path: '/onboarding'}"
             v-if="!authStore.factsCredentialSubject">
-        Onboarding
+        Request credential
       </VBtn>
       <VBtn color="secondary" variant="tonal" class="me-2" @click="logout" v-if="authStore.factsCredentialSubject">
         Logout
