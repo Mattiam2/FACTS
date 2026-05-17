@@ -22,7 +22,7 @@
                 <b>Title</b>: {{ article.metadata.article_info.title }}<br>
                 <b>Author</b>: {{ article.metadata.article_info.author }}<br>
                 <b>Description</b>: {{ article.metadata.article_info.description }}<br>
-                <b>Publication Date</b>: {{ article.metadata.article_info.publication_date }}<br>
+                <b>Publication Date</b>: {{ formatDate(article.metadata.article_info.publication_date) }}<br>
                 <b>Language</b>: {{ article.metadata.article_info.language }}<br>
                 <div v-if="article.metadata.article_info.sources && article.metadata.article_info.sources.length > 0">
                   <b>Sources</b>:
@@ -44,10 +44,12 @@
                   <b>URL</b>: <a :href="assessments[0].article_url" target="_blank">{{ assessments[0].article_url }}</a>
                 </div>
                 <div v-if="assessments.length > 0">
-                  <VIcon class="me-1">mdi-alert</VIcon>No publisher claim for this article, only fact-checking assessments found.
+                  <VIcon class="me-1">mdi-alert</VIcon>
+                  No publisher claim for this article, only fact-checking assessments found.
                 </div>
                 <div v-else>
-                  <VIcon class="me-1">mdi-alert</VIcon> No publisher claim for this article and no fact-checking assessments found.
+                  <VIcon class="me-1">mdi-alert</VIcon>
+                  No publisher claim for this article and no fact-checking assessments found.
                 </div>
               </VCardText>
             </VCard>
@@ -91,6 +93,19 @@
                         slim
                         @click="expandAssessment(item, toggleExpand)"
                     />
+                  </template>
+                  <template #item.credibility_score="{ item }">
+                    <VProgressLinear :model-value="(item.credibility_score / 5)*100"
+                                     :color="item.credibility_score > 3 ? 'success' : item.credibility_score > 1 ? 'warning' : 'error'"
+                                     height="10" rounded/>
+                  </template>
+                  <template #item.manipulation_score="{ item }">
+                    <VProgressLinear :model-value="(item.manipulation_score / 5)*100"
+                                     :color="item.manipulation_score > 3 ? 'success' : item.manipulation_score > 1 ? 'warning' : 'error'"
+                                     height="10" rounded/>
+                  </template>
+                  <template #item.timestamp="{ value }">
+                    {{ formatDate(value) }}
                   </template>
                   <template #expanded-row="{ columns, item }">
                     <tr>
@@ -182,7 +197,7 @@ import {
   type IndexedAssessment,
   ManipulationScore
 } from "@/types";
-import {extractSubjectCredential} from "@/utility.ts";
+import {extractSubjectCredential, formatDate} from "@/utility.ts";
 
 
 const route = useRoute()
@@ -241,7 +256,7 @@ function getCredibilityDescription(average: number) {
 function getManipulationDescription(average: number) {
   switch (average) {
     case ManipulationScore.TOTALLY_MANIPULATED: {
-      return 'Totally Manipulated'
+      return 'Completely Manipulated'
     }
     case ManipulationScore.HEAVILY_MANIPULATED: {
       return 'Heavily Manipulated'

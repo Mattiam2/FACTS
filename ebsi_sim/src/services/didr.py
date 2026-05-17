@@ -307,7 +307,7 @@ class DidrService:
         vmethod = self.verification_method_repository.get(id=full_vmethod_id)
         if not vmethod:
             raise DidrServiceNotFoundError("Verification method not found")
-        if vmethod.notafter < datetime.now():
+        if vmethod.notafter and vmethod.notafter < datetime.now():
             raise DidrServiceRequestError("Cannot add a relationship with a method that has expired")
         if not vmethod.issecp256k1 and name == VerificationRelationshipNameEnum.capabilityInvocation:
             raise DidrServiceRequestError("Cannot add a capabilityInvocation relationship to a non-secp256k1 method")

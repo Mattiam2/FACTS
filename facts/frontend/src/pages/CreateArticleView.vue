@@ -27,6 +27,7 @@
                   prepend-inner-icon="mdi-calendar"
                   variant="outlined"
                   v-model="article.publication_date"
+                  autocomplete="off"
                   hide-details
               />
               <VSelect
@@ -65,18 +66,19 @@
         v-model="transactionSignatureDialog"
         width="auto"
         title="You are signing the transaction"
-        persistent
     >
       <VCard
           max-width="400"
           prepend-icon="mdi-update"
+          v-if="transactionToSign"
       >
         <VCardText>
-          ETH Address: {{ walletStore.ethWallet.ethAddress }}
-          <VTextField label="ETH Private Key" placeholder="0x..." type="password" class="ma-2" v-model="ethPrivateKey"
-                      hide-details/>
-          <VIcon icon="mdi-lock-outline" size="12"/>
-          Your private key never leaves this device.
+          <VIcon>mdi-wallet</VIcon>
+          {{ walletStore.ethWallet.ethAddress }}
+          <div>
+            Signing transaction:<br>
+            <VTextarea readonly :model-value="JSON.stringify(transactionToSign)" class="my-2"/>
+          </div>
         </VCardText>
         <VCardActions>
           <VBtn
@@ -86,6 +88,16 @@
           />
         </VCardActions>
       </VCard>
+      <VCard
+          max-width="400"
+          prepend-icon="mdi-update"
+          v-else
+      >
+        <VCardText>
+          <VProgressCircular indeterminate/>
+          Building transaction...
+        </VCardText>
+      </VCard>
     </VDialog>
   </VContainer>
 </template>
@@ -93,18 +105,17 @@
 <script lang="ts" setup>
 import type {ArticleInfo} from "@/types";
 import {type Ref, ref} from "vue";
-import {type Transaction, Web3} from "web3";
+import {type Transaction} from "web3";
 import {useAppStore} from "@/stores/app.ts";
 import {useArticleStore} from "@/stores/article.ts";
 import {useAuthStore} from "@/stores/auth.ts";
 import {useWalletStore} from "@/stores/wallet.ts";
+import {sleep} from "@/utility.ts";
 
 const appStore = useAppStore()
 const authStore = useAuthStore()
 const articleStore = useArticleStore()
 const walletStore = useWalletStore()
-
-const ethPrivateKey = ref(walletStore.ethWallet.privateKey) as Ref<string | undefined>
 
 const transactionSignatureDialog = ref(false)
 
@@ -126,17 +137,18 @@ async function requestArticleCreation() {
     appStore.addToastMessage(`Please login to FACTS`, 'error')
     return
   }
-  if(!walletStore.ethWallet.ethAddress){
-    appStore.addToastMessage(`Please connect your wallet`, 'error')
+  if (!walletStore.ethWallet.ethAddress || !walletStore.ethWallet.privateKey) {
+    appStore.addToastMessage(`Please link your wallet to FACTS`, 'error')
     return
   }
+  transactionToSign.value = undefined
+  transactionSignatureDialog.value = true
   article.value.sources = article.value.sources.filter(source => source.trim() !== '')
   const response = await articleStore.createArticleTransaction(authStore.factsAccessToken, walletStore.ethWallet.ethAddress, article.value)
-  appStore.addToastMessage(`Received transaction`, 'success')
+  await sleep(1000)
   console.log(response)
   transactionToSign.value = response.transaction
   transactionDocumentHash.value = response.document_hash
-  transactionSignatureDialog.value = true
 }
 
 async function signTransaction() {
@@ -148,8 +160,8 @@ async function signTransaction() {
     appStore.addToastMessage(`No transaction to sign`, 'error')
     return
   }
-  if (!ethPrivateKey.value) {
-    appStore.addToastMessage(`Please enter your private key`, 'error')
+  if (!walletStore.ethWallet.ethAddress || !walletStore.ethWallet.privateKey) {
+    appStore.addToastMessage(`Please link your wallet to FACTS`, 'error')
     transactionSignatureDialog.value = true
     return
   }
@@ -158,7 +170,7 @@ async function signTransaction() {
 
   const transaction: Transaction = transactionToSign.value as Transaction
   transaction.gas = 103972
-  const factsSignedTransaction = walletStore.signTransaction(transaction)
+  const factsSignedTransaction = await walletStore.signTransaction(transaction)
 
   const response = await articleStore.confirmArticleTransaction(authStore.factsAccessToken, transactionDocumentHash.value, factsSignedTransaction)
   if (response) {

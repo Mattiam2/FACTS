@@ -23,45 +23,45 @@ function extractSubjectCredential(vc) {
 }
 
 function getCredibilityDescription(average) {
-  switch (average) {
-    case 1: {
-      return 'False'
+    switch (average) {
+        case 1: {
+            return 'False'
+        }
+        case 2: {
+            return 'Partially False'
+        }
+        case 3: {
+            return 'Missing Context'
+        }
+        case 4: {
+            return 'Subjective'
+        }
+        case 5: {
+            return 'True'
+        }
     }
-    case 2: {
-      return 'Partially False'
-    }
-    case 3: {
-      return 'Missing Context'
-    }
-    case 4: {
-      return 'Subjective'
-    }
-    case 5: {
-      return 'True'
-    }
-  }
-  return ''
+    return ''
 }
 
 function getManipulationDescription(average) {
-  switch (average) {
-    case 1: {
-      return 'Totally Manipulated'
+    switch (average) {
+        case 1: {
+            return 'Completely Manipulated'
+        }
+        case 2: {
+            return 'Heavily Manipulated'
+        }
+        case 3: {
+            return 'Partially Manipulated'
+        }
+        case 4: {
+            return 'Minor Edits'
+        }
+        case 5: {
+            return 'Authentic'
+        }
     }
-    case 2: {
-      return 'Heavily Manipulated'
-    }
-    case 3: {
-      return 'Partially Manipulated'
-    }
-    case 4: {
-      return 'Minor Edits'
-    }
-    case 5: {
-      return 'Authentic'
-    }
-  }
-  return ''
+    return ''
 }
 
 const detailsButton = document.getElementById('view-details');
@@ -83,6 +83,7 @@ const publisherWebsiteElement = document.getElementById('publisher-website')
 const credibilityDescriptionElement = document.getElementById('credibility-description')
 const manipulationDescriptionElement = document.getElementById('manipulation-description')
 
+
 let articleHash = "";
 
 
@@ -90,7 +91,7 @@ getCurrentTab().then(async tab => {
     console.log("Current URL:", tab.url);
 
     try {
-        const articleUrl = encodeURI(tab.url)
+        const articleUrl = encodeURIComponent(tab.url)
         console.log(articleUrl)
 
         const responseArticle = await fetch(`http://localhost:8001/articles/by-url?url=${articleUrl}`);
@@ -149,8 +150,12 @@ getCurrentTab().then(async tab => {
             credibilityScoreAvg = credibilityScoreSum / credibilityScoreCount
             manipulationScoreAvg = manipulationScoreSum / manipulationScoreCount
 
-            credibilityGaugeElement.style.strokeDashoffset = 100 - (credibilityScoreAvg / 5) * 100
-            manipulationGaugeElement.style.strokeDashoffset = 100 - (manipulationScoreAvg / 5) * 100
+            credibilityGaugeElement.style.strokeDasharray = `${(credibilityScoreAvg / 5) * 126} 126`
+            credibilityGaugeElement.style.stroke = credibilityScoreAvg > 3 ? 'var(--teal-accent)' : credibilityScoreAvg > 2 ? '#ffb300' : '#ff5252'
+
+            manipulationGaugeElement.style.strokeDasharray = `${(manipulationScoreAvg / 5) * 126} 126`
+            manipulationGaugeElement.style.stroke = manipulationScoreAvg > 3 ? 'var(--teal-accent)' : manipulationScoreAvg > 2 ? '#ffb300' : '#ff5252'
+
 
             credibilityScoreAvgElement.innerHTML = credibilityScoreAvg.toFixed(1)
             manipulationScoreAvgElement.innerHTML = manipulationScoreAvg.toFixed(1)
@@ -166,7 +171,7 @@ getCurrentTab().then(async tab => {
 
     } catch (error) {
 
-        articleTitle.innerHTML = `
+        loadingView.innerHTML = `
       <div class="error">
         <strong>Errore di connessione:</strong><br>
         ${error.message}

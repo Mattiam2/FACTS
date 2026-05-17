@@ -27,17 +27,16 @@
             </VCard>
             <VCard title="Operations" variant="tonal" class="my-4" v-if="walletStore.ethWallet.ethAddress">
               <VCardText>
-                <VBtn @click="openEncapsulation" color="primary" class="ma-1" v-if="!authStore.factsAccessToken">Create
+                <VBtn @click="openEncapsulation" color="primary" class="ma-1">Create
                   Verifiable Presentation
                 </VBtn>
-                <VBtn @click="openOnboardingEbsi" color="primary" class="ma-1" v-if="!authStore.factsAccessToken">
+                <VBtn @click="openOnboardingEbsi" color="primary" class="ma-1">
                   Onboard on EBSI DID Register
                 </VBtn>
-                <VBtn @click="openVerificationMethodCreation" color="primary" class="ma-1"
-                      v-if="!authStore.factsAccessToken">
+                <VBtn @click="openVerificationMethodCreation" color="primary" class="ma-1">
                   Add Verification Method
                 </VBtn>
-                <VBtn @click="openAuthoriseDid" color="primary" class="ma-1" v-if="!authStore.factsAccessToken">
+                <VBtn @click="openAuthoriseDid" color="primary" class="ma-1">
                   Onboard on EBSI Track and Trace
                 </VBtn>
               </VCardText>

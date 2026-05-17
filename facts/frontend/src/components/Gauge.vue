@@ -25,10 +25,19 @@
   </svg>
 </template>
 
-<script setup>
+<script lang="ts" setup>
 import { computed } from 'vue'
 
-const props = defineProps({ value: Number, max: { default: 5 } })
+const props = withDefaults(
+  defineProps<{
+    value?: number
+    max?: number
+  }>(),
+  {
+    value: 0,
+    max: 5
+  }
+)
 
 const arcLength = 157 // half circumference of r=50
 

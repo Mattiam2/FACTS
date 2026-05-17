@@ -45,10 +45,12 @@
         </VMenu>
       </VBtn>
       <VBtn color="primary" variant="tonal" class="me-2" :to="{path: '/login'}"
+            prepend-icon="mdi-badge-account"
             v-if="!authStore.factsCredentialSubject">
         Login
       </VBtn>
       <VBtn color="primary" variant="tonal" class="me-2" :to="{path: '/wallet'}"
+            prepend-icon="mdi-wallet"
             v-if="!walletStore.ethWallet.ethAddress">
         Link Wallet
       </VBtn>
@@ -56,7 +58,9 @@
             v-if="!authStore.factsCredentialSubject">
         Request credential
       </VBtn>
-      <VBtn color="secondary" variant="tonal" class="me-2" @click="logout" v-if="authStore.factsCredentialSubject">
+      <VBtn color="secondary" variant="tonal" class="me-2"
+            prepend-icon="mdi-exit-to-app"
+            @click="logout" v-if="authStore.factsCredentialSubject">
         Logout
       </VBtn>
     </template>
@@ -76,7 +80,7 @@ import {useWalletStore} from "@/stores/wallet.ts";
 const authStore = useAuthStore()
 const walletStore = useWalletStore()
 
-function resetWalletStore(){
+function resetWalletStore() {
   walletStore.$reset()
 }
 

@@ -31,14 +31,11 @@
           </template>
           <template #item.3>
             <VSheet min-height="300">
-              <div v-if="!transactionToSign">
+              <div v-if="!tntAuthoriseCompleted">
                 <VProgressCircular indeterminate/>
-                Requesting transaction...
+                {{ loadingText }}
               </div>
-              <div v-else-if="!txHash">
-                <VBtn @click="signTntTransaction">Sign transaction</VBtn>
-              </div>
-              <div v-else-if="txHash">
+              <div v-else>
                 DID is now whitelisted on TNT!
               </div>
             </VSheet>
@@ -60,7 +57,7 @@ import type {FactsSubjectCredential} from "@/types";
 import {computed, type Ref, ref} from "vue";
 import {useAppStore} from "@/stores/app.ts";
 import {useWalletStore} from "@/stores/wallet.ts";
-import {extractSubjectCredential} from "@/utility.ts";
+import {extractSubjectCredential, sleep} from "@/utility.ts";
 
 const model = defineModel<string | undefined>()
 
@@ -70,8 +67,9 @@ const walletStore = useWalletStore()
 const tntAuthoriseStep = ref(1) as Ref<number>
 const vpToken = ref('') as Ref<string>
 const subjectCredential = ref(undefined) as Ref<FactsSubjectCredential | undefined>
-const transactionToSign = ref(undefined) as Ref<object | undefined>
 const txHash = ref('') as Ref<string>
+const tntAuthoriseCompleted = ref(false)
+const loadingText = ref('Loading...')
 
 const isOpen = computed({
   // getter
@@ -80,6 +78,14 @@ const isOpen = computed({
   },
   // setter
   set(newValue) {
+    if (!newValue){
+      tntAuthoriseStep.value = 1
+      vpToken.value = ''
+      subjectCredential.value = undefined
+      txHash.value = ''
+      tntAuthoriseCompleted.value = false
+      loadingText.value = 'Loading...'
+    }
     model.value = newValue ? 'tntAuthorise' : undefined
   }
 })
@@ -109,22 +115,23 @@ async function tntAuthoriseCustomNext(next: () => void) {
       appStore.addToastMessage('Please wait for the TNT Authorise access token to be received', 'error')
       return false
     }
-    walletStore.createAuthoriseDidTransaction(subjectCredential.value).then(response => {
-      transactionToSign.value = response.result
-    })
     next()
+    loadingText.value = 'Creating authoriseDid transaction...'
+    let response = await walletStore.createAuthoriseDidTransaction(subjectCredential.value)
+    await sleep(1500)
+    loadingText.value = 'Signing authoriseDid transaction...'
+    const signedTransaction = await walletStore.signTransaction(response.result)
+    await sleep(1500)
+    loadingText.value = 'Confirming authoriseDid transaction...'
+    response = await walletStore.confirmTntTransaction(signedTransaction)
+    await sleep(1500)
+    txHash.value = response.result
+    if (!txHash) {
+      loadingText.value = `Error confirming authoriseDid transaction!`
+      return false
+    }
+    tntAuthoriseCompleted.value = true
   }
-}
-
-async function signTntTransaction() {
-  if (!transactionToSign.value) {
-    appStore.addToastMessage('No transaction to sign', 'error')
-    return false
-  }
-  const signedTransaction = await walletStore.signTransaction(transactionToSign.value)
-  const response = await walletStore.confirmTntTransaction(signedTransaction)
-  txHash.value = response.result
-  return response.result
 }
 </script>
 

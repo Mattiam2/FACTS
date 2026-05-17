@@ -11,7 +11,7 @@
             <VTextarea label="Verifiable Presentation" variant="outlined" v-model="vpToken"/>
             <VBtn color="primary" @click="validateVP">VALIDATE VP</VBtn>
           </VCardText>
-          <VCardText v-if="vcToken && authStore.factsCredentialSubject">
+          <VCardText v-if="authStore.factsCredentialSubject">
             <VCard class="mb-5" prepend-icon="mdi-shield-check" title="Credential Verified" variant="tonal">
               <VCardText>
                 <b>Company</b>: {{ authStore.factsCredentialSubject.company_name }}<br>
@@ -67,9 +67,9 @@ async function validateVP() {
     authStore.loadSubjectCredential(vcToken.value)
 
     let userScope = undefined
-    if (authStore.factsCredentialSubject?.role == "PUBLISHER") {
+    if (authStore.factsCredentialSubject?.role == "publisher") {
       userScope = 'publisher_create'
-    } else if (authStore.factsCredentialSubject?.role == "FACT CHECKER") {
+    } else if (authStore.factsCredentialSubject?.role == "factChecker") {
       userScope = 'factchecker_create'
     }
 
@@ -101,7 +101,7 @@ function completeLogin () {
     return false
   }
 
-  if(authStore.factsCredentialSubject.role == "PUBLISHER") {
+  if(authStore.factsCredentialSubject.role == "publisher") {
     router.push('/articles')
   }else {
     router.push('/assessments')

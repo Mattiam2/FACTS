@@ -36,15 +36,11 @@
           </template>
           <template #item.3>
             <VSheet min-height="300">
-              <VTextField label="Verification Method ID" v-model="vMethodId"/>
-              <div v-if="!transactionToSign">
+              <div v-if="!didCreationCompleted">
                 <VProgressCircular indeterminate/>
-                Requesting transaction...
+                {{ loadingText }}
               </div>
-              <div v-else-if="!txHash">
-                <VBtn @click="signDidrTransaction">Sign transaction</VBtn>
-              </div>
-              <div v-else-if="txHash">
+              <div v-else>
                 DID created in DID Registry!<br/>
                 Remember: To complete the onboarding correctly, you need to add an ES256 Verification Method with
                 "authentication" and "assertionMethod" relationships.
@@ -54,7 +50,7 @@
           <template #actions="{ prev, next }">
             <VStepperActions
                 @click:next="onboardingCustomNext(next)"
-                :disabled="(onboardingStep === 2 && !walletStore.ebsiAccessToken)"
+                :disabled="onboardingStep === 1 ? 'prev' : (onboardingStep === 2 && !walletStore.ebsiAccessToken)"
                 @click:prev="prev"/>
           </template>
         </VStepper>
@@ -68,7 +64,7 @@ import type {FactsSubjectCredential} from "@/types";
 import {computed, ref, type Ref} from "vue";
 import {useAppStore} from "@/stores/app.ts";
 import {useWalletStore} from "@/stores/wallet.ts";
-import {extractSubjectCredential} from "@/utility.ts";
+import {extractSubjectCredential, sleep} from "@/utility.ts";
 
 const model = defineModel<string | undefined>()
 
@@ -79,8 +75,9 @@ const onboardingStep = ref(1) as Ref<number>
 const vpToken = ref('') as Ref<string>
 const vMethodId = ref('') as Ref<string>
 const subjectCredential = ref(undefined) as Ref<FactsSubjectCredential | undefined>
-const transactionToSign = ref(undefined) as Ref<object | undefined>
+const didCreationCompleted = ref(false)
 const txHash = ref('') as Ref<string>
+const loadingText = ref('Loading...')
 
 const isOpen = computed({
   // getter
@@ -89,6 +86,15 @@ const isOpen = computed({
   },
   // setter
   set(newValue) {
+    if (!newValue){
+      onboardingStep.value = 1
+      vpToken.value = ''
+      vMethodId.value = ''
+      subjectCredential.value = undefined
+      txHash.value = ''
+      didCreationCompleted.value = false
+      loadingText.value = 'Loading...'
+    }
     model.value = newValue ? 'didCreation' : undefined
   }
 })
@@ -120,22 +126,26 @@ async function onboardingCustomNext(next: () => void) {
       appStore.addToastMessage('Please wait for the DIDR Invite Access Token to be received', 'error')
       return false
     }
-    walletStore.createDidDocumentTransaction(subjectCredential.value, vMethodId.value).then(response => {
-      transactionToSign.value = response.result
-    })
     next()
+    loadingText.value = 'Creating DID Document transaction...'
+    let response = await walletStore.createDidDocumentTransaction(subjectCredential.value, vMethodId.value)
+    await sleep(1500)
+    loadingText.value = 'Signing DID Document transaction...'
+    const signedTransaction = await walletStore.signTransaction(response.result)
+    await sleep(1500)
+    if(!signedTransaction) {
+      appStore.addToastMessage('Error signing DID Document transaction!', 'error')
+      return false
+    }
+    loadingText.value = 'Confirming DID Document transaction...'
+    response = await walletStore.confirmDidrTransaction(signedTransaction)
+    await sleep(1500)
+    txHash.value = response.result
+    if(!txHash.value) {
+      appStore.addToastMessage('Error confirming DID Document transaction!', 'error')
+      return false
+    }
+    didCreationCompleted.value = true
   }
 }
-
-async function signDidrTransaction() {
-  if (!transactionToSign.value) {
-    appStore.addToastMessage('No transaction to sign', 'error')
-    return false
-  }
-  const signedTransaction = await walletStore.signTransaction(transactionToSign.value)
-  const response = await walletStore.confirmDidrTransaction(signedTransaction)
-  txHash.value = response.result
-  return response.result
-}
-
 </script>

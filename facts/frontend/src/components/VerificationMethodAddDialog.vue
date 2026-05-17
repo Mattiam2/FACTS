@@ -82,7 +82,7 @@
                 <VProgressCircular indeterminate/>
                 {{ loadingText }}
               </div>
-              <div v-else-if="txHash">
+              <div v-else>
                 <VIcon>mdi-check-circle</VIcon>
                 Added Verification Method correctly
               </div>
@@ -105,7 +105,7 @@ import type {FactsSubjectCredential} from "@/types";
 import {computed, type Ref, ref} from "vue";
 import {useAppStore} from "@/stores/app.ts";
 import {useWalletStore} from "@/stores/wallet.ts";
-import {extractSubjectCredential} from "@/utility.ts";
+import {extractSubjectCredential, sleep} from "@/utility.ts";
 
 const model = defineModel<string | undefined>()
 
@@ -116,7 +116,6 @@ const vpToken = ref('') as Ref<string>
 const vMethodId = ref('') as Ref<string>
 const addVMethodStep = ref(1) as Ref<number>
 const subjectCredential = ref(undefined) as Ref<FactsSubjectCredential | undefined>
-const transactionToSign = ref(undefined) as Ref<object | undefined>
 const txHash = ref('') as Ref<string>
 const publicKey = ref('') as Ref<string>
 const vMethodRels = ref<string[]>([])
@@ -131,6 +130,17 @@ const isOpen = computed({
   },
   // setter
   set(newValue) {
+    if (!newValue){
+      vpToken.value = ''
+      vMethodId.value = ''
+      addVMethodStep.value = 1
+      subjectCredential.value = undefined
+      publicKey.value = ''
+      vMethodRels.value = []
+      addVMethodCompleted.value = false
+      algorithmType.value = 'ES256'
+      loadingText.value = 'Loading...'
+    }
     model.value = newValue ? 'verificationMethodAdd' : undefined
   }
 })
@@ -162,9 +172,6 @@ async function addVMethodCustomNext(next: () => void) {
       appStore.addToastMessage('Please wait for the DIDR Write Access Token to be received', 'error')
       return false
     }
-    walletStore.createDidDocumentTransaction(subjectCredential.value, vMethodId.value).then(response => {
-      transactionToSign.value = response.result
-    })
     next()
   } else if (addVMethodStep.value == 3) {
     if (!subjectCredential.value) {
@@ -185,37 +192,38 @@ async function addVMethodCustomNext(next: () => void) {
     }
     next()
     loadingText.value = 'Creating addVerificationMethod transaction...'
-    const response = await walletStore.createVerificationMethodTransaction(subjectCredential.value, vMethodId.value, publicKey.value, algorithmType.value == "ES256K")
-    transactionToSign.value = response.result
+    let response = await walletStore.createVerificationMethodTransaction(subjectCredential.value, vMethodId.value, publicKey.value, algorithmType.value == "ES256K")
+    await sleep(1500)
     loadingText.value = 'Signing addVerificationMethod transaction...'
-    const vMethodAddedResult = await signDidrTransaction()
+    const signedTransaction = await walletStore.signTransaction(response.result)
+    await sleep(1500)
+    loadingText.value = 'Confirming addVerificationMethod transaction...'
+    response = await walletStore.confirmDidrTransaction(signedTransaction)
+    txHash.value = response.result
+    await sleep(1500)
+    const vMethodAddedResult = response.result
     loadingText.value = 'Verification method added!'
+    await sleep(1500)
     if (vMethodAddedResult) {
       for (const rel of vMethodRels.value) {
+        txHash.value = ''
         loadingText.value = `Creating addVerificationRelationship transaction for ${rel}...`
-        const response = await walletStore.createVerificationRelationshipTransaction(subjectCredential.value, vMethodId.value, rel)
-        transactionToSign.value = response.result
+        let response = await walletStore.createVerificationRelationshipTransaction(subjectCredential.value, vMethodId.value, rel)
+        await sleep(1500)
         loadingText.value = `Signing addVerificationRelationship transaction for ${rel}...`
-        const result = await signDidrTransaction()
-        if (!result) {
-          loadingText.value = `Error signing addVerificationRelationship transaction for ${rel}!`
-          return
+        const signedTransaction = await walletStore.signTransaction(response.result)
+        await sleep(1500)
+        loadingText.value = `Confirming addVerificationRelationship transaction for ${rel}...`
+        response = await walletStore.confirmDidrTransaction(signedTransaction)
+        txHash.value = response.result
+        await sleep(1500)
+        if (!txHash.value) {
+          loadingText.value = `Error confirming addVerificationRelationship transaction for ${rel}!`
+          continue
         }
-        loadingText.value = `Verification relationship ${rel} added!`
       }
       addVMethodCompleted.value = true
     }
   }
-}
-
-async function signDidrTransaction() {
-  if (!transactionToSign.value) {
-    appStore.addToastMessage('No transaction to sign', 'error')
-    return false
-  }
-  const signedTransaction = await walletStore.signTransaction(transactionToSign.value)
-  const response = await walletStore.confirmDidrTransaction(signedTransaction)
-  txHash.value = response.result
-  return response.result
 }
 </script>

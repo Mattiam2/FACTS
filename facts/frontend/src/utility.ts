@@ -9,12 +9,33 @@ function extractSubjectCredential(vc: string) {
     const credentialSubject = vcData?.credentialSubject as FactsSubjectCredential
     if (credentialSubject) {
         if (vcData.type.includes('FACTSPublisherCredential')) {
-            credentialSubject.role = "PUBLISHER"
+            credentialSubject.role = "publisher"
         } else if (vcData.type.includes('FACTSFactCheckerCredential')) {
-            credentialSubject.role = "FACT CHECKER"
+            credentialSubject.role = "factChecker"
         }
     }
     return credentialSubject
 }
 
-export {extractSubjectCredential}
+function sleep(ms: number) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+// The formatting function
+function formatDate(dateString: string) {
+    if (!dateString) {return ''}
+
+    const date = new Date(dateString)
+
+    // Use modern JS Intl to format exactly to dd/mm/yyyy, hh:mm
+    return new Intl.DateTimeFormat('it-IT', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false // Ensures 24-hour format
+    }).format(date).replace(',', '')
+}
+
+export {extractSubjectCredential, formatDate, sleep}

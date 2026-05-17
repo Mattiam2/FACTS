@@ -50,6 +50,7 @@
                     variant="outlined"
                     v-model="assessedArticle.publication_date"
                     :disabled="articleFoundOnEBSI"
+                    autocomplete="off"
                     hide-details
                 />
                 <VSelect
@@ -68,6 +69,7 @@
                 <VDateInput label="Assessment Date" variant="outlined" prepend-inner-icon="mdi-format-title"
                             prepend-icon=""
                             v-model="assessmentInfo.assessment_date"
+                            autocomplete="off"
                             hide-details/>
                 <VTextField label="Credibility Evaluation Note" variant="outlined"
                             v-model="assessmentInfo.credibility_evaluation.note"
@@ -92,26 +94,38 @@
         v-model="transactionSignatureDialog"
         width="auto"
         title="You are signing the transaction"
-        persistent
     >
       <VCard
-          max-width="400"
+          max-width="500"
           prepend-icon="mdi-update"
+          v-if="transactionToSign"
       >
         <VCardText>
-          ETH Address: {{ walletStore.ethWallet.ethAddress }}
-          <VTextField label="ETH Private Key" placeholder="0x..." type="password" class="ma-2" v-model="ethPrivateKey"
-                      hide-details/>
-          <VIcon icon="mdi-lock-outline" size="12"/>
-          Your private key never leaves this device.
+          <VIcon>mdi-wallet</VIcon>
+          {{ walletStore.ethWallet.ethAddress }}
+          <div>
+            Signing transaction:<br>
+            <VTextarea readonly :model-value="JSON.stringify(transactionToSign)" class="my-2"/>
+          </div>
         </VCardText>
         <VCardActions>
           <VBtn
-              class="ms-auto"
               text="Sign transaction"
               @click="signTransaction"
+              color="primary"
+              variant="elevated"
           />
         </VCardActions>
+      </VCard>
+      <VCard
+          max-width="400"
+          prepend-icon="mdi-update"
+          v-else
+      >
+        <VCardText>
+          <VProgressCircular indeterminate/>
+          Building transaction...
+        </VCardText>
       </VCard>
     </VDialog>
   </VContainer>
@@ -119,14 +133,14 @@
 
 <script lang="ts" setup>
 import type {AssessedArticleInfo, AssessmentInfo, FactsSubjectCredential} from "@/types";
+import type {Transaction} from "web3";
 import {onMounted, type Ref, ref} from "vue";
-import {type Transaction, Web3} from "web3";
 import {useAppStore} from "@/stores/app.ts";
 import {useArticleStore} from "@/stores/article.ts";
 import {useAssessmentStore} from "@/stores/assessment.ts";
 import {useAuthStore} from "@/stores/auth.ts";
 import {useWalletStore} from "@/stores/wallet.ts";
-import {extractSubjectCredential} from "@/utility.ts";
+import {extractSubjectCredential, sleep} from "@/utility.ts";
 
 const appStore = useAppStore()
 const articleStore = useArticleStore()
@@ -134,10 +148,9 @@ const authStore = useAuthStore()
 const walletStore = useWalletStore()
 const assessmentStore = useAssessmentStore()
 
-const ethPrivateKey = ref('')
 const transactionSignatureDialog = ref(false)
 
-const transactionToSign = ref({})
+const transactionToSign = ref(undefined) as Ref<object | undefined>
 const transactionDocumentHash = ref('')
 
 const submissionStep = ref(0)
@@ -171,16 +184,21 @@ const claimedByPublisher = ref(undefined) as Ref<FactsSubjectCredential | undefi
 const articleFoundOnEBSI = ref(undefined) as Ref<boolean | undefined>
 
 async function requestAssessmentCreation() {
-  if(!authStore.factsAccessToken){
+  if (!authStore.factsAccessToken) {
     appStore.addToastMessage(`Please login to FACTS`, 'error')
     return
   }
+  if (!walletStore.ethWallet.ethAddress || !walletStore.ethWallet.privateKey) {
+    appStore.addToastMessage(`Please link your wallet to FACTS`, 'error')
+    return
+  }
+  transactionToSign.value = undefined
+  transactionSignatureDialog.value = true
   const response = await assessmentStore.createAssessmentTransaction(authStore.factsAccessToken, walletStore.ethWallet.ethAddress, assessedArticle.value, assessmentInfo.value)
-  appStore.addToastMessage(`Received transaction`, 'success')
+  await sleep(1000)
   console.log(response)
   transactionToSign.value = response.transaction
   transactionDocumentHash.value = response.document_hash
-  transactionSignatureDialog.value = true
 }
 
 async function checkArticle() {
@@ -207,7 +225,7 @@ async function checkArticle() {
 }
 
 async function signTransaction() {
-  if(!authStore.factsAccessToken){
+  if (!authStore.factsAccessToken) {
     appStore.addToastMessage(`Please login to FACTS`, 'error')
     return
   }
@@ -215,15 +233,15 @@ async function signTransaction() {
     appStore.addToastMessage(`No transaction to sign`, 'error')
     return
   }
-  if (!ethPrivateKey.value) {
-    appStore.addToastMessage(`Please enter your private key`, 'error')
+  if (!walletStore.ethWallet.ethAddress || !walletStore.ethWallet.privateKey) {
+    appStore.addToastMessage(`Please link your wallet to FACTS`, 'error')
     transactionSignatureDialog.value = true
     return
   }
   transactionSignatureDialog.value = false
   const transaction: Transaction = transactionToSign.value as Transaction
   transaction.gas = 103972
-  const factsSignedTransaction = await walletStore.signTransaction(transaction, ethPrivateKey.value)
+  const factsSignedTransaction = await walletStore.signTransaction(transaction)
 
   const response = await assessmentStore.confirmAssessmentTransaction(authStore.factsAccessToken, transactionDocumentHash.value, factsSignedTransaction)
   if (response) {

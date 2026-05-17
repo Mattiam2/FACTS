@@ -10,7 +10,6 @@ import {md3} from 'vuetify/blueprints'
 import {VDateInput} from 'vuetify/labs/VDateInput'
 // Styles
 import '@mdi/font/css/materialdesignicons.css'
-import '../styles/layers.css'
 import 'vuetify/styles'
 
 
