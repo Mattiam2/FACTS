@@ -91,7 +91,7 @@
           <template #actions="{ prev, next }">
             <VStepperActions
                 @click:next="addVMethodCustomNext(next)"
-                :disabled="(addVMethodStep === 2 && !walletStore.ebsiAccessToken)"
+                :disabled="disableStep"
                 @click:prev="prev"/>
           </template>
         </VStepper>
@@ -122,6 +122,19 @@ const vMethodRels = ref<string[]>([])
 const addVMethodCompleted = ref(false)
 const algorithmType = ref('ES256') as Ref<string>
 const loadingText = ref('Loading...')
+
+const disableStep = computed(() => {
+  if (addVMethodStep.value === 1) {
+    return 'prev'
+  }
+  if (addVMethodStep.value === 2 && !walletStore.ebsiAccessToken) {
+    return 'next'
+  }
+  if (addVMethodStep.value === 4){
+    return 'next'
+  }
+  return false
+})
 
 const isOpen = computed({
   // getter

@@ -43,7 +43,7 @@
           <template #actions="{ prev, next }">
             <VStepperActions
                 @click:next="tntAuthoriseCustomNext(next)"
-                :disabled="(tntAuthoriseStep === 2 && !walletStore.ebsiAccessToken)"
+                :disabled="disableStep"
                 @click:prev="prev"/>
           </template>
         </VStepper>
@@ -70,6 +70,19 @@ const subjectCredential = ref(undefined) as Ref<FactsSubjectCredential | undefin
 const txHash = ref('') as Ref<string>
 const tntAuthoriseCompleted = ref(false)
 const loadingText = ref('Loading...')
+
+const disableStep = computed(() => {
+  if (tntAuthoriseStep.value === 1) {
+    return 'prev'
+  }
+  if (tntAuthoriseStep.value === 2 && !walletStore.ebsiAccessToken) {
+    return 'next'
+  }
+  if (tntAuthoriseStep.value === 3){
+    return 'next'
+  }
+  return false
+})
 
 const isOpen = computed({
   // getter

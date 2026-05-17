@@ -1,5 +1,5 @@
 <template>
-  <VContainer>
+  <VContainer fluid>
     <VRow justify="center" align="center">
       <VCol cols="12">
         <div class="text-center mb-15">

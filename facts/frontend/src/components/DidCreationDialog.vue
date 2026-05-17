@@ -50,7 +50,7 @@
           <template #actions="{ prev, next }">
             <VStepperActions
                 @click:next="onboardingCustomNext(next)"
-                :disabled="onboardingStep === 1 ? 'prev' : (onboardingStep === 2 && !walletStore.ebsiAccessToken)"
+                :disabled="disableStep"
                 @click:prev="prev"/>
           </template>
         </VStepper>
@@ -78,6 +78,19 @@ const subjectCredential = ref(undefined) as Ref<FactsSubjectCredential | undefin
 const didCreationCompleted = ref(false)
 const txHash = ref('') as Ref<string>
 const loadingText = ref('Loading...')
+
+const disableStep = computed(() => {
+  if (onboardingStep.value === 1) {
+    return 'prev'
+  }
+  if (onboardingStep.value === 2 && !walletStore.ebsiAccessToken) {
+    return 'next'
+  }
+  if (onboardingStep.value === 3){
+    return 'next'
+  }
+  return false
+})
 
 const isOpen = computed({
   // getter

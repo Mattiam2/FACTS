@@ -1,5 +1,5 @@
 <template>
-  <VContainer>
+  <VContainer fluid>
     <VRow justify="center" align="center">
       <VCol cols="12">
         <VCard>
@@ -119,7 +119,7 @@ const walletStore = useWalletStore()
 
 const transactionSignatureDialog = ref(false)
 
-const transactionToSign = ref({})
+const transactionToSign = ref(undefined) as Ref<object | undefined>
 const transactionDocumentHash = ref('')
 
 const article = ref({
