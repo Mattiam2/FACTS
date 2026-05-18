@@ -1,4 +1,4 @@
-from sqlalchemy import literal
+from sqlalchemy import literal, func
 from sqlalchemy.orm import aliased
 from sqlmodel import select
 
@@ -34,28 +34,57 @@ class ArticleRepository(BaseRepository[Article]):
         self.delete_sources(id)
         super().delete(id=id)
 
-    def get_source_chain(self, article_hash: str, max_depth: int = 10):
-        # Definizione CTE base
-        base = select(
-            ArticleSource.article_hash,
-            ArticleSource.source_value,
-            ArticleSource.source_hash,
-            literal(0).label("depth")
-        ).where(ArticleSource.article_hash == article_hash).cte(name="source_chain", recursive=True)
+    def get_source_chain(self, article_hash: str):
 
-        # Definizione parte ricorsiva
+        avg_scores = (
+            select(
+                Assessment.article_hash,
+                func.avg(Assessment.credibility_score).label("avg_credibility_score"),
+                func.avg(Assessment.manipulation_score).label("avg_manipulation_score"),
+            )
+            .group_by(Assessment.article_hash)
+            .subquery("average_articles")
+        )
+
+        # Base CTE
+        base = (
+            select(
+                ArticleSource.article_hash,
+                ArticleSource.source_value,
+                ArticleSource.source_hash,
+                avg_scores.c.avg_credibility_score,
+                avg_scores.c.avg_manipulation_score,
+                literal(0).label("depth")
+            )
+            .outerjoin(avg_scores, ArticleSource.source_hash == avg_scores.c.article_hash)
+            .where(ArticleSource.article_hash == article_hash).cte(name="source_chain", recursive=True))
+
+        # Recursive
         source_alias = aliased(ArticleSource)
-        recursive = select(
+
+        avg_scores_recursive = (
+            select(
+                Assessment.article_hash,
+                func.avg(Assessment.credibility_score).label("avg_credibility_score"),
+                func.avg(Assessment.manipulation_score).label("avg_manipulation_score")
+            )
+            .group_by(Assessment.article_hash)
+            .subquery("average_articles_r")
+        )
+
+        recursive = (select(
             source_alias.article_hash,
             source_alias.source_value,
             source_alias.source_hash,
+            avg_scores_recursive.c.avg_credibility_score,
+            avg_scores_recursive.c.avg_manipulation_score,
             (base.c.depth + 1).label("depth")
         ).join(base, source_alias.article_hash == base.c.source_hash)
+                     .outerjoin(avg_scores_recursive, source_alias.source_hash == avg_scores_recursive.c.article_hash)
+                     )
 
-        # Unione
         full_cte = base.union_all(recursive)
 
-        # Esecuzione con ordinamento
         nodes_list = db.session.execute(select(full_cte).order_by(full_cte.c.depth)).all()
         return nodes_list
 

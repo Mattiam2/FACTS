@@ -26,6 +26,8 @@ class ArticleSourceNodePublic(SQLModel):
     article_hash: str
     source_value: str
     source_hash: str | None
+    avg_credibility_score: float | None
+    avg_manipulation_score: float | None
     depth: int
 
 class ArticleSourceChainPublic(SQLModel):

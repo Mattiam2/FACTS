@@ -22,7 +22,7 @@
                 <b>Title</b>: {{ article.metadata.article_info.title }}<br>
                 <b>Author</b>: {{ article.metadata.article_info.author }}<br>
                 <b>Description</b>: {{ article.metadata.article_info.description }}<br>
-                <b>Publication Date</b>: {{ formatDate(article.metadata.article_info.publication_date) }}<br>
+                <b>Publication Date</b>: {{ formatDate(article.metadata.article_info.publication_date ?? '') }}<br>
                 <b>Language</b>: {{ article.metadata.article_info.language }}<br>
                 <div v-if="article.metadata.article_info.sources && article.metadata.article_info.sources.length > 0">
                   <b>Sources</b>:
@@ -97,12 +97,14 @@
                   <template #item.credibility_score="{ item }">
                     <VProgressLinear :model-value="(item.credibility_score / 5)*100"
                                      :color="item.credibility_score > 3 ? 'success' : item.credibility_score > 1 ? 'warning' : 'error'"
-                                     height="10" rounded/>
+                                     height="15" rounded><span style="color: black">{{ item.credibility_score }}</span>
+                    </VProgressLinear>
                   </template>
                   <template #item.manipulation_score="{ item }">
                     <VProgressLinear :model-value="(item.manipulation_score / 5)*100"
                                      :color="item.manipulation_score > 3 ? 'success' : item.manipulation_score > 1 ? 'warning' : 'error'"
-                                     height="10" rounded/>
+                                     height="15" rounded><span style="color: black">{{ item.manipulation_score }}</span>
+                    </VProgressLinear>
                   </template>
                   <template #item.timestamp="{ value }">
                     {{ formatDate(value) }}
@@ -176,6 +178,80 @@
 
               </VCardText>
             </VCard>
+            <VCard v-if="articleStore.article_sources.length > 0" class="mt-5" title="Source tree analysis"
+                   variant="tonal">
+              <VCardText>
+                <VContainer>
+                  <VRow>
+                    <VCol cols="6">
+                      <VCard title="Average Credibility Score" variant="tonal" class="h-100">
+                        <VCardText class="d-flex flex-column align-center">
+                          <Gauge :value="sourcesAverageCredibilityScore"/>
+                          <h2>Probably {{ sourcesCredibilityDescription }}</h2>
+                        </VCardText>
+                      </VCard>
+                    </VCol>
+                    <VCol cols="6">
+                      <VCard title="Average Manipulation Score" variant="tonal" class="h-100">
+                        <VCardText class="d-flex flex-column align-center">
+                          <Gauge :value="sourcesAverageManipulationScore"/>
+                          <h2>Probably {{ sourcesManipulationDescription }}</h2>
+                        </VCardText>
+                      </VCard>
+                    </VCol>
+                  </VRow>
+                  <VRow>
+                    <VCol cols="12">
+                      <div v-for="sourceNode in articleStore.article_sources" :key="sourceNode.source_hash">
+                        <VCard variant="tonal" class="my-2">
+                          <VCardText>
+                            <VRow>
+                              <VCol cols="10">
+                                <a :href="`/articles/${sourceNode.source_hash}`"
+                                   v-if="sourceNode.source_value.startsWith('http')" class="text-decoration-none">
+                                  <VIcon icon="mdi-link" color="primary" size="16"/>
+                                  <span class="text-decoration-underline ms-1">{{ sourceNode.source_value }}</span>
+                                </a>
+                                <span v-else>{{ sourceNode.source_value }}</span>
+                              </VCol>
+                              <VCol cols="2"
+                                    v-if="sourceNode.avg_credibility_score || sourceNode.avg_manipulation_score" class="d-flex justify-end">
+                                <div class="mx-1" style="min-width: 50px">
+                                  <VTooltip text="Credibility Score">
+                                    <template #activator="{ props }">
+                                      <VProgressLinear v-bind="props"
+                                                       :model-value="(sourceNode.avg_credibility_score / 5)*100"
+                                                       :color="sourceNode.avg_credibility_score > 3 ? 'success' : sourceNode.avg_credibility_score > 1 ? 'warning' : 'error'"
+                                                       height="16" rounded v-if="sourceNode.avg_credibility_score"
+                                                       style="cursor: pointer">
+                                        <span style="color: black">{{ sourceNode.avg_credibility_score }}</span>
+                                      </VProgressLinear>
+                                    </template>
+                                  </VTooltip>
+                                </div>
+                                <div class="mx-1" style="min-width: 50px">
+                                  <VTooltip text="Manipulation Score">
+                                    <template #activator="{ props }">
+                                      <VProgressLinear v-bind="props"
+                                                       :model-value="(sourceNode.avg_manipulation_score / 5)*100"
+                                                       :color="sourceNode.avg_manipulation_score > 3 ? 'success' : sourceNode.avg_manipulation_score > 1 ? 'warning' : 'error'"
+                                                       height="16" rounded v-if="sourceNode.avg_manipulation_score"
+                                                       style="cursor: pointer">
+                                        <span style="color: black">{{ sourceNode.avg_manipulation_score }}</span>
+                                      </VProgressLinear>
+                                    </template>
+                                  </VTooltip>
+                                </div>
+                              </VCol>
+                            </VRow>
+                          </VCardText>
+                        </VCard>
+                      </div>
+                    </VCol>
+                  </VRow>
+                </VContainer>
+              </VCardText>
+            </VCard>
           </VCardText>
         </VCard>
       </VCol>
@@ -195,7 +271,8 @@ import {
   type EbsiAssessmentDocument,
   type FactsSubjectCredential,
   type IndexedAssessment,
-  ManipulationScore
+  ManipulationScore,
+  type SourceNode
 } from "@/types";
 import {extractSubjectCredential, formatDate} from "@/utility.ts";
 
@@ -215,6 +292,12 @@ const averageManipulationScore = ref(0)
 
 const credibilityDescription = ref('')
 const manipulationDescription = ref('')
+
+const sourcesAverageCredibilityScore = ref(0)
+const sourcesAverageManipulationScore = ref(0)
+
+const sourcesCredibilityDescription = ref('')
+const sourcesManipulationDescription = ref('')
 
 const assessmentHeaders = [
   {title: 'Assessment ID', key: 'hash', value: (assessment: IndexedAssessment) => assessment.hash.slice(0, 10) + '...'},
@@ -277,6 +360,8 @@ function getManipulationDescription(average: number) {
 onMounted(async () => {
   await articleStore.loadArticle(route.params.id as string)
   await assessmentStore.loadAssessmentsByArticle(route.params.id as string)
+  await articleStore.loadArticleSources(route.params.id as string)
+
   if (articleStore.article)
     claimedByPublisher.value = extractSubjectCredential(articleStore.article.metadata.publisher_vc)
 
@@ -302,5 +387,33 @@ onMounted(async () => {
     averageManipulationScore.value = manipulationScoreSum / manipulationScoreCount
     manipulationDescription.value = getManipulationDescription(Math.floor(averageManipulationScore.value))
   }
+
+  let sourcesCredibilityScoreSum = 0
+  let sourcesCredibilityScoreCount = 0
+  let sourcesManipulationScoreSum = 0
+  let sourcesManipulationScoreCount = 0
+
+
+
+  for (const sourceNode of articleStore.article_sources) {
+    if (sourceNode.avg_credibility_score) {
+      sourcesCredibilityScoreSum += sourceNode.avg_credibility_score
+      sourcesCredibilityScoreCount++
+    }
+    if (sourceNode.avg_manipulation_score) {
+      sourcesManipulationScoreSum += sourceNode.avg_manipulation_score
+      sourcesManipulationScoreCount++
+    }
+  }
+
+  if (sourcesCredibilityScoreCount > 0) {
+    sourcesAverageCredibilityScore.value = sourcesCredibilityScoreSum / sourcesCredibilityScoreCount
+    sourcesCredibilityDescription.value = getCredibilityDescription(Math.floor(sourcesAverageCredibilityScore.value))
+  }
+  if (sourcesManipulationScoreCount > 0) {
+    sourcesAverageManipulationScore.value = sourcesManipulationScoreSum / sourcesManipulationScoreCount
+    sourcesManipulationDescription.value = getManipulationDescription(Math.floor(sourcesAverageManipulationScore.value))
+  }
+
 })
 </script>

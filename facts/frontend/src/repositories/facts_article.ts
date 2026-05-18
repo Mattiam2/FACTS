@@ -2,11 +2,21 @@ import type {ArticleInfo} from "@/types";
 import factsClient from '@/repositories/facts_base.ts'
 
 export default {
-async getArticle(articleId: string) {
+    async getArticle(articleId: string) {
         let response = undefined
         try {
             response = await factsClient.get(`/articles/${articleId}`)
-        }catch(error){
+        } catch (error) {
+            console.log(error)
+        }
+        return response
+    },
+
+    async getArticleSources(articleId: string) {
+        let response = undefined
+        try {
+            response = await factsClient.get(`/articles/${articleId}/sources`)
+        } catch (error) {
             console.log(error)
         }
         return response
@@ -16,7 +26,7 @@ async getArticle(articleId: string) {
         let response = undefined
         try {
             response = await factsClient.get(`/articles`)
-        }catch(error){
+        } catch (error) {
             console.log(error)
         }
         return response
@@ -30,7 +40,7 @@ async getArticle(articleId: string) {
                     url: articleUrl
                 }
             })
-        }catch(error){
+        } catch (error) {
             console.log(error)
         }
         return response

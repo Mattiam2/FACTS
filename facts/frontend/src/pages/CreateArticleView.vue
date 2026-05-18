@@ -169,7 +169,7 @@ async function signTransaction() {
   transactionSignatureDialog.value = false
 
   const transaction: Transaction = transactionToSign.value as Transaction
-  transaction.gas = 103972
+  transaction.gas = 999999
   const factsSignedTransaction = await walletStore.signTransaction(transaction)
 
   const response = await articleStore.confirmArticleTransaction(authStore.factsAccessToken, transactionDocumentHash.value, factsSignedTransaction)

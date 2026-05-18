@@ -34,7 +34,7 @@ export const useWalletStore = defineStore('wallet', {
                 throw new Error("Wallet not linked")
             }
             const web3 = new Web3()
-            transaction.gas = 103972
+            transaction.gas = 999999
             const signedTx = await web3.eth.accounts.signTransaction(transaction, this.ethWallet.privateKey);
 
             return {

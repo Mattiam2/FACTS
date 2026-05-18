@@ -126,21 +126,30 @@ export interface IndexedArticle {
 }
 
 export interface VerifiablePresentation {
-  '@context': string[];
-  id: string;
-  type: string[];
-  holder: string;
-  verifiableCredential: string[];
+    '@context': string[];
+    id: string;
+    type: string[];
+    holder: string;
+    verifiableCredential: string[];
 }
 
 export interface VPPayload {
-  iss: string;
-  aud: string;
-  sub: string;
-  iat: number;
-  nbf: number;
-  exp: number;
-  nonce: string;
-  jti: string;
-  vp: VerifiablePresentation;
+    iss: string;
+    aud: string;
+    sub: string;
+    iat: number;
+    nbf: number;
+    exp: number;
+    nonce: string;
+    jti: string;
+    vp: VerifiablePresentation;
+}
+
+export interface SourceNode {
+    article_hash: string;
+    source_value: string;
+    source_hash: string;
+    avg_credibility_score: number | null;
+    avg_manipulation_score: number | null;
+    depth: number;
 }
