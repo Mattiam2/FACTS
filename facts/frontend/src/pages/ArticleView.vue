@@ -15,18 +15,18 @@
                                    target="_blank">{{ claimedByPublisher.company_website }}</a>
               </VCardText>
             </VCard>
-            <VCard v-if="article" variant="tonal" title="Article">
+            <VCard v-if="articleStore.article" variant="tonal" title="Article">
               <VCardText>
-                <b>URL</b>: <a :href="article.metadata.article_info.url"
-                               target="_blank">{{ article.metadata.article_info.url }}</a><br>
-                <b>Title</b>: {{ article.metadata.article_info.title }}<br>
-                <b>Author</b>: {{ article.metadata.article_info.author }}<br>
-                <b>Description</b>: {{ article.metadata.article_info.description }}<br>
-                <b>Publication Date</b>: {{ formatDate(article.metadata.article_info.publication_date ?? '') }}<br>
-                <b>Language</b>: {{ article.metadata.article_info.language }}<br>
-                <div v-if="article.metadata.article_info.sources && article.metadata.article_info.sources.length > 0">
+                <b>URL</b>: <a :href="articleStore.article.metadata.article_info.url"
+                               target="_blank">{{ articleStore.article.metadata.article_info.url }}</a><br>
+                <b>Title</b>: {{ articleStore.article.metadata.article_info.title }}<br>
+                <b>Author</b>: {{ articleStore.article.metadata.article_info.author }}<br>
+                <b>Description</b>: {{ articleStore.article.metadata.article_info.description }}<br>
+                <b>Publication Date</b>: {{ formatDate(articleStore.article.metadata.article_info.publication_date ?? '') }}<br>
+                <b>Language</b>: {{ articleStore.article.metadata.article_info.language }}<br>
+                <div v-if="articleStore.article.metadata.article_info.sources && articleStore.article.metadata.article_info.sources.length > 0">
                   <b>Sources</b>:
-                  <div v-for="source in article.metadata.article_info.sources" :key="source" class="d-flex ga-2">
+                  <div v-for="source in articleStore.article.metadata.article_info.sources" :key="source" class="d-flex ga-2">
                     <a :href="source" target="_blank" v-if="source.startsWith('http')" class="text-decoration-none">
                       <VIcon icon="mdi-link" color="primary" size="16"/>
                       <span class="text-decoration-underline ms-1">{{ source }}</span>
@@ -40,10 +40,10 @@
             </VCard>
             <VCard variant="tonal" v-else>
               <VCardText>
-                <div v-if="assessments.length > 0 && assessments[0].article_url" class="mb-3">
-                  <b>URL</b>: <a :href="assessments[0].article_url" target="_blank">{{ assessments[0].article_url }}</a>
+                <div v-if="assessmentStore.assessments.length > 0 && assessmentStore.assessments[0].article_url" class="mb-3">
+                  <b>URL</b>: <a :href="assessmentStore.assessments[0].article_url" target="_blank">{{ assessmentStore.assessments[0].article_url }}</a>
                 </div>
-                <div v-if="assessments.length > 0">
+                <div v-if="assessmentStore.assessments.length > 0">
                   <VIcon class="me-1">mdi-alert</VIcon>
                   No publisher claim for this article, only fact-checking assessments found.
                 </div>
@@ -53,7 +53,7 @@
                 </div>
               </VCardText>
             </VCard>
-            <VCard v-if="assessments && assessments.length > 0" class="mt-5" title="Fact-checking assessments"
+            <VCard v-if="assessmentStore.assessments && assessmentStore.assessments.length > 0" class="mt-5" title="Fact-checking assessments"
                    variant="tonal">
               <VCardText>
                 <VContainer>
@@ -78,7 +78,7 @@
                 </VContainer>
 
 
-                <VDataTable :items="assessments" :headers="assessmentHeaders" class="bg-transparent" show-expand
+                <VDataTable :items="assessmentStore.assessments" :headers="assessmentHeaders" class="bg-transparent" show-expand
                             hide-default-footer>
                   <template #item.data-table-expand="{ internalItem, isExpanded, toggleExpand, item }">
                     <VBtn
@@ -182,7 +182,7 @@
                    variant="tonal">
               <VCardText>
                 <VContainer>
-                  <VRow>
+                  <VRow v-if="sourcesAverageCredibilityScore > 0 || sourcesAverageManipulationScore > 0">
                     <VCol cols="6">
                       <VCard title="Average Credibility Score" variant="tonal" class="h-100">
                         <VCardText class="d-flex flex-column align-center">
@@ -283,9 +283,6 @@ const appStore = useAppStore()
 const articleStore = useArticleStore()
 const assessmentStore = useAssessmentStore()
 
-const {article} = storeToRefs(articleStore)
-const {assessments} = storeToRefs(assessmentStore)
-
 const claimedByPublisher = ref(undefined) as Ref<FactsSubjectCredential | undefined>
 
 const averageCredibilityScore = ref(0)
@@ -359,6 +356,8 @@ function getManipulationDescription(average: number) {
 }
 
 onMounted(async () => {
+  articleStore.$reset()
+  assessmentStore.$reset()
   try {
     await articleStore.loadArticle(route.params.id as string)
   } catch (error: any) {
@@ -385,7 +384,7 @@ onMounted(async () => {
   let credibilityScoreCount = 0
   let manipulationScoreSum = 0
   let manipulationScoreCount = 0
-  for (const assessment of assessments.value) {
+  for (const assessment of assessmentStore.assessments) {
     if (assessment.credibility_score !== undefined) {
       credibilityScoreSum += assessment.credibility_score
       credibilityScoreCount++

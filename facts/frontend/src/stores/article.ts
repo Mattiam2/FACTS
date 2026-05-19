@@ -15,14 +15,23 @@ export const useArticleStore = defineStore('article', {
         },
         async loadArticleByUrl(articleUrl: string) {
             const response = await FactsArticleRepo.getArticleByUrl(articleUrl)
+            if(!response?.data) {
+                return
+            }
             this.article = response?.data
         },
         async loadArticle(articleId: string) {
             const response = await FactsArticleRepo.getArticle(articleId)
+            if(!response?.data) {
+                return
+            }
             this.article = response?.data
         },
         async loadArticleSources(articleId: string) {
             const response = await FactsArticleRepo.getArticleSources(articleId)
+            if(!response?.data || !response?.data.nodes || response?.data.nodes.length === 0) {
+                return
+            }
             const seen = new Set<string>()
             this.article_sources = response?.data.nodes.filter((node: SourceNode) => {
                 if (!node.source_hash) {
@@ -57,5 +66,5 @@ export const useArticleStore = defineStore('article', {
             return response?.data
         }
     },
-    persist: true,
+    persist: false,
 })

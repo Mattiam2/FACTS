@@ -7,6 +7,9 @@ export default {
         try {
             return await factsClient.get(`/assessments/${assessmentId}`)
         } catch (error: any) {
+            if(error.response?.status == 404){
+                return undefined
+            }
             throw new Error(error.response?.data?.detail ?? "Error while fetching assessment", {cause: error})
         }
     },
@@ -20,6 +23,9 @@ export default {
             }
             return await factsClient.get('/assessments', {params})
         } catch (error: any) {
+            if(error.response?.status == 404){
+                return undefined
+            }
             throw new Error(error.response?.data?.detail ?? "Error while fetching assessments", {cause: error})
         }
     },

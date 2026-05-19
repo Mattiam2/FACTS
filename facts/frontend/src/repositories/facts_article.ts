@@ -6,6 +6,9 @@ export default {
         try {
             return await factsClient.get(`/articles/${articleId}`)
         } catch (error: any) {
+            if(error.response?.status == 404){
+                return undefined
+            }
             throw new Error(error.response?.data?.detail ?? "Error while fetching article", {cause: error})
         }
     },
@@ -14,6 +17,9 @@ export default {
         try {
             return await factsClient.get(`/articles/${articleId}/sources`)
         } catch (error: any) {
+            if(error.response?.status == 404){
+                return undefined
+            }
             throw new Error(error.response?.data?.detail ?? "Error while fetching article sources", {cause: error})
         }
     },
@@ -22,6 +28,9 @@ export default {
         try {
             return await factsClient.get(`/articles`)
         } catch (error: any) {
+            if(error.response?.status == 404){
+                return undefined
+            }
             throw new Error(error.response?.data?.detail ?? "Error while fetching articles", {cause: error})
         }
     },
@@ -34,6 +43,9 @@ export default {
                 }
             })
         } catch (error: any) {
+            if(error.response?.status == 404){
+                return undefined
+            }
             throw new Error(error.response?.data?.detail ?? "Error while fetching article", {cause: error})
         }
     },

@@ -1,4 +1,5 @@
 const FACTS_API_URL = 'http://localhost:8001'
+const FACTS_WEB_URL = 'http://localhost:8080'
 
 async function getCurrentTab() {
     let queryOptions = {active: true, lastFocusedWindow: true};
@@ -184,10 +185,10 @@ getCurrentTab().then(async tab => {
 
 detailsButton.addEventListener('click', () => {
     if (articleHash) {
-        window.open(`http://localhost:3000/articles/${articleHash}`, '_blank');
+        window.open(`${FACTS_WEB_URL}/articles/${articleHash}`, '_blank');
     }
 })
 
 dashboardButton.addEventListener('click', () => {
-    window.open('http://localhost:3000/', '_blank');
+    window.open(`${FACTS_WEB_URL}`, '_blank');
 })

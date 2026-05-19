@@ -6,8 +6,5 @@ export default axios.create({
   baseURL: FACTS_URL,
   headers: {
     "Content-type": "application/json"
-  },
-  validateStatus: (status) => {
-    return (status >= 200 && status < 300) || status === 404;
   }
 });

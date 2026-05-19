@@ -43,5 +43,5 @@ export const useAssessmentStore = defineStore('assessment', {
             return response?.data
         }
     },
-    persist: true,
+    persist: false,
 })
