@@ -172,7 +172,7 @@ async function addVMethodCustomNext(next: () => void) {
       return false
     }
     const payload = JSON.parse(atob(parts[1].replace(/-/g, '+').replace(/_/g, '/')))
-    vMethodId.value = JSON.parse(atob(parts[0]))['kid'].split('#')[1]
+    //vMethodId.value = JSON.parse(atob(parts[0]))['kid'].split('#')[1]
     subjectCredential.value = extractSubjectCredential(payload.vp.verifiableCredential[0])
     walletStore.requestEbsiAccessToken(vpToken.value, "didr_write").catch((error: any) => {
       console.error(error)
