@@ -1,3 +1,5 @@
+const FACTS_API_URL = 'http://localhost:8001'
+
 async function getCurrentTab() {
     let queryOptions = {active: true, lastFocusedWindow: true};
 
@@ -94,8 +96,8 @@ getCurrentTab().then(async tab => {
         const articleUrl = encodeURIComponent(tab.url)
         console.log(articleUrl)
 
-        const responseArticle = await fetch(`http://localhost:8001/articles/by-url?url=${articleUrl}`);
-        const responseAssessments = await fetch(`http://localhost:8001/assessments/?article_url=${articleUrl}`);
+        const responseArticle = await fetch(`${FACTS_API_URL}/articles/by-url?url=${articleUrl}`);
+        const responseAssessments = await fetch(`${FACTS_API_URL}/assessments/?article_url=${articleUrl}`);
 
         if (responseArticle.ok) {
             const data = await responseArticle.json();

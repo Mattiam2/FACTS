@@ -1,7 +1,8 @@
 from typing import Annotated
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException, Response
 from fastapi.params import Security
+from starlette.status import HTTP_404_NOT_FOUND, HTTP_204_NO_CONTENT
 
 from facts.src.core.auth import get_current_user, User
 from facts.src.schemas.article import ArticleCreate
@@ -23,6 +24,13 @@ def get_articles(did_creator: str | None = None, offset: int = 0, page_size: int
 @router.get("/by-url")
 def get_article_by_url(url: str, article_service: ArticleService = Depends()):
     return article_service.get_article_by_url(url)
+
+@router.head("/by-url")
+def head_article_by_url(url: str, article_service: ArticleService = Depends()):
+    article_exists = article_service.head_article_by_url(url)
+    if not article_exists:
+        raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Article not found")
+    return Response(status_code=HTTP_204_NO_CONTENT)
 
 
 @router.get("/{article_id}")

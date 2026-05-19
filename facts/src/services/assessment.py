@@ -68,6 +68,9 @@ class AssessmentService:
         assessments = self.assessment_repository.list(creator=did_creator, confirmed=True, article_hash=article_hash, article_url=article_url, offset=offset, limit=page_size, order_by="timestamp")
         return assessments
 
+    def head_assessments_list(self, did_creator: str | None = None, article_hash: str | None = None, article_url: str | None = None):
+        return self.assessment_repository.count(creator=did_creator, confirmed=True, article_hash=article_hash, article_url=article_url) > 0
+
     def get_assessments_evidences(self, document_hash: str):
         assessment = self.assessment_repository.get(document_hash)
         if not assessment or not assessment.confirmed:

@@ -1,3 +1,5 @@
+const FACTS_API_URL = 'http://localhost:8001'
+
 chrome.tabs.onActivated.addListener((activeInfo) => {
     console.log("Tab switched! Active Tab ID:", activeInfo.tabId);
     console.log("Window ID:", activeInfo.windowId);
@@ -31,15 +33,17 @@ async function checkArticlePresence(url, tabId) {
         const articleUrl = encodeURIComponent(url)
         // 1. Invia l'URL grezzo al tuo endpoint di controllo (es. /api/v1/articles/check)
         // Il backend si occuperà di fare la get_canonical_url() prima del check nel DB
-        const responseArticle = await fetch(`http://localhost:8001/articles/by-url?url=${articleUrl}`);
-        const responseAssessments = await fetch(`http://localhost:8001/assessments/?article_url=${articleUrl}`);
+        const responseArticle = await fetch(`${FACTS_API_URL}/articles/by-url?url=${articleUrl}`, {method: 'HEAD'});
+        const responseAssessments = await fetch(`${FACTS_API_URL}/assessments/?article_url=${articleUrl}`, {method: 'HEAD'});
 
         let assessments = []
         if (responseAssessments.ok) {
-            assessments = await responseAssessments.json();
+            const assessmentsList = await fetch(`${FACTS_API_URL}/assessments/?article_url=${articleUrl}`);
+            if(assessmentsList.ok)
+                assessments = await assessmentsList.json();
         }
 
-        if (!responseArticle.ok && assessments.length === 0) {
+        if (!responseArticle.ok && !responseAssessments.ok) {
             setNotFoundIcon(tabId);
         } else {
             if (assessments.length > 0) {

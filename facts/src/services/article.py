@@ -64,6 +64,12 @@ class ArticleService:
             raise ArticleServiceNotFoundError(f"Article with hash {document_hash} not found")
         return self.tnt_client.get_document(document_hash)
 
+    def head_article_by_url(self, url: str):
+        document_hash = utils.hash_url(url)
+        document_element = self.article_repository.get(document_hash)
+        return document_element is not None
+
+
     def get_article_by_url(self, url: str):
         """
         Retrieves an article based on its url.
