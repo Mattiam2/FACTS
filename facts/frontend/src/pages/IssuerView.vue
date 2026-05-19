@@ -172,7 +172,14 @@ async function requestCredential() {
     credentialSubject['accredited_by'] = subjectAccreditedBy.value
   if (subjectRole.value == 'publisher')
     credentialSubject['authorized_hosts'] = subjectAuthorizedHosts.value
-  const response = await issuerStore.requestCredential(credentialSubject, subjectRole.value as string)
+  let response = undefined
+  try {
+    response = await issuerStore.requestCredential(credentialSubject, subjectRole.value as string)
+  }catch(error: any){
+    console.error(error)
+    appStore.addToastMessage(`Error requesting credential: ${error.message}`, 'error')
+    return
+  }
   if (response) {
     appStore.addToastMessage('Credentials approved!', 'success')
     credentialToken.value = response
@@ -183,6 +190,3 @@ async function requestCredential() {
 }
 
 </script>
-
-<style scoped>
-</style>

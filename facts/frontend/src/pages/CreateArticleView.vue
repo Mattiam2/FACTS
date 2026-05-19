@@ -28,6 +28,7 @@
                   variant="outlined"
                   v-model="article.publication_date"
                   autocomplete="off"
+                  input-format="dd/mm/yyyy"
                   hide-details
               />
               <VSelect
@@ -104,8 +105,8 @@
 
 <script lang="ts" setup>
 import type {ArticleInfo} from "@/types";
+import type {Transaction} from "web3";
 import {type Ref, ref} from "vue";
-import {type Transaction} from "web3";
 import {useAppStore} from "@/stores/app.ts";
 import {useArticleStore} from "@/stores/article.ts";
 import {useAuthStore} from "@/stores/auth.ts";
@@ -144,9 +145,15 @@ async function requestArticleCreation() {
   transactionToSign.value = undefined
   transactionSignatureDialog.value = true
   article.value.sources = article.value.sources.filter(source => source.trim() !== '')
-  const response = await articleStore.createArticleTransaction(authStore.factsAccessToken, walletStore.ethWallet.ethAddress, article.value)
+  let response = undefined
+  try {
+    response = await articleStore.createArticleTransaction(authStore.factsAccessToken, walletStore.ethWallet.ethAddress, article.value)
+  }catch(error: any){
+    console.error(error)
+    appStore.addToastMessage(`Error creating article transaction: ${error.message}`, 'error')
+    return
+  }
   await sleep(1000)
-  console.log(response)
   transactionToSign.value = response.transaction
   transactionDocumentHash.value = response.document_hash
 }
@@ -172,9 +179,14 @@ async function signTransaction() {
   transaction.gas = 999999
   const factsSignedTransaction = await walletStore.signTransaction(transaction)
 
-  const response = await articleStore.confirmArticleTransaction(authStore.factsAccessToken, transactionDocumentHash.value, factsSignedTransaction)
-  if (response) {
-    appStore.addToastMessage(`Article created`, 'success')
+  try {
+    const response = await articleStore.confirmArticleTransaction(authStore.factsAccessToken, transactionDocumentHash.value, factsSignedTransaction)
+    if (response) {
+      appStore.addToastMessage(`Article created`, 'success')
+    }
+  }catch(error: any){
+    console.error(error)
+    appStore.addToastMessage(`Error confirming article transaction: ${error.message}`, 'error')
   }
 }
 </script>

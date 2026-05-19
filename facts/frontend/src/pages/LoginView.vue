@@ -75,12 +75,13 @@ async function validateVP() {
 
     await authStore.requestFactsAccessToken(vpToken.value, userScope as string)
 
-  } catch {
-    appStore.addToastMessage('Invalid or malformed Verifiable Presentation JWT', 'error')
+  } catch (error: any){
+    console.error(error)
+    appStore.addToastMessage(`Error during login: ${error.message}`, 'error')
     vpToken.value = ""
     vcToken.value = ""
     authStore.factsCredentialSubject = undefined
-    return false
+    return
   }
 }
 

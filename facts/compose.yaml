@@ -1,7 +1,7 @@
 services:
   facts_backend:
     build:
-      context: .
+      context: ./src
       target: builder
     depends_on:
       facts_db:
@@ -31,3 +31,9 @@ services:
       retries: 5
     ports:
       - '5432:5432'
+  facts_frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"

@@ -30,7 +30,7 @@ class VerificationMethod(VerificationMethodBase, table=True):
     did_controller: str = Field(foreign_key="public.identifiers.did",
                                 schema_extra={'serialization_alias': 'controller'})
     issecp256k1: bool
-    notafter: datetime = Field(default=None)
+    notafter: datetime = Field(default=None, nullable=True)
 
     relationships: list["VerificationRelationship"] = Relationship(back_populates="verification_method")
     controller: "Identifier" = Relationship(back_populates="verification_methods")

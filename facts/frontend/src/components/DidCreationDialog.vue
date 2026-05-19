@@ -43,7 +43,8 @@
               <div v-else>
                 DID created in DID Registry!<br/>
                 Remember: To complete the onboarding correctly, you need to add an ES256 Verification Method with
-                "authentication" and "assertionMethod" relationships.
+                "authentication" and "assertionMethod" relationships.<br>
+                <VBtn class="mt-5" color="primary" @click="isOpen = false">Close</VBtn>
               </div>
             </VSheet>
           </template>
@@ -127,7 +128,10 @@ async function onboardingCustomNext(next: () => void) {
     const payload = JSON.parse(atob(parts[1].replace(/-/g, '+').replace(/_/g, '/')))
     vMethodId.value = JSON.parse(atob(parts[0]))['kid'].split('#')[1]
     subjectCredential.value = extractSubjectCredential(payload.vp.verifiableCredential[0])
-    walletStore.requestEbsiAccessToken(vpToken.value, "didr_invite")
+    walletStore.requestEbsiAccessToken(vpToken.value, "didr_invite").catch((error: any) => {
+      console.error(error)
+      appStore.addToastMessage(`Error requesting EBSI Access Token: ${error.message}`, 'error')
+    })
     next()
 
   } else if (onboardingStep.value == 2) {
@@ -141,17 +145,37 @@ async function onboardingCustomNext(next: () => void) {
     }
     next()
     loadingText.value = 'Creating DID Document transaction...'
-    let response = await walletStore.createDidDocumentTransaction(subjectCredential.value, vMethodId.value)
+    let response = undefined
+    try {
+      response = await walletStore.createDidDocumentTransaction(subjectCredential.value, vMethodId.value)
+    }catch(error: any){
+      console.error(error)
+      appStore.addToastMessage(`Error creating DID Document transaction: ${error.message}`, 'error')
+      return false
+    }
     await sleep(1500)
     loadingText.value = 'Signing DID Document transaction...'
-    const signedTransaction = await walletStore.signTransaction(response.result)
+    let signedTransaction = undefined
+    try {
+      signedTransaction = await walletStore.signTransaction(response.result)
+    }catch(error: any){
+      console.error(error)
+      appStore.addToastMessage(`Error signing DID Document transaction: ${error.message}`, 'error')
+      return false
+    }
     await sleep(1500)
     if(!signedTransaction) {
       appStore.addToastMessage('Error signing DID Document transaction!', 'error')
       return false
     }
     loadingText.value = 'Confirming DID Document transaction...'
-    response = await walletStore.confirmDidrTransaction(signedTransaction)
+    try {
+      response = await walletStore.confirmDidrTransaction(signedTransaction)
+    }catch(error: any){
+      console.error(error)
+      appStore.addToastMessage(`Error confirming DID Document transaction: ${error.message}`, 'error')
+      return false
+    }
     await sleep(1500)
     txHash.value = response.result
     if(!txHash.value) {

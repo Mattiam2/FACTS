@@ -1,8 +1,13 @@
 import axios from "axios";
 
+const EBSI_URL = import.meta.env.VITE_EBSI_URL ?? "http://localhost:8000"
+
 export default axios.create({
-  baseURL: "http://localhost:8000",
+  baseURL: EBSI_URL,
   headers: {
     "Content-type": "application/json"
+  },
+  validateStatus: (status) => {
+    return (status >= 200 && status < 300) || status === 404;
   }
 });

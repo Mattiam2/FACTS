@@ -21,8 +21,8 @@
       </VCardText>
       <VCardText v-if="vpToken" class="d-flex flex-column">
         This is your Verifiable Presentation Token. Please store in a safe place.
-        <VTextarea label="VP Token" v-model="vpToken" variant="outlined" class="mt-5" readonly/>
-        <VBtn color="primary">Close</VBtn>
+        <VTextarea label="VP Token" v-model="vpToken" variant="outlined" class="mt-5" readonly/><br>
+        <VBtn color="primary" @click="isOpen = false">Close</VBtn>
       </VCardText>
     </VCard>
   </VDialog>
@@ -178,7 +178,7 @@ function getDataFromVcToken(vcToken: string): { iss: string, sub: string } {
   const payload = JSON.parse(atob(payloadB64.replace(/-/g, '+').replace(/_/g, '/')));
   if (!payload.iss) {
     appStore.addToastMessage('VC Token JWT has no "iss" claim', 'error')
-    throw new Error('vc_token JWT has no "iss" claim');
+    throw new Error('VC_Token jwt has no "iss" claim');
   }
   return {iss: payload.iss, sub: payload.sub};
 }

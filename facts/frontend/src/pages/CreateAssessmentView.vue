@@ -51,6 +51,7 @@
                     v-model="assessedArticle.publication_date"
                     :disabled="articleFoundOnEBSI"
                     autocomplete="off"
+                    input-format="dd/mm/yyyy"
                     hide-details
                 />
                 <VSelect
@@ -70,6 +71,7 @@
                             prepend-icon=""
                             v-model="assessmentInfo.assessment_date"
                             autocomplete="off"
+                            input-format="dd/mm/yyyy"
                             hide-details/>
                 <VTextField label="Credibility Evaluation Note" variant="outlined"
                             v-model="assessmentInfo.credibility_evaluation.note"
@@ -194,7 +196,14 @@ async function requestAssessmentCreation() {
   }
   transactionToSign.value = undefined
   transactionSignatureDialog.value = true
-  const response = await assessmentStore.createAssessmentTransaction(authStore.factsAccessToken, walletStore.ethWallet.ethAddress, assessedArticle.value, assessmentInfo.value)
+  let response = undefined
+  try {
+    response = await assessmentStore.createAssessmentTransaction(authStore.factsAccessToken, walletStore.ethWallet.ethAddress, assessedArticle.value, assessmentInfo.value)
+  } catch (error: any) {
+    console.log(error)
+    appStore.addToastMessage(`Error creating assessment transaction: ${error.message}`, 'error')
+    return
+  }
   await sleep(1000)
   console.log(response)
   transactionToSign.value = response.transaction
@@ -202,7 +211,13 @@ async function requestAssessmentCreation() {
 }
 
 async function checkArticle() {
-  await articleStore.loadArticleByUrl(articleUrl.value)
+  try {
+    await articleStore.loadArticleByUrl(articleUrl.value)
+  } catch (error: any) {
+    console.log(error)
+    appStore.addToastMessage(`Error loading article: ${error.message}`, 'error')
+    return
+  }
   assessmentInfo.value.article_url = articleUrl.value
   if (articleStore.article) {
     claimedByPublisher.value = extractSubjectCredential(articleStore.article.metadata.publisher_vc)
@@ -241,9 +256,23 @@ async function signTransaction() {
   transactionSignatureDialog.value = false
   const transaction: Transaction = transactionToSign.value as Transaction
   transaction.gas = 999999
-  const factsSignedTransaction = await walletStore.signTransaction(transaction)
+  let factsSignedTransaction = undefined
+  try {
+    factsSignedTransaction = await walletStore.signTransaction(transaction)
+  } catch (error: any) {
+    console.log(error)
+    appStore.addToastMessage(`Error signing transaction: ${error.message}`, 'error')
+    return
+  }
 
-  const response = await assessmentStore.confirmAssessmentTransaction(authStore.factsAccessToken, transactionDocumentHash.value, factsSignedTransaction)
+  let response = undefined
+  try {
+    response = await assessmentStore.confirmAssessmentTransaction(authStore.factsAccessToken, transactionDocumentHash.value, factsSignedTransaction)
+  } catch (error: any) {
+    console.error(error)
+    appStore.addToastMessage(`Error confirming assessment transaction: ${error.message}`, 'error')
+    return
+  }
   if (response) {
     appStore.addToastMessage(`Assessment created`, 'success')
   }

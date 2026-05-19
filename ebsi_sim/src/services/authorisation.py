@@ -216,12 +216,12 @@ class AuthService:
             vmethod_id = token_header.get("kid")
 
             if vmethod_id is None:
-                raise AuthServiceError("No verification method id found in token header")
+                raise AuthServiceRequestError("No verification method id found in token header")
 
             vmethod = self.verification_method_repository.get(vmethod_id)
 
             if vmethod is None:
-                raise AuthServiceError("Verification method not found")
+                raise AuthServiceRequestError("Verification method not found")
 
             vmethod_public_key_bytes = bytes.fromhex(vmethod.public_key.replace("0x", ""))
             if vmethod.issecp256k1:

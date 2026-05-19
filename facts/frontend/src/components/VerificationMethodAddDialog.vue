@@ -84,7 +84,8 @@
               </div>
               <div v-else>
                 <VIcon>mdi-check-circle</VIcon>
-                Added Verification Method correctly
+                Added Verification Method correctly<br>
+                <VBtn class="mt-5" color="primary" @click="isOpen = false">Close</VBtn>
               </div>
             </VSheet>
           </template>
@@ -130,7 +131,7 @@ const disableStep = computed(() => {
   if (addVMethodStep.value === 2 && !walletStore.ebsiAccessToken) {
     return 'next'
   }
-  if (addVMethodStep.value === 4){
+  if (addVMethodStep.value === 4) {
     return 'next'
   }
   return false
@@ -143,7 +144,7 @@ const isOpen = computed({
   },
   // setter
   set(newValue) {
-    if (!newValue){
+    if (!newValue) {
       vpToken.value = ''
       vMethodId.value = ''
       addVMethodStep.value = 1
@@ -173,7 +174,10 @@ async function addVMethodCustomNext(next: () => void) {
     const payload = JSON.parse(atob(parts[1].replace(/-/g, '+').replace(/_/g, '/')))
     vMethodId.value = JSON.parse(atob(parts[0]))['kid'].split('#')[1]
     subjectCredential.value = extractSubjectCredential(payload.vp.verifiableCredential[0])
-    walletStore.requestEbsiAccessToken(vpToken.value, "didr_write")
+    walletStore.requestEbsiAccessToken(vpToken.value, "didr_write").catch((error: any) => {
+      console.error(error)
+      appStore.addToastMessage(`Error requesting EBSI Access Token: ${error.message}`, 'error')
+    })
     next()
 
   } else if (addVMethodStep.value == 2) {
@@ -205,13 +209,33 @@ async function addVMethodCustomNext(next: () => void) {
     }
     next()
     loadingText.value = 'Creating addVerificationMethod transaction...'
-    let response = await walletStore.createVerificationMethodTransaction(subjectCredential.value, vMethodId.value, publicKey.value, algorithmType.value == "ES256K")
+    let response = undefined
+    try {
+      response = await walletStore.createVerificationMethodTransaction(subjectCredential.value, vMethodId.value, publicKey.value, algorithmType.value == "ES256K")
+    } catch (error: any) {
+      console.error(error)
+      appStore.addToastMessage(`Error creating addVerificationMethod transaction: ${error.message}`, 'error')
+      return false
+    }
     await sleep(1500)
     loadingText.value = 'Signing addVerificationMethod transaction...'
-    const signedTransaction = await walletStore.signTransaction(response.result)
+    let signedTransaction = undefined
+    try {
+      signedTransaction = await walletStore.signTransaction(response.result)
+    } catch (error: any) {
+      console.error(error)
+      appStore.addToastMessage(`Error signing addVerificationMethod transaction: ${error.message}`, 'error')
+      return false
+    }
     await sleep(1500)
     loadingText.value = 'Confirming addVerificationMethod transaction...'
-    response = await walletStore.confirmDidrTransaction(signedTransaction)
+    try {
+      response = await walletStore.confirmDidrTransaction(signedTransaction)
+    } catch (error: any) {
+      console.error(error)
+      appStore.addToastMessage(`Error confirming addVerificationMethod transaction: ${error.message}`, 'error')
+      return false
+    }
     txHash.value = response.result
     await sleep(1500)
     const vMethodAddedResult = response.result
@@ -221,13 +245,33 @@ async function addVMethodCustomNext(next: () => void) {
       for (const rel of vMethodRels.value) {
         txHash.value = ''
         loadingText.value = `Creating addVerificationRelationship transaction for ${rel}...`
-        let response = await walletStore.createVerificationRelationshipTransaction(subjectCredential.value, vMethodId.value, rel)
+        let response = undefined
+        try {
+          response = await walletStore.createVerificationRelationshipTransaction(subjectCredential.value, vMethodId.value, rel)
+        } catch (error: any) {
+          console.error(error)
+          appStore.addToastMessage(`Error creating addVerificationRelationship transaction for ${rel}: ${error.message}`, 'error')
+          continue
+        }
         await sleep(1500)
         loadingText.value = `Signing addVerificationRelationship transaction for ${rel}...`
-        const signedTransaction = await walletStore.signTransaction(response.result)
+        let signedTransaction = undefined
+        try {
+          signedTransaction = await walletStore.signTransaction(response.result)
+        }catch(error: any){
+          console.error(error)
+          appStore.addToastMessage(`Error signing addVerificationRelationship transaction for ${rel}: ${error.message}`, 'error')
+          continue
+        }
         await sleep(1500)
         loadingText.value = `Confirming addVerificationRelationship transaction for ${rel}...`
-        response = await walletStore.confirmDidrTransaction(signedTransaction)
+        try {
+          response = await walletStore.confirmDidrTransaction(signedTransaction)
+        }catch(error: any){
+          console.error(error)
+          appStore.addToastMessage(`Error confirming addVerificationRelationship transaction for ${rel}: ${error.message}`, 'error')
+          continue
+        }
         txHash.value = response.result
         await sleep(1500)
         if (!txHash.value) {

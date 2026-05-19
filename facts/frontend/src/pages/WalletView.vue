@@ -64,7 +64,6 @@ import {useWalletStore} from "@/stores/wallet.ts";
 
 const appStore = useAppStore()
 const walletStore = useWalletStore()
-const authStore = useAuthStore()
 
 const ethAddress = ref('')
 const ethPrivateKey = ref('')

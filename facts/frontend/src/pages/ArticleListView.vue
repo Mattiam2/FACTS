@@ -42,10 +42,12 @@ import type {IndexedArticle} from "@/types";
 import {storeToRefs} from "pinia";
 import {onMounted} from "vue";
 import router from "@/router";
+import {useAppStore} from "@/stores/app.ts";
 import {useArticleStore} from "@/stores/article.ts";
 import {useAuthStore} from "@/stores/auth.ts";
 import {formatDate} from "@/utility.ts";
 
+const appStore = useAppStore()
 const authStore = useAuthStore()
 const articleStore = useArticleStore()
 
@@ -68,6 +70,11 @@ function openArticleClaim(article: IndexedArticle) {
 }
 
 onMounted(async () => {
-  await articleStore.loadArticles()
+  try {
+    await articleStore.loadArticles()
+  } catch (error: any) {
+    console.error(error)
+    appStore.addToastMessage(`Error loading articles: ${error.message}`, 'error')
+  }
 })
 </script>

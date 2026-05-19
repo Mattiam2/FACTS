@@ -36,7 +36,8 @@
                 {{ loadingText }}
               </div>
               <div v-else>
-                DID is now whitelisted on TNT!
+                DID is now whitelisted on TNT!<br>
+                <VBtn class="mt-5" color="primary" @click="isOpen = false">Close</VBtn>
               </div>
             </VSheet>
           </template>
@@ -78,7 +79,7 @@ const disableStep = computed(() => {
   if (tntAuthoriseStep.value === 2 && !walletStore.ebsiAccessToken) {
     return 'next'
   }
-  if (tntAuthoriseStep.value === 3){
+  if (tntAuthoriseStep.value === 3) {
     return 'next'
   }
   return false
@@ -91,7 +92,7 @@ const isOpen = computed({
   },
   // setter
   set(newValue) {
-    if (!newValue){
+    if (!newValue) {
       tntAuthoriseStep.value = 1
       vpToken.value = ''
       subjectCredential.value = undefined
@@ -117,7 +118,10 @@ async function tntAuthoriseCustomNext(next: () => void) {
     }
     const payload = JSON.parse(atob(parts[1].replace(/-/g, '+').replace(/_/g, '/')))
     subjectCredential.value = extractSubjectCredential(payload.vp.verifiableCredential[0])
-    walletStore.requestEbsiAccessToken(vpToken.value, "tnt_authorise")
+    walletStore.requestEbsiAccessToken(vpToken.value, "tnt_authorise").catch((error: any) => {
+      console.error(error)
+      appStore.addToastMessage(`Error requesting EBSI Access Token: ${error.message}`, 'error')
+    })
     next()
   } else if (tntAuthoriseStep.value == 2) {
     if (!subjectCredential.value) {
@@ -130,13 +134,33 @@ async function tntAuthoriseCustomNext(next: () => void) {
     }
     next()
     loadingText.value = 'Creating authoriseDid transaction...'
-    let response = await walletStore.createAuthoriseDidTransaction(subjectCredential.value)
+    let response = undefined
+    try {
+      response = await walletStore.createAuthoriseDidTransaction(subjectCredential.value)
+    }catch(error: any){
+      console.error(error)
+      appStore.addToastMessage(`Error creating authoriseDid transaction: ${error.message}`, 'error')
+      return false
+    }
     await sleep(1500)
     loadingText.value = 'Signing authoriseDid transaction...'
-    const signedTransaction = await walletStore.signTransaction(response.result)
+    let signedTransaction = undefined
+    try {
+      signedTransaction = await walletStore.signTransaction(response.result)
+    }catch(error: any){
+      console.error(error)
+      appStore.addToastMessage(`Error signing authoriseDid transaction: ${error.message}`, 'error')
+      return false
+    }
     await sleep(1500)
     loadingText.value = 'Confirming authoriseDid transaction...'
-    response = await walletStore.confirmTntTransaction(signedTransaction)
+    try {
+      response = await walletStore.confirmTntTransaction(signedTransaction)
+    }catch(error: any){
+      console.error(error)
+      appStore.addToastMessage(`Error confirming authoriseDid transaction: ${error.message}`, 'error')
+      return false
+    }
     await sleep(1500)
     txHash.value = response.result
     if (!txHash) {
@@ -147,7 +171,3 @@ async function tntAuthoriseCustomNext(next: () => void) {
   }
 }
 </script>
-
-<style scoped>
-
-</style>

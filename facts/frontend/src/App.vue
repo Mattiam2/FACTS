@@ -4,8 +4,8 @@
       <RouterView/>
       <VSnackbarQueue
           v-model="toastMessages"
-          :total-visible="5"
-          :timeout="1000"
+          :total-visible="10"
+          :timeout="10000"
           closable
       />
     </AppLayout>

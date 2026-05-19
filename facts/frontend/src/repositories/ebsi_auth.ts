@@ -26,8 +26,7 @@ const payloadDidrWrite = {
     "grant_type": "vp_token",
     "presentation_submission": {
         "definition_id": "didr_write_presentation",
-        "descriptor_map": [
-        ],
+        "descriptor_map": [],
         "id": undefined as string | undefined,
     },
     "scope": "openid didr_write",
@@ -59,20 +58,24 @@ const payloadTntAuthorise = {
 
 export default {
     async authenticate(vpToken: string, scope: string) {
-        let payload = undefined
-        if(scope == "didr_invite"){
-            payload = payloadDidrInvite
-        }else if(scope == "didr_write"){
-            payload = payloadDidrWrite
-        }else if(scope == "tnt_authorise"){
-            payload = payloadTntAuthorise
+        try {
+            let payload = undefined
+            if (scope == "didr_invite") {
+                payload = payloadDidrInvite
+            } else if (scope == "didr_write") {
+                payload = payloadDidrWrite
+            } else if (scope == "tnt_authorise") {
+                payload = payloadTntAuthorise
+            }
+            if (!payload) {
+                return
+            }
+            payload.vp_token = vpToken
+            payload.presentation_submission.id = crypto.randomUUID()
+            return await ebsiClient.post('/authorisation/token', payload)
+        } catch (error: any) {
+            throw new Error(error.response?.data?.detail ?? "Error while authenticating on EBSI", {cause: error})
         }
-        if(!payload){
-            return
-        }
-        payload.vp_token = vpToken
-        payload.presentation_submission.id = crypto.randomUUID()
-        return await ebsiClient.post('/authorisation/token', payload)
     },
 
 }

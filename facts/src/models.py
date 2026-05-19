@@ -9,8 +9,8 @@ class Article(SQLModel, table=True):
     hash: str = Field(default=None, primary_key=True)
     url: str
     creator: str
-    tx_hash: str
-    data_hash: str
+    tx_hash: str | None = None
+    data_hash: str | None = None
     timestamp: datetime = Field(default=func.now())
     confirmed: bool
     eth_address: str
@@ -37,8 +37,8 @@ class Assessment(SQLModel, table=True):
     creator: str
     credibility_score: int
     manipulation_score: int
-    tx_hash: str
-    data_hash: str
+    tx_hash: str | None = None
+    data_hash: str | None = None
     timestamp: datetime = Field(default=func.now())
     confirmed: bool
 

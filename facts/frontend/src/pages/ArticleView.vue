@@ -215,7 +215,8 @@
                                 <span v-else>{{ sourceNode.source_value }}</span>
                               </VCol>
                               <VCol cols="2"
-                                    v-if="sourceNode.avg_credibility_score || sourceNode.avg_manipulation_score" class="d-flex justify-end">
+                                    v-if="sourceNode.avg_credibility_score || sourceNode.avg_manipulation_score"
+                                    class="d-flex justify-end">
                                 <div class="mx-1" style="min-width: 50px">
                                   <VTooltip text="Credibility Score">
                                     <template #activator="{ props }">
@@ -264,6 +265,7 @@ import {storeToRefs} from "pinia";
 import {onMounted, type Ref, ref} from "vue";
 import {useRoute} from "vue-router";
 import Gauge from "@/components/Gauge.vue";
+import {useAppStore} from "@/stores/app.ts";
 import {useArticleStore} from "@/stores/article.ts";
 import {useAssessmentStore} from "@/stores/assessment.ts";
 import {
@@ -271,14 +273,13 @@ import {
   type EbsiAssessmentDocument,
   type FactsSubjectCredential,
   type IndexedAssessment,
-  ManipulationScore,
-  type SourceNode
+  ManipulationScore
 } from "@/types";
 import {extractSubjectCredential, formatDate} from "@/utility.ts";
 
-
 const route = useRoute()
 
+const appStore = useAppStore()
 const articleStore = useArticleStore()
 const assessmentStore = useAssessmentStore()
 
@@ -358,9 +359,24 @@ function getManipulationDescription(average: number) {
 }
 
 onMounted(async () => {
-  await articleStore.loadArticle(route.params.id as string)
-  await assessmentStore.loadAssessmentsByArticle(route.params.id as string)
-  await articleStore.loadArticleSources(route.params.id as string)
+  try {
+    await articleStore.loadArticle(route.params.id as string)
+  } catch (error: any) {
+    console.error(error)
+    appStore.addToastMessage(`Error loading article: ${error.message}`, 'error')
+  }
+  try {
+    await assessmentStore.loadAssessmentsByArticle(route.params.id as string)
+  }catch(error: any){
+    console.error(error)
+    appStore.addToastMessage(`Error loading assessments: ${error.message}`, 'error')
+  }
+  try {
+    await articleStore.loadArticleSources(route.params.id as string)
+  }catch(error: any){
+    console.error(error)
+    appStore.addToastMessage(`Error loading article sources: ${error.message}`, 'error')
+  }
 
   if (articleStore.article)
     claimedByPublisher.value = extractSubjectCredential(articleStore.article.metadata.publisher_vc)
@@ -392,7 +408,6 @@ onMounted(async () => {
   let sourcesCredibilityScoreCount = 0
   let sourcesManipulationScoreSum = 0
   let sourcesManipulationScoreCount = 0
-
 
 
   for (const sourceNode of articleStore.article_sources) {

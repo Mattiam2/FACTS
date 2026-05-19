@@ -34,11 +34,16 @@ const appStore = useAppStore()
 const articleUrl = ref("")
 
 async function searchArticle() {
-  const foundArticle: EbsiArticleDocument | undefined = await articleStore.getArticleByUrl(articleUrl.value)
-  if (foundArticle) {
-    await router.push(`/articles/${foundArticle.hash}`)
-  }else {
-    appStore.addToastMessage('Article not found', 'error')
+  try {
+    const foundArticle: EbsiArticleDocument | undefined = await articleStore.getArticleByUrl(articleUrl.value)
+    if (foundArticle) {
+      await router.push(`/articles/${foundArticle.hash}`)
+    } else {
+      appStore.addToastMessage('Article not found', 'error')
+    }
+  }catch(error: any){
+    console.error(error)
+    appStore.addToastMessage(`Error searching article: ${error.message}`, 'error')
   }
 }
 </script>

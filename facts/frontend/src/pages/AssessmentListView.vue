@@ -49,10 +49,12 @@ import type {IndexedAssessment} from "@/types";
 import {storeToRefs} from "pinia";
 import {onMounted} from "vue";
 import router from "@/router";
+import {useAppStore} from "@/stores/app.ts";
 import {useAssessmentStore} from "@/stores/assessment.ts";
 import {useAuthStore} from "@/stores/auth.ts";
 import {formatDate} from "@/utility.ts";
 
+const appStore = useAppStore()
 const assessmentStore = useAssessmentStore()
 const authStore = useAuthStore()
 
@@ -77,6 +79,11 @@ function openArticleClaim(assessment: IndexedAssessment) {
 }
 
 onMounted(async () => {
-  await assessmentStore.loadAssessments()
+  try {
+    await assessmentStore.loadAssessments()
+  }catch(error: any){
+    console.error(error)
+    appStore.addToastMessage(`Error loading assessments: ${error.message}`, 'error')
+  }
 })
 </script>
