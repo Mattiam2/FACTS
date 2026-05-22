@@ -113,7 +113,7 @@ getCurrentTab().then(async tab => {
             publisherCompanyElement.innerHTML = publisherCompanyName
             publisherWebsiteElement.innerHTML = publisherCompanyWebsite
 
-            // Renderizziamo i dati (HTML iniettato)
+            // SHow article data
             articleHash = data.hash
             articleTitle.innerHTML = data.metadata.article_info.title;
             loadingView.style.display = 'none';

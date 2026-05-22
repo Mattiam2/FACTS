@@ -4,24 +4,20 @@ chrome.tabs.onActivated.addListener((activeInfo) => {
     console.log("Tab switched! Active Tab ID:", activeInfo.tabId);
     console.log("Window ID:", activeInfo.windowId);
     setNotFoundIcon(activeInfo.tabId)
-    // Esegui il controllo solo quando la pagina ha finito di caricare completamente ed è un URL web
+
     chrome.tabs.get(activeInfo.tabId, (tab) => {
         if (chrome.runtime.lastError) {
             console.error(chrome.runtime.lastError.message);
             return;
         }
-        // Note: tab.url and tab.title will be undefined unless you have the "tabs" permission
         console.log("New tab details:", tab);
         if (tab.url && tab.url.startsWith('http')) {
-            //setNotFoundIcon(activeInfo.tabId)
             checkArticlePresence(tab.url, activeInfo.tabId);
         }
     });
 });
 
 chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
-    // Controlliamo 'complete' per assicurarci che la pagina sia pronta,
-    // oppure 'loading' se vogliamo che l'icona cambi immediatamente
     setNotFoundIcon(tabId)
     if (changeInfo.status === 'complete' && tab.url && tab.url.startsWith('http')) {
         checkArticlePresence(tab.url, tabId);
@@ -31,8 +27,6 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
 async function checkArticlePresence(url, tabId) {
     try {
         const articleUrl = encodeURIComponent(url)
-        // 1. Invia l'URL grezzo al tuo endpoint di controllo (es. /api/v1/articles/check)
-        // Il backend si occuperà di fare la get_canonical_url() prima del check nel DB
         const responseArticle = await fetch(`${FACTS_API_URL}/articles/by-url?url=${articleUrl}`, {method: 'HEAD'});
         const responseAssessments = await fetch(`${FACTS_API_URL}/assessments/?article_url=${articleUrl}`, {method: 'HEAD'});
 
@@ -75,7 +69,7 @@ async function checkArticlePresence(url, tabId) {
 
     } catch (error) {
         console.error("Error checking article in FACTS:", error);
-        // In caso di errore del server, mantieni o resetta l'icona di default
+        // In case of error set the icon as not found
         setNotFoundIcon(tabId);
     }
 }
