@@ -23,6 +23,13 @@
               <b>Role</b>: {{ authStore.factsCredentialSubject?.role }}<br>
               <b>DID</b>: {{ authStore.factsCredentialSubject?.id }}
             </VCardText>
+            <VCardActions>
+              <VBtn color="secondary" variant="tonal" class="me-2"
+                    prepend-icon="mdi-exit-to-app"
+                    @click="resetAuthStore" v-if="authStore.factsCredentialSubject">
+                Logout
+              </VBtn>
+            </VCardActions>
           </VCard>
         </VMenu>
       </VBtn>
@@ -58,11 +65,6 @@
             v-if="!authStore.factsCredentialSubject">
         Request credential
       </VBtn>
-      <VBtn color="secondary" variant="tonal" class="me-2"
-            prepend-icon="mdi-exit-to-app"
-            @click="logout" v-if="authStore.factsCredentialSubject">
-        Logout
-      </VBtn>
     </template>
   </VAppBar>
   <VMain style="background: #080d1a;">
@@ -84,9 +86,8 @@ function resetWalletStore() {
   walletStore.$reset()
 }
 
-function logout() {
+function resetAuthStore() {
   authStore.$reset()
-  walletStore.$reset()
   router.push('/login')
 }
 

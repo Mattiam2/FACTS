@@ -2,7 +2,7 @@
   <VContainer fluid>
     <VRow justify="center" align="center">
       <VCol cols="12">
-        <VCard>
+        <VCard variant="tonal">
           <VCardItem>
             <VCardTitle>Fact-checking Assessment Submission</VCardTitle>
             <VCardSubtitle>Insert information about the article you are evaluating.</VCardSubtitle>
@@ -21,7 +21,7 @@
                 <VBtn color="primary" @click="checkArticle">Check</VBtn>
               </div>
               <div class="d-flex flex-column ga-3 mt-10" v-if="articleFoundOnEBSI !== undefined">
-                <VCard class="mb-5" v-if="claimedByPublisher" title="Publisher">
+                <VCard class="mb-5" v-if="claimedByPublisher" title="Publisher" variant="tonal">
                   <VCardText>
                     <b>DID</b>: {{ claimedByPublisher.id }}<br>
                     <b>Company</b>: {{ claimedByPublisher.company_name }}<br>
@@ -67,24 +67,38 @@
             </div>
             <div v-if="submissionStep == 2">
               <div class="d-flex flex-column ga-3 mt-10">
-                <VDateInput label="Assessment Date" variant="outlined" prepend-inner-icon="mdi-format-title"
+                <VDateInput label="Assessment Date" variant="outlined"
                             prepend-icon=""
+                            prepend-inner-icon="mdi-calendar"
                             v-model="assessmentInfo.assessment_date"
                             autocomplete="off"
                             input-format="dd/mm/yyyy"
                             hide-details/>
-                <VTextField label="Credibility Evaluation Note" variant="outlined"
-                            v-model="assessmentInfo.credibility_evaluation.note"
-                            prepend-inner-icon="mdi-account-edit" hide-details/>
-                <VTextField label="Credibility Evaluation Score" variant="outlined"
-                            v-model="assessmentInfo.credibility_evaluation.score"
-                            prepend-inner-icon="mdi-account-edit" hide-details/>
-                <VTextField label="Manipulation Evaluation Notes" variant="outlined"
-                            v-model="assessmentInfo.manipulation_evaluation.note"
-                            prepend-inner-icon="mdi-account-edit" hide-details/>
-                <VTextField label="Manipulation Evaluation Score" variant="outlined"
-                            v-model="assessmentInfo.manipulation_evaluation.score"
-                            prepend-inner-icon="mdi-account-edit" hide-details/>
+                <VDivider/>
+                Credibility score:
+                <VRating
+                    v-model="assessmentInfo.credibility_evaluation.score"
+                    hover
+                    :length="5"
+                    :size="32"
+                    active-color="primary"
+                />
+                <VTextarea label="Credibility Note" variant="outlined"
+                           v-model="assessmentInfo.credibility_evaluation.note"
+                           prepend-inner-icon="mdi-account-edit" hide-details/>
+                <VDivider/>
+                Manipulation score:
+                <VRating
+                    v-model="assessmentInfo.manipulation_evaluation.score"
+                    hover
+                    :length="5"
+                    :size="32"
+                    active-color="primary"
+                />
+                <VTextarea label="Manipulation Note" variant="outlined"
+                           v-model="assessmentInfo.manipulation_evaluation.note"
+                           prepend-inner-icon="mdi-account-edit" hide-details/>
+                <VBtn color="secondary" @click="submissionStep--">Back</VBtn>
                 <VBtn color="primary" @click="requestAssessmentCreation">Submit Assessment</VBtn>
               </div>
             </div>

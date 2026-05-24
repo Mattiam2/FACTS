@@ -55,7 +55,7 @@ class AuthService:
         self.auth_client = auth_client
 
     def request_token(self, vp_token: str, scope: TokenScopeEnum) -> TokenPublic:
-        vp_token_decoded = jwt.decode(vp_token, options={"verify_signature": False, "verify_exp": False})
+        vp_token_decoded = jwt.decode(vp_token, options={"verify_signature": False, "verify_exp": True})
         vp_token_object = VerifiablePresentationPayload.model_validate(vp_token_decoded)
 
         if vp_token_object.exp < datetime.now().timestamp():
@@ -65,7 +65,7 @@ class AuthService:
             raise FACTSAuthError("Invalid VP Token")
 
         vc_token = vp_token_object.vp.verifiableCredential[0]
-        vc_token_decoded = jwt.decode(vc_token, options={"verify_signature": False, "verify_exp": False})
+        vc_token_decoded = jwt.decode(vc_token, options={"verify_signature": False, "verify_exp": True})
         vc_token_object = VerifiableCredentialPayload.model_validate(vc_token_decoded)
         credential_types = vc_token_object.vc.type
         credential_object = vc_token_object.vc.credentialSubject
@@ -105,7 +105,7 @@ class AuthService:
         }
         user = User.model_validate(user_dict)
 
-        facts_access_token = self.create_access_token(user.model_dump(), expires_delta=timedelta(minutes=120))
+        facts_access_token = self.create_access_token(user.model_dump(), expires_delta=timedelta(hours=2))
         token_data = TokenPublic(access_token=facts_access_token, token_type="Bearer")
         return token_data
 
