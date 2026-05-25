@@ -120,6 +120,27 @@
                            v-model="assessmentInfo.manipulation_evaluation.note"
                            prepend-inner-icon="mdi-account-edit" :rules="[rules.required]"
                            hide-details/>
+
+                <VCard title="Evidences" variant="tonal" class="mb-5">
+                <VCardText>
+                  <div v-for="(item, index) in assessmentInfo.evidences" :key="index" class="d-flex align-center my-5">
+                    <VTextField
+                        v-model="assessmentInfo.evidences[index]"
+                        :label="'Evidence ' + (index + 1)"
+                        density="compact"
+                        variant="outlined"
+                        hide-details
+                        max-width="800"
+                        class="mr-2"
+                        placeholder="URL or Text"
+                    />
+                    <VBtn icon="mdi-delete" @click="assessmentInfo.evidences.splice(index, 1)"
+                          v-if="assessmentInfo.evidences.length > 1" color="bg-red" class="me-2" density="compact"/>
+                  </div>
+                  <VBtn prepend-icon="mdi-plus" @click="assessmentInfo.evidences.push('')" color="secondary">Add evidence</VBtn>
+                </VCardText>
+              </VCard>
+
                 <VBtn color="secondary" @click="submissionStep--">Back</VBtn>
                 <VBtn color="primary" @click="requestAssessmentCreation" :disabled="!formStep2?.isValid">Submit
                   Assessment
