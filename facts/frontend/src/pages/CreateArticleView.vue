@@ -2,24 +2,28 @@
   <VContainer fluid>
     <VRow justify="center" align="center">
       <VCol cols="12">
-        <VCard>
+        <VCard variant="tonal">
           <VCardItem>
             <VCardTitle>Claim an Article</VCardTitle>
             <VCardSubtitle>Publish an article to FACTS.</VCardSubtitle>
           </VCardItem>
           <VCardText>
-            <div class="d-flex flex-column ga-3">
+            <VForm class="d-flex flex-column ga-3" ref="form">
               <VTextField label="Canonical URL" variant="outlined" prepend-inner-icon="mdi-link"
                           v-model="article.url"
+                          :rules="[rules.required, rules.url]"
                           hide-details/>
               <VTextField label="Article Title" variant="outlined" prepend-inner-icon="mdi-format-title"
                           v-model="article.title"
+                          :rules="[rules.required]"
                           hide-details/>
               <VTextField label="Article Author(s)" variant="outlined"
                           v-model="article.author"
+                          :rules="[rules.required]"
                           prepend-inner-icon="mdi-account-edit" hide-details/>
               <VTextarea label="Description" variant="outlined" prepend-inner-icon="mdi-text"
                          v-model="article.description"
+                         :rules="[rules.required]"
                          hide-details/>
               <VDateInput
                   label="Publication Date"
@@ -29,12 +33,14 @@
                   v-model="article.publication_date"
                   autocomplete="off"
                   input-format="dd/mm/yyyy"
+                  :rules="[rules.required]"
                   hide-details
               />
               <VSelect
                   label="Language"
                   prepend-inner-icon="mdi-translate"
                   variant="outlined"
+                  :rules="[rules.required]"
                   v-model="article.language"
                   :items="['BG', 'CS', 'DA', 'DE', 'EL', 'EN', 'ES', 'ET', 'FI', 'FR', 'GA', 'HR', 'HU', 'IT', 'LT', 'LV', 'MT', 'NL', 'PL', 'PT', 'RO', 'SK', 'SL', 'SV']"
               />
@@ -57,8 +63,8 @@
                   <VBtn prepend-icon="mdi-plus" @click="article.sources.push('')" color="secondary">Add source</VBtn>
                 </VCardText>
               </VCard>
-            </div>
-            <VBtn color="primary" @click="requestArticleCreation">Request</VBtn>
+            </VForm>
+            <VBtn color="primary" @click="requestArticleCreation" :disabled="!form?.isValid">Request</VBtn>
           </VCardText>
         </VCard>
       </VCol>
@@ -111,7 +117,7 @@ import {useAppStore} from "@/stores/app.ts";
 import {useArticleStore} from "@/stores/article.ts";
 import {useAuthStore} from "@/stores/auth.ts";
 import {useWalletStore} from "@/stores/wallet.ts";
-import {sleep} from "@/utility.ts";
+import {rules, sleep} from "@/utility.ts";
 
 const appStore = useAppStore()
 const authStore = useAuthStore()
@@ -122,6 +128,7 @@ const transactionSignatureDialog = ref(false)
 
 const transactionToSign = ref(undefined) as Ref<object | undefined>
 const transactionDocumentHash = ref('')
+const form = ref(null) as Ref<any>
 
 const article = ref({
   url: undefined,
@@ -134,7 +141,7 @@ const article = ref({
 }) as Ref<ArticleInfo>
 
 async function requestArticleCreation() {
-  if(!authStore.factsAccessToken){
+  if (!authStore.factsAccessToken) {
     appStore.addToastMessage(`Please login to FACTS`, 'error')
     return
   }
@@ -148,9 +155,10 @@ async function requestArticleCreation() {
   let response = undefined
   try {
     response = await articleStore.createArticleTransaction(authStore.factsAccessToken, walletStore.ethWallet.ethAddress, article.value)
-  }catch(error: any){
+  } catch (error: any) {
     console.error(error)
     appStore.addToastMessage(`Error creating article transaction: ${error.message}`, 'error')
+    transactionSignatureDialog.value = false
     return
   }
   await sleep(1000)
@@ -159,7 +167,7 @@ async function requestArticleCreation() {
 }
 
 async function signTransaction() {
-  if(!authStore.factsAccessToken){
+  if (!authStore.factsAccessToken) {
     appStore.addToastMessage(`Please login to FACTS`, 'error')
     return
   }
@@ -169,7 +177,6 @@ async function signTransaction() {
   }
   if (!walletStore.ethWallet.ethAddress || !walletStore.ethWallet.privateKey) {
     appStore.addToastMessage(`Please link your wallet to FACTS`, 'error')
-    transactionSignatureDialog.value = true
     return
   }
 
@@ -184,7 +191,7 @@ async function signTransaction() {
     if (response) {
       appStore.addToastMessage(`Article created`, 'success')
     }
-  }catch(error: any){
+  } catch (error: any) {
     console.error(error)
     appStore.addToastMessage(`Error confirming article transaction: ${error.message}`, 'error')
   }

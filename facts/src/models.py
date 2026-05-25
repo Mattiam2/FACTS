@@ -1,4 +1,6 @@
 from datetime import datetime
+
+from sqlalchemy import UniqueConstraint
 from sqlmodel import Field, Relationship, func, SQLModel, JSON
 
 
@@ -29,10 +31,11 @@ class ArticleSource(SQLModel, table=True):
 
 class Assessment(SQLModel, table=True):
     __tablename__ = "assessments"
-    __table_args__ = {'schema': 'public'}
+    __table_args__ = (UniqueConstraint("article_hash", "creator"), {'schema': 'public'})
+
 
     hash: str = Field(default=None, primary_key=True)
-    article_hash: str = Field(foreign_key="public.articles.hash", index=True)
+    article_hash: str = Field(index=True)
     article_url: str
     creator: str
     credibility_score: int

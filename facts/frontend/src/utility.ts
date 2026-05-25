@@ -1,4 +1,16 @@
-import type {FactsSubjectCredential} from "@/types";
+import {CredibilityScore, type FactsSubjectCredential, ManipulationScore} from "@/types";
+
+const rules = {
+  required: (value: any) => !!value || 'Field is required',
+  url: (value: string) => {
+    try {
+      new URL(value)
+    } catch {
+      return 'Invalid URL'
+    }
+    return (value.startsWith("http://") || value.startsWith("https://")) || 'URL must start with http:// or https://'
+  },
+}
 
 function extractSubjectCredential(vc: string) {
     const vcData = JSON.parse(atob(vc.split('.')[1].replace(/-/g, '+').replace(/_/g, '/'))).vc
@@ -38,4 +50,46 @@ function formatDate(dateString: string) {
     }).format(date).replace(',', '')
 }
 
-export {extractSubjectCredential, formatDate, sleep}
+function getCredibilityDescription(average: number) {
+  switch (average) {
+    case CredibilityScore.FALSE: {
+      return 'False'
+    }
+    case CredibilityScore.PARTIALLY_FALSE: {
+      return 'Partially False'
+    }
+    case CredibilityScore.MISSING_CONTEXT: {
+      return 'Missing Context'
+    }
+    case CredibilityScore.SUBJECTIVE: {
+      return 'Subjective'
+    }
+    case CredibilityScore.TRUE: {
+      return 'True'
+    }
+  }
+  return ''
+}
+
+function getManipulationDescription(average: number) {
+  switch (average) {
+    case ManipulationScore.TOTALLY_MANIPULATED: {
+      return 'Completely Manipulated'
+    }
+    case ManipulationScore.HEAVILY_MANIPULATED: {
+      return 'Heavily Manipulated'
+    }
+    case ManipulationScore.PARTIALLY_MANIPULATED: {
+      return 'Partially Manipulated'
+    }
+    case ManipulationScore.MINOR_EDITS: {
+      return 'Minor Edits'
+    }
+    case ManipulationScore.AUTHENTIC: {
+      return 'Authentic'
+    }
+  }
+  return ''
+}
+
+export {extractSubjectCredential, formatDate, getCredibilityDescription, getManipulationDescription, rules, sleep}

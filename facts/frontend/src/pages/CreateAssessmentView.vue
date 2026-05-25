@@ -8,18 +8,21 @@
             <VCardSubtitle>Insert information about the article you are evaluating.</VCardSubtitle>
           </VCardItem>
           <VCardText>
-            <div v-if="submissionStep == 1">
+            <VForm v-if="submissionStep == 1" ref="formURL">
               <div class="d-flex ga-2">
                 <VTextField label="Canonical URL" variant="outlined" prepend-inner-icon="mdi-link"
                             v-model="articleUrl"
+                            :rules="[rules.url, rules.required]"
                             density="compact">
                   <template #details>
                     <span v-if="articleFoundOnEBSI === true" class="text-cyan-accent-2"><VIcon>mdi-check-circle</VIcon> Found on EBSI</span>
                     <span v-else-if="articleFoundOnEBSI === false" class="text-amber-darken-2"><VIcon>mdi-close-circle</VIcon> Not Found on EBSI</span>
                   </template>
                 </VTextField>
-                <VBtn color="primary" @click="checkArticle">Check</VBtn>
+                <VBtn color="primary" @click="checkArticle" :disabled="!formURL?.isValid">Check</VBtn>
               </div>
+            </VForm>
+            <VForm v-if="submissionStep == 1" ref="formStep1">
               <div class="d-flex flex-column ga-3 mt-10" v-if="articleFoundOnEBSI !== undefined">
                 <VCard class="mb-5" v-if="claimedByPublisher" title="Publisher" variant="tonal">
                   <VCardText>
@@ -52,6 +55,7 @@
                     :disabled="articleFoundOnEBSI"
                     autocomplete="off"
                     input-format="dd/mm/yyyy"
+                    :rules="[rules.required]"
                     hide-details
                 />
                 <VSelect
@@ -62,10 +66,10 @@
                     :disabled="articleFoundOnEBSI"
                     :items="['BG', 'CS', 'DA', 'DE', 'EL', 'EN', 'ES', 'ET', 'FI', 'FR', 'GA', 'HR', 'HU', 'IT', 'LT', 'LV', 'MT', 'NL', 'PL', 'PT', 'RO', 'SK', 'SL', 'SV']"
                 />
-                <VBtn color="primary" @click="submissionStep++">Next</VBtn>
+                <VBtn color="primary" @click="submissionStep++" :disabled="!formStep1?.isValid">Next</VBtn>
               </div>
-            </div>
-            <div v-if="submissionStep == 2">
+            </VForm>
+            <VForm v-if="submissionStep == 2" ref="formStep2">
               <div class="d-flex flex-column ga-3 mt-10">
                 <VDateInput label="Assessment Date" variant="outlined"
                             prepend-icon=""
@@ -73,35 +77,55 @@
                             v-model="assessmentInfo.assessment_date"
                             autocomplete="off"
                             input-format="dd/mm/yyyy"
+                            :rules="[rules.required]"
                             hide-details/>
                 <VDivider/>
                 Credibility score:
-                <VRating
-                    v-model="assessmentInfo.credibility_evaluation.score"
-                    hover
-                    :length="5"
-                    :size="32"
-                    active-color="primary"
-                />
+                <div class="d-flex">
+                  <VRating
+                      v-model="assessmentInfo.credibility_evaluation.score"
+                      hover
+                      :length="5"
+                      :size="32"
+                      active-color="primary"
+                      :rules="[rules.required]"
+                      class="mr-5"
+                  />
+                  <span v-if="assessmentInfo.credibility_evaluation.score" class="text-title-medium"
+                        style="line-height: 32px">{{
+                      getCredibilityDescription(assessmentInfo.credibility_evaluation.score)
+                    }}</span>
+                </div>
                 <VTextarea label="Credibility Note" variant="outlined"
                            v-model="assessmentInfo.credibility_evaluation.note"
-                           prepend-inner-icon="mdi-account-edit" hide-details/>
+                           prepend-inner-icon="mdi-account-edit" :rules="[rules.required]" hide-details/>
                 <VDivider/>
                 Manipulation score:
-                <VRating
-                    v-model="assessmentInfo.manipulation_evaluation.score"
-                    hover
-                    :length="5"
-                    :size="32"
-                    active-color="primary"
-                />
+                <div class="d-flex">
+                  <VRating
+                      v-model="assessmentInfo.manipulation_evaluation.score"
+                      hover
+                      :length="5"
+                      :size="32"
+                      active-color="primary"
+                      :rules="[rules.required]"
+                      class="mr-5"
+                  />
+                  <span v-if="assessmentInfo.manipulation_evaluation.score" class="text-title-medium"
+                        style="line-height: 32px">{{
+                      getManipulationDescription(assessmentInfo.manipulation_evaluation.score)
+                    }}</span>
+                </div>
                 <VTextarea label="Manipulation Note" variant="outlined"
                            v-model="assessmentInfo.manipulation_evaluation.note"
-                           prepend-inner-icon="mdi-account-edit" hide-details/>
+                           prepend-inner-icon="mdi-account-edit" :rules="[rules.required]"
+                           hide-details/>
                 <VBtn color="secondary" @click="submissionStep--">Back</VBtn>
-                <VBtn color="primary" @click="requestAssessmentCreation">Submit Assessment</VBtn>
+                <VBtn color="primary" @click="requestAssessmentCreation" :disabled="!formStep2?.isValid">Submit
+                  Assessment
+                </VBtn>
               </div>
-            </div>
+            </VForm>
           </VCardText>
         </VCard>
       </VCol>
@@ -151,18 +175,29 @@
 import type {AssessedArticleInfo, AssessmentInfo, FactsSubjectCredential} from "@/types";
 import type {Transaction} from "web3";
 import {onMounted, type Ref, ref} from "vue";
+import router from "@/router";
 import {useAppStore} from "@/stores/app.ts";
 import {useArticleStore} from "@/stores/article.ts";
 import {useAssessmentStore} from "@/stores/assessment.ts";
 import {useAuthStore} from "@/stores/auth.ts";
 import {useWalletStore} from "@/stores/wallet.ts";
-import {extractSubjectCredential, sleep} from "@/utility.ts";
+import {
+  extractSubjectCredential,
+  getCredibilityDescription,
+  getManipulationDescription,
+  rules,
+  sleep
+} from "@/utility.ts";
 
 const appStore = useAppStore()
 const articleStore = useArticleStore()
 const authStore = useAuthStore()
 const walletStore = useWalletStore()
 const assessmentStore = useAssessmentStore()
+
+const formStep1 = ref(null) as Ref<any>
+const formStep2 = ref(null) as Ref<any>
+const formURL = ref(null) as Ref<any>
 
 const transactionSignatureDialog = ref(false)
 
@@ -183,7 +218,7 @@ const assessedArticle = ref({
 
 const assessmentInfo = ref({
   article_url: undefined,
-  assessment_date: undefined,
+  assessment_date: new Date().toISOString().split('T')[0],
   credibility_evaluation: {
     note: undefined,
     score: undefined,
@@ -216,6 +251,7 @@ async function requestAssessmentCreation() {
   } catch (error: any) {
     console.log(error)
     appStore.addToastMessage(`Error creating assessment transaction: ${error.message}`, 'error')
+    transactionSignatureDialog.value = false
     return
   }
   await sleep(1000)
@@ -264,7 +300,6 @@ async function signTransaction() {
   }
   if (!walletStore.ethWallet.ethAddress || !walletStore.ethWallet.privateKey) {
     appStore.addToastMessage(`Please link your wallet to FACTS`, 'error')
-    transactionSignatureDialog.value = true
     return
   }
   transactionSignatureDialog.value = false
@@ -289,6 +324,7 @@ async function signTransaction() {
   }
   if (response) {
     appStore.addToastMessage(`Assessment created`, 'success')
+    await router.push({path: '/assessments'})
   }
 }
 

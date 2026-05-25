@@ -275,7 +275,12 @@ import {
   type IndexedAssessment,
   ManipulationScore
 } from "@/types";
-import {extractSubjectCredential, formatDate} from "@/utility.ts";
+import {
+  extractSubjectCredential,
+  formatDate,
+  getCredibilityDescription,
+  getManipulationDescription
+} from "@/utility.ts";
 
 const route = useRoute()
 
@@ -311,48 +316,6 @@ async function expandAssessment(item: IndexedAssessment, expand: any) {
   item.assessmentInfo = ebsi_document.metadata.assessment_info
   item.subjectCredential = extractSubjectCredential(ebsi_document.metadata.fact_checker_vc)
   expand(item)
-}
-
-function getCredibilityDescription(average: number) {
-  switch (average) {
-    case CredibilityScore.FALSE: {
-      return 'False'
-    }
-    case CredibilityScore.PARTIALLY_FALSE: {
-      return 'Partially False'
-    }
-    case CredibilityScore.MISSING_CONTEXT: {
-      return 'Missing Context'
-    }
-    case CredibilityScore.SUBJECTIVE: {
-      return 'Subjective'
-    }
-    case CredibilityScore.TRUE: {
-      return 'True'
-    }
-  }
-  return ''
-}
-
-function getManipulationDescription(average: number) {
-  switch (average) {
-    case ManipulationScore.TOTALLY_MANIPULATED: {
-      return 'Completely Manipulated'
-    }
-    case ManipulationScore.HEAVILY_MANIPULATED: {
-      return 'Heavily Manipulated'
-    }
-    case ManipulationScore.PARTIALLY_MANIPULATED: {
-      return 'Partially Manipulated'
-    }
-    case ManipulationScore.MINOR_EDITS: {
-      return 'Minor Edits'
-    }
-    case ManipulationScore.AUTHENTIC: {
-      return 'Authentic'
-    }
-  }
-  return ''
 }
 
 onMounted(async () => {
