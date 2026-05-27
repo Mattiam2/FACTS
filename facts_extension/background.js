@@ -19,7 +19,7 @@ chrome.tabs.onActivated.addListener((activeInfo) => {
 
 chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
     setNotFoundIcon(tabId)
-    if (changeInfo.status === 'complete' && tab.url && tab.url.startsWith('http')) {
+    if (tab.url && tab.url.startsWith('http')) {
         checkArticlePresence(tab.url, tabId);
     }
 });
