@@ -71,6 +71,10 @@ async function validateVP() {
       userScope = 'publisher_create'
     } else if (authStore.factsCredentialSubject?.role == "factChecker") {
       userScope = 'factchecker_create'
+    } else {
+      appStore.addToastMessage('Invalid Verifiable Presentation JWT: Invalid type', 'error')
+      vpToken.value = ''
+      return false
     }
 
     await authStore.requestFactsAccessToken(vpToken.value, userScope as string)

@@ -309,7 +309,7 @@ class AuthService:
         credential_algo = descriptor_algos[credential_format]["alg"]
 
         jsonpath_expr = parse(credential_path)
-        match_payload = jsonpath_expr.find(json.loads(vp_payload.model_dump_json()))[0]
+        match_payload = jsonpath_expr.find(json.loads(vp_payload.model_dump_json(by_alias=True)))[0]
 
         # Decode only if VC because VP is already decoded
         decoded_payload = match_payload.value

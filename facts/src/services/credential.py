@@ -35,21 +35,22 @@ class CredentialService:
         expiration_date = datetime.now() + timedelta(days=10 * 365)
         uuid_str = uuid4().urn
 
-        credential = VerifiableCredentialPublic(
-            context=["https://www.w3.org/2018/credentials/v1"],
-            id=uuid_str,
-            type=credential_type,
-            issuanceDate=issued,
-            validFrom=issued,
-            validUntil=expiration_date,
-            expirationDate=expiration_date,
-            issued=issued,
-            issuer=settings.ISSUER_DID,
-            credentialSubject={'id': subject_did, **credential_subject},
-            credentialSchema={
-                'id': 'https://api-pilot.ebsi.eu/trusted-schemas-registry/v2/schemas/0x23039e6356ea6b703ce672e7cfac0b42765b150f63df78e2bd18ae785787f6a2',
-                'type': 'FullJsonSchemaValidator2021'}
-        )
+        credential = VerifiableCredentialPublic.model_validate({
+                "@context": ["https://www.w3.org/2018/credentials/v1"],
+                "id": uuid_str,
+                "type": credential_type,
+                "issuanceDate": issued,
+                "validFrom": issued,
+                "validUntil": expiration_date,
+                "expirationDate": expiration_date,
+                "issued": issued,
+                "issuer": settings.ISSUER_DID,
+                "credentialSubject": {'id': subject_did, **credential_subject},
+                "credentialSchema": {
+                    "id": "https://api-pilot.ebsi.eu/trusted-schemas-registry/v2/schemas/0x23039e6356ea6b703ce672e7cfac0b42765b150f63df78e2bd18ae785787f6a2",
+                    "type": "FullJsonSchemaValidator2021"
+                }
+            })
 
         credential_payload = VerifiableCredentialPayload(
             iss=settings.ISSUER_DID,
@@ -61,7 +62,7 @@ class CredentialService:
             vc=credential
         )
 
-        credential_payload_json = credential_payload.model_dump_json()
+        credential_payload_json = credential_payload.model_dump_json(by_alias=True)
 
         signed_credential = jwt.encode(json.loads(credential_payload_json),
                                        settings.ISSUER_ASSERTION_PRIVATE_KEY,

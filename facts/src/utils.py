@@ -59,7 +59,7 @@ def hash_url(url: str):
 
 def build_create_transaction(tnt_client: TntClient, from_eth_address: str, user_did: str, ebsi_access_token: str, document_hash: str, payload: AssessmentMetadataPublic | ArticleMetadataPublic) -> BuildTransactionResponse:
     transaction_id = random.randint(1, 999)
-    document_metadata_json = payload.model_dump_json()
+    document_metadata_json = payload.model_dump_json(by_alias=True)
     document_metadata_hex = "0x" + document_metadata_json.encode().hex()
     json_rpc_response = tnt_client.build_document_transaction(access_token=ebsi_access_token,
                                                                    from_eth_address=from_eth_address,

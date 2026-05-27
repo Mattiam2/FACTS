@@ -55,8 +55,11 @@ class AuthService:
         self.auth_client = auth_client
 
     def request_token(self, vp_token: str, scope: TokenScopeEnum) -> TokenPublic:
-        vp_token_decoded = jwt.decode(vp_token, options={"verify_signature": False, "verify_exp": True})
-        vp_token_object = VerifiablePresentationPayload.model_validate(vp_token_decoded)
+        try:
+            vp_token_decoded = jwt.decode(vp_token, options={"verify_signature": False, "verify_exp": True})
+            vp_token_object = VerifiablePresentationPayload.model_validate(vp_token_decoded)
+        except Exception as e:
+            raise FACTSAuthError("Invalid VP Token") from e
 
         if vp_token_object.exp < datetime.now().timestamp():
             raise FACTSAuthError("VP Token expired")

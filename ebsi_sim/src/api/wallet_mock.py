@@ -52,7 +52,7 @@ def create_vp(did: str, private_key: str, vc_token: str | None = None, verificat
         jwt_headers['kid'] = verification_id
 
     return jwt.encode(
-        json.loads(vp_payload.model_dump_json()),
+        json.loads(vp_payload.model_dump_json(by_alias=True)),
         client_private_key,
         algorithm="ES256",
         headers=jwt_headers

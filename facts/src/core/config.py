@@ -62,6 +62,7 @@ class Settings(BaseSettings):
         "nr_email_referer",
         "ref",  # Generic-ish. Facebook, Product Hunt and others
         "spm",  # Alibaba-family 'super position model' tracker
+        "embedded-checkout"
     ]
 
     PROJECT_ROOT: str = str(Path(__file__).resolve().parent.parent)
