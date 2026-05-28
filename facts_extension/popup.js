@@ -176,7 +176,7 @@ getCurrentTab().then(async tab => {
 
         loadingView.innerHTML = `
       <div class="error">
-        <strong>Errore di connessione:</strong><br>
+        <strong>Connection error:</strong><br>
         ${error.message}
       </div>
     `;
