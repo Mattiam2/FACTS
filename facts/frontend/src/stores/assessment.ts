@@ -20,6 +20,10 @@ export const useAssessmentStore = defineStore('assessment', {
             const response = await FactsAssessmentRepo.getAssessments(articleId)
             this.assessments = response?.data ?? []
         },
+        async getAssessmentsByArticleUrl(articleUrl: string) {
+            const response = await FactsAssessmentRepo.getAssessments(undefined, articleUrl)
+            return response?.data
+        },
         async loadAssessments() {
             const response = await FactsAssessmentRepo.getAssessments()
             this.assessments = response?.data ?? []

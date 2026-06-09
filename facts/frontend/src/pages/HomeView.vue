@@ -12,7 +12,8 @@
           </div>
           <div class="login-divider mx-auto mt-6"/>
         </div>
-        <VTextField color="primary" placeholder="URL of an article..." v-model="articleUrl" variant="solo" hide-details style="max-width: 800px; margin: 0 auto">
+        <VTextField color="primary" placeholder="URL of an article..." v-model="articleUrl" variant="solo" hide-details
+                    style="max-width: 800px; margin: 0 auto">
           <template #append-inner>
             <VBtn color="primary" @click="searchArticle">SEARCH</VBtn>
           </template>
@@ -23,25 +24,30 @@
 </template>
 
 <script lang="ts" setup>
-import type {EbsiArticleDocument} from "@/types";
+import type {EbsiArticleDocument, EbsiAssessmentDocument} from "@/types";
 import {ref} from "vue";
 import router from "@/router";
 import {useAppStore} from "@/stores/app.ts";
 import {useArticleStore} from "@/stores/article.ts";
+import {useAssessmentStore} from "@/stores/assessment.ts";
 
 const articleStore = useArticleStore()
+const assessmentStore = useAssessmentStore()
 const appStore = useAppStore()
 const articleUrl = ref("")
 
 async function searchArticle() {
   try {
     const foundArticle: EbsiArticleDocument | undefined = await articleStore.getArticleByUrl(articleUrl.value)
+    const foundAssessments: EbsiAssessmentDocument[] | undefined = await assessmentStore.getAssessmentsByArticleUrl(articleUrl.value)
     if (foundArticle) {
       await router.push(`/articles/${foundArticle.hash}`)
+    } else if (foundAssessments && foundAssessments.length > 0) {
+      await router.push(`/articles/${foundAssessments[0].article_hash}`)
     } else {
       appStore.addToastMessage('Article not found', 'error')
     }
-  }catch(error: any){
+  } catch (error: any) {
     console.error(error)
     appStore.addToastMessage(`Error searching article: ${error.message}`, 'error')
   }

@@ -13,13 +13,14 @@ export default {
             throw new Error(error.response?.data?.detail ?? "Error while fetching assessment", {cause: error})
         }
     },
-    async getAssessments(articleId?: string) {
+    async getAssessments(articleId?: string, articleUrl?: string) {
         try {
-            let params = {}
+            const params: { [key: string]: string } = {}
             if (articleId) {
-                params = {
-                    article_hash: articleId
-                }
+                params['article_hash'] = articleId
+            }
+            if (articleUrl) {
+                params['article_url'] = articleUrl
             }
             return await factsClient.get('/assessments', {params})
         } catch (error: any) {

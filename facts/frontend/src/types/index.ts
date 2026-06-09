@@ -71,6 +71,7 @@ export interface EbsiArticleDocument {
 }
 
 export interface EbsiAssessmentDocument {
+    article_hash: string;
     hash: string;
     metadata: AssessmentMetadata;
     timestamp: Timestamp;
