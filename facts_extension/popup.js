@@ -12,7 +12,7 @@ function extractSubjectCredential(vc) {
     const vcData = JSON.parse(atob(vc.split('.')[1].replace(/-/g, '+').replace(/_/g, '/'))).vc
 
     if (!vcData.type.includes('VerifiableCredential') || !vcData.type.includes('FACTSFactCheckerCredential') && !vcData.type.includes('FACTSPublisherCredential')) {
-        //this.addToastMessage('Invalid Verifiable Presentation type', 'error')
+        return undefined
     }
     const credentialSubject = vcData?.credentialSubject
     if (credentialSubject) {
@@ -105,9 +105,9 @@ getCurrentTab().then(async tab => {
 
             const publisherVC = data.metadata.publisher_vc
             const publisherCredential = extractSubjectCredential(publisherVC)
-            const publisherDID = publisherCredential.id
-            const publisherCompanyName = publisherCredential.company_name
-            const publisherCompanyWebsite = publisherCredential.company_website
+            const publisherDID = publisherCredential?.id
+            const publisherCompanyName = publisherCredential?.company_name
+            const publisherCompanyWebsite = publisherCredential?.company_website
 
             publisherDidElement.innerHTML = publisherDID
             publisherCompanyElement.innerHTML = publisherCompanyName
