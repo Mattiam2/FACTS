@@ -149,7 +149,7 @@ class ArticleService:
             raise ArticleServiceRequestError("Article already confirmed")
         if unconfirmed_article.creator != user.credential_subject.id:
             raise ArticleServiceRequestError("User does not own the article")
-        signed_transaction_bytes = bytes.fromhex(transaction.signedRawTransaction)
+        signed_transaction_bytes = bytes.fromhex(transaction.signedRawTransaction.replace("0x", ""))
         signed_decoded_transaction: Transaction = rlp.decode(signed_transaction_bytes, Transaction)
         signed_transaction_data = signed_decoded_transaction['data']
         signed_data_hash = hashlib.sha256(signed_transaction_data).hexdigest()

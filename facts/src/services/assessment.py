@@ -83,11 +83,21 @@ class AssessmentService:
         full_hashable_content = "FACTS_ASSESSMENT:" + str(assessment_uuid)
         document_hash = "0x" + hashlib.sha256(full_hashable_content.encode()).hexdigest()
 
+        normalized_url = utils.normalize_url(payload.assessment_info.article_url)
+        article_hash = utils.hash_url(payload.assessment_info.article_url)
+
+
         existing_assessment = self.assessment_repository.get(document_hash)
         if existing_assessment and existing_assessment.confirmed:
             raise AssessmentServiceDuplicateError(f"Assessment already exists")
         elif existing_assessment and not existing_assessment.confirmed:
             self.assessment_repository.delete(id=document_hash)
+
+        existing_assessment_article = self.assessment_repository.list(article_hash=article_hash, creator=user.credential_subject.id)
+        if existing_assessment_article and existing_assessment_article[0].confirmed:
+            raise AssessmentServiceDuplicateError(f"Assessment for article {payload.assessed_article} already exists")
+        elif existing_assessment_article and not existing_assessment_article[0].confirmed:
+            self.assessment_repository.delete(id=existing_assessment_article[0].hash)
 
         from_eth_address = payload.from_eth_address
         user_did = user.credential_subject.id
@@ -100,9 +110,6 @@ class AssessmentService:
 
         build_response = self.build_create_transaction(from_eth_address, user_did, ebsi_access_token, document_hash, assessment_metadata)
         transaction: dict = build_response.transaction
-
-        normalized_url = utils.normalize_url(payload.assessment_info.article_url)
-        article_hash = utils.hash_url(payload.assessment_info.article_url)
 
         unsigned_transaction_data = bytes.fromhex(transaction['data'].replace("0x", ""))
         data_hash = hashlib.sha256(unsigned_transaction_data).hexdigest()
@@ -123,7 +130,7 @@ class AssessmentService:
             raise AssessmentServiceRequestError("Assessment already confirmed")
         if unconfirmed_assessment.creator != user.credential_subject.id:
             raise AssessmentServiceRequestError("User does not own the unconfirmed assessment")
-        signed_transaction_bytes = bytes.fromhex(transaction.signedRawTransaction)
+        signed_transaction_bytes = bytes.fromhex(transaction.signedRawTransaction.replace("0x", ""))
         signed_decoded_transaction: Transaction = rlp.decode(signed_transaction_bytes, Transaction)
         signed_transaction_data = signed_decoded_transaction['data']
         signed_data_hash = hashlib.sha256(signed_transaction_data).hexdigest()

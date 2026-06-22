@@ -43,7 +43,7 @@ export const useWalletStore = defineStore('wallet', {
                 r: signedTx.r,
                 s: signedTx.s,
                 v: Number.parseInt(signedTx.v),
-                signedRawTransaction: signedTx.rawTransaction.slice(2),
+                signedRawTransaction: signedTx.rawTransaction.slice(0),
             }
         },
         async createDidDocumentTransaction(credentialSubject: FactsSubjectCredential, vMethodId: string) {

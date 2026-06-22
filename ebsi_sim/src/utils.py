@@ -191,7 +191,7 @@ def exec_signed_transaction(current_user: User, eth_contract, register_address, 
     :raises RequestError: If any validation fails for the transaction data, signer, or addresses.
     :raises EBSIError: If an internal error occurs while executing the transaction.
     """
-    signed_transaction_bytes = bytes.fromhex(signed_transaction)
+    signed_transaction_bytes = bytes.fromhex(signed_transaction.replace("0x", ""))
     signed_decoded_transaction: Transaction = rlp.decode(signed_transaction_bytes, Transaction)
     signed_transaction_data = signed_decoded_transaction['data']
 
@@ -199,7 +199,7 @@ def exec_signed_transaction(current_user: User, eth_contract, register_address, 
     if signed_transaction_data != unsigned_transaction_data:
         raise EBSIRequestError("Signed transaction mismatch with unsigned transaction")
 
-    signer = Account.recover_transaction(bytes.fromhex(signed_transaction))
+    signer = Account.recover_transaction(signed_transaction_bytes)
     if signer.lower() != unsigned_transaction['from'].lower():
         raise EBSIRequestError("Invalid transaction from")
 

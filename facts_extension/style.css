@@ -221,3 +221,17 @@ body {
     font-weight: 700;
     cursor: pointer;
 }
+
+#publisher-icon {
+    font-size: 20px;
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    color: var(--teal-accent);
+}
+
+#publisher-title {
+    font-size: 12px;
+    color: var(--text-dim);
+    margin-bottom: 6px;
+}
