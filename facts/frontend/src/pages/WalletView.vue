@@ -59,7 +59,6 @@ import PresentationRequestDialog from "@/components/PresentationRequestDialog.vu
 import TntAuthoriseDialog from "@/components/TntAuthoriseDialog.vue";
 import VerificationMethodAddDialog from "@/components/VerificationMethodAddDialog.vue";
 import {useAppStore} from "@/stores/app.ts";
-import {useAuthStore} from "@/stores/auth.ts";
 import {useWalletStore} from "@/stores/wallet.ts";
 
 const appStore = useAppStore()

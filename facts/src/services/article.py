@@ -84,8 +84,6 @@ class ArticleService:
             raise ArticleServiceNotFoundError(f"Article with hash {article_hash} not found")
         sources_nodes = self.article_repository.get_source_chain(article_hash)
 
-
-
         response = ArticleSourceChainPublic.model_validate({
             'root_article_hash': article_hash,
             'max_depth': 10,

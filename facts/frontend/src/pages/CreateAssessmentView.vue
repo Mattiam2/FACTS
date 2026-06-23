@@ -248,7 +248,7 @@ const assessmentInfo = ref({
     note: undefined,
     score: undefined,
   },
-  evidences: []
+  evidences: ['']
 }) as Ref<AssessmentInfo>
 
 const claimedByPublisher = ref(undefined) as Ref<FactsSubjectCredential | undefined>

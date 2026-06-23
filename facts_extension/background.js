@@ -43,17 +43,23 @@ async function checkArticlePresence(url, tabId) {
             if (assessments.length > 0) {
                 let credibilityScoreAvg = 0
                 let credibilityScoreSum = 0
-                let credibilityScoreCount = 1
+                let credibilityScoreCount = undefined
                 let manipulationScoreAvg = 0
                 let manipulationScoreSum = 0
-                let manipulationScoreCount = 1
+                let manipulationScoreCount = undefined
                 for (let assessment of assessments) {
-                    credibilityScoreSum += assessment.credibility_score
-                    manipulationScoreSum += assessment.manipulation_score
+                    if(assessment.credibility_score > 0) {
+                        credibilityScoreCount = (credibilityScoreCount ?? 0) + 1
+                        credibilityScoreSum += assessment.credibility_score
+                    }
+                    if(assessment.manipulation_score > 0) {
+                        manipulationScoreCount = (manipulationScoreCount ?? 0) + 1
+                        manipulationScoreSum += assessment.manipulation_score
+                    }
                 }
 
-                credibilityScoreAvg = credibilityScoreSum / credibilityScoreCount
-                manipulationScoreAvg = manipulationScoreSum / manipulationScoreCount
+                credibilityScoreAvg = credibilityScoreSum / (credibilityScoreCount ?? 1)
+                manipulationScoreAvg = manipulationScoreSum / (manipulationScoreCount ?? 1)
 
                 if (Math.min(credibilityScoreAvg, manipulationScoreAvg) < 3) {
                     setDangerousIcon(tabId)

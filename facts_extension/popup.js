@@ -139,19 +139,25 @@ getCurrentTab().then(async tab => {
 
             let credibilityScoreAvg = 0
             let credibilityScoreSum = 0
-            let credibilityScoreCount = 1
+            let credibilityScoreCount = undefined
             let manipulationScoreAvg = 0
             let manipulationScoreSum = 0
-            let manipulationScoreCount = 1
+            let manipulationScoreCount = undefined
             for (let assessment of assessments) {
-                credibilityScoreSum += assessment.credibility_score
-                manipulationScoreSum += assessment.manipulation_score
+                if(assessment.credibility_score > 0) {
+                    credibilityScoreCount = (credibilityScoreCount ?? 0) + 1
+                    credibilityScoreSum += assessment.credibility_score
+                }
+                if(assessment.manipulation_score > 0) {
+                    manipulationScoreCount = (manipulationScoreCount ?? 0) + 1
+                    manipulationScoreSum += assessment.manipulation_score
+                }
             }
 
-            assessmentsNumberElement.innerHTML = assessments.length
+            credibilityScoreAvg = credibilityScoreSum / (credibilityScoreCount ?? 1)
+            manipulationScoreAvg = manipulationScoreSum / (manipulationScoreCount ?? 1)
 
-            credibilityScoreAvg = credibilityScoreSum / credibilityScoreCount
-            manipulationScoreAvg = manipulationScoreSum / manipulationScoreCount
+            assessmentsNumberElement.innerHTML = assessments.length
 
             credibilityGaugeElement.style.strokeDasharray = `${(credibilityScoreAvg / 5) * 126} 126`
             credibilityGaugeElement.style.stroke = credibilityScoreAvg > 3 ? 'var(--teal-accent)' : credibilityScoreAvg > 2 ? '#ffb300' : '#ff5252'

@@ -125,6 +125,13 @@ async function onboardingCustomNext(next: () => void) {
       vpToken.value = ''
       return false
     }
+
+    if(!("kid" in JSON.parse(atob(parts[0])))){
+      appStore.addToastMessage('Invalid JWT format: missing kid', 'error')
+      vpToken.value = ''
+      return false
+    }
+
     const payload = JSON.parse(atob(parts[1].replace(/-/g, '+').replace(/_/g, '/')))
     vMethodId.value = JSON.parse(atob(parts[0]))['kid'].split('#')[1]
     subjectCredential.value = extractSubjectCredential(payload.vp.verifiableCredential[0])
