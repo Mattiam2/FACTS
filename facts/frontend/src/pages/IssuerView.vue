@@ -2,7 +2,7 @@
   <VContainer fluid>
     <VRow justify="center" align="center">
       <VCol cols="12">
-        <VCard>
+        <VCard variant="tonal">
           <VCardItem>
             <VCardTitle>Onboard on FACTS</VCardTitle>
             <VCardSubtitle>Request a Credential to FACTS Issuer</VCardSubtitle>
