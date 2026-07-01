@@ -4,16 +4,15 @@ from typing import Callable, Awaitable
 
 from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
-
 from sqlalchemy.exc import SQLAlchemyError
 from sqlmodel import Session
 from starlette.responses import JSONResponse
 
-from facts_backend.src.core.db import engine, session_ctx
 from facts_backend.src.api.articles import router as articleapi
 from facts_backend.src.api.assessments import router as assessmentapi
-from facts_backend.src.api.credentials import router as credentialapi
 from facts_backend.src.api.auth import router as authapi
+from facts_backend.src.api.credentials import router as credentialapi
+from facts_backend.src.core.db import engine, session_ctx
 from facts_backend.src.core.exceptions import FACTSError, FACTSRequestError, FACTSNotFoundError, FACTSAuthError, \
     FACTSDuplicateError
 from facts_backend.src.repositories import create_db_and_tables

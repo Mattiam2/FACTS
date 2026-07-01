@@ -1,7 +1,4 @@
-from typing import Any
-
-from sqlmodel import SQLModel, Field, JSON
-from pydantic import Json
+from sqlmodel import SQLModel, Field
 
 from ebsi_sim.src.schemas.shared import TimestampPublic, PageLinksPublic
 

@@ -6,6 +6,7 @@ from sqlmodel import Session
 
 from ebsi_sim.src.models.didr import Identifier, VerificationMethod, VerificationRelationship
 
+
 @pytest.fixture(name="default_data")
 def prepare_data(session: Session):
     """

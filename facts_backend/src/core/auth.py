@@ -1,10 +1,9 @@
 from typing import Annotated
 
 import jwt
-from fastapi import Depends, HTTPException
-from fastapi.security import OAuth2PasswordBearer, HTTPBearer, HTTPAuthorizationCredentials, SecurityScopes
+from fastapi import Depends
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials, SecurityScopes
 from sqlmodel import SQLModel
-from starlette import status
 
 from facts_backend.src.core.config import settings
 from facts_backend.src.core.exceptions import FACTSAuthError, FACTSRequestError

@@ -4,7 +4,7 @@ from typing import Optional, Annotated
 from uuid import uuid4
 
 import jwt
-from cryptography.hazmat.primitives.asymmetric.ec import derive_private_key, SECP256K1, SECP256R1
+from cryptography.hazmat.primitives.asymmetric.ec import derive_private_key, SECP256R1
 from fastapi import APIRouter, HTTPException, Query
 from web3 import Web3
 

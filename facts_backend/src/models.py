@@ -1,7 +1,7 @@
 from datetime import datetime
 
 from sqlalchemy import UniqueConstraint
-from sqlmodel import Field, Relationship, func, SQLModel, JSON
+from sqlmodel import Field, Relationship, func, SQLModel
 
 
 class Article(SQLModel, table=True):

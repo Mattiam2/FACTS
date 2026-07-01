@@ -13,7 +13,8 @@ from ebsi_sim.src.api.didr import router as didrapp
 from ebsi_sim.src.api.tnt import router as tntapp
 from ebsi_sim.src.api.wallet_mock import router as walletapp
 from ebsi_sim.src.core.db import engine, session_ctx
-from ebsi_sim.src.core.exceptions import EBSIError, EBSIRequestError, EBSINotFoundError, EBSIAuthError, EBSIDuplicateError
+from ebsi_sim.src.core.exceptions import EBSIError, EBSIRequestError, EBSINotFoundError, EBSIAuthError, \
+    EBSIDuplicateError
 from ebsi_sim.src.repositories import create_db_and_tables, create_default_data
 
 

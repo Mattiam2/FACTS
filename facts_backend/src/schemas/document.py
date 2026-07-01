@@ -1,5 +1,4 @@
-from pydantic import Json
-from sqlmodel import SQLModel, Field, JSON
+from sqlmodel import SQLModel, Field
 
 from facts_backend.src.schemas.shared import TimestampPublic, PageLinksPublic
 

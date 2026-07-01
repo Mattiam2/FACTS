@@ -1,5 +1,3 @@
-import httpx
-
 from facts_backend.src.repositories.ebsi_base import EBSIClient
 from facts_backend.src.schemas.auth import EBSITokenPublic
 

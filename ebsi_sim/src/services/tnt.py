@@ -9,7 +9,8 @@ from web3.contract import Contract
 
 from ebsi_sim.src.core.auth import check_scopes, User
 from ebsi_sim.src.core.config import settings
-from ebsi_sim.src.core.exceptions import EBSIRequestError, EBSINotFoundError, EBSIAuthError, EBSIError, EBSIDuplicateError
+from ebsi_sim.src.core.exceptions import EBSIRequestError, EBSINotFoundError, EBSIAuthError, EBSIError, \
+    EBSIDuplicateError
 from ebsi_sim.src.models.didr import VerificationMethod
 from ebsi_sim.src.models.tnt import Access
 from ebsi_sim.src.repositories.didr import IdentifierRepository

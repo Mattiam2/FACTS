@@ -1,7 +1,6 @@
 import base64
 import hashlib
 import json
-import traceback
 from typing import Any
 
 import rlp
@@ -16,6 +15,7 @@ from web3.contract.base_contract import BaseContractFunction
 
 from ebsi_sim.src.core.auth import User
 from ebsi_sim.src.core.exceptions import EBSIRequestError, EBSIError
+
 
 def to_snakecase(text: str) -> str:
     """
@@ -97,10 +97,18 @@ def build_unsigned_transaction(eth_contract, register_address: str, method: str,
     using the specified parameters and a predefined transaction configuration.
 
     :param eth_contract: The Ethereum contract object providing the ABI for method discovery.
+    :type eth_contract: Any
     :param register_address: The hexadecimal address in string format of the target Ethereum contract.
+    :type register_address: str
     :param method: The name of the contract method to invoke.
+    :type method: str
     :param params: A dictionary of parameters for the contract method including the required
                    Ethereum transaction fields like `from`.
+    :type params: dict
+    :param public_key_check: If true checks whether an allowed public key matches the from address
+    :type public_key_check: bool
+    :param allowed_public_keys: If public_key_check is true then it must contains the list of public keys allowed to sign
+    :type allowed_public_keys: list[str]
 
     :return: A dictionary representing the unsigned transaction that can be signed and sent
              to the Ethereum network.
@@ -186,6 +194,11 @@ def exec_signed_transaction(current_user: User, eth_contract, register_address, 
     :type signed_transaction: str
     :param allowed_public_keys: List of public keys allowed to sign the transaction.
     :type allowed_public_keys: list[str]
+    :param public_key_check: If true checks whether an allowed public key matches the from address
+    :type public_key_check: bool
+    :param allowed_public_keys: If public_key_check is true then it must contains the list of public keys allowed to sign
+    :type allowed_public_keys: list[str]
+
     :return: A mock hexadecimal confirmation string indicating the transaction was successfully executed.
     :rtype: str
     :raises RequestError: If any validation fails for the transaction data, signer, or addresses.

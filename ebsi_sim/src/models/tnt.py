@@ -1,7 +1,5 @@
 from datetime import datetime
-from typing import Any
 
-from pydantic import Json
 from sqlmodel import Field, Relationship, func, SQLModel, JSON
 
 from ebsi_sim.src.models.didr import Identifier

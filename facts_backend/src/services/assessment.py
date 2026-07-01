@@ -1,7 +1,7 @@
 import hashlib
+import uuid
 
 import rlp
-import uuid
 from eth_account._utils.legacy_transactions import Transaction
 from fastapi import Depends
 

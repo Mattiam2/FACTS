@@ -9,7 +9,8 @@ from web3 import Web3
 from ebsi_sim.src.core.auth import User, get_current_user
 from ebsi_sim.src.core.exceptions import EBSINotFoundError
 from ebsi_sim.src.models.tnt import Access
-from ebsi_sim.src.schemas import AccessListPublic, DocumentItemPublic, DocumentListPublic, DocumentPublic, EventItemPublic, \
+from ebsi_sim.src.schemas import AccessListPublic, DocumentItemPublic, DocumentListPublic, DocumentPublic, \
+    EventItemPublic, \
     EventListPublic, EventPublic, JsonRpcCreate, JsonRpcPublic, PageLinksPublic, TimestampPublic, VersionEnum, \
     PermissionEnum
 from ebsi_sim.src.services.didr import DidrService

@@ -1,8 +1,7 @@
 from dataclasses import dataclass
 
-from pydantic import Json
-from sqlmodel import SQLModel, Field, JSON
-from typing_extensions import TypedDict, Any
+from sqlmodel import SQLModel, Field
+from typing_extensions import TypedDict
 
 from ebsi_sim.src.schemas.shared import TimestampPublic, PageLinksPublic
 

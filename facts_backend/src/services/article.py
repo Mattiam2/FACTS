@@ -1,5 +1,5 @@
 import hashlib
-import random
+
 import rlp
 from eth_account._utils.legacy_transactions import Transaction
 from fastapi import Depends
@@ -11,8 +11,7 @@ from facts_backend.src.core.exceptions import FACTSError, FACTSDuplicateError, F
 from facts_backend.src.repositories.ebsi_tnt import TntClient
 from facts_backend.src.repositories.facts import ArticleRepository
 from facts_backend.src.schemas.article import ArticleCreate, ArticleMetadataPublic, ArticleSourceChainPublic
-from facts_backend.src.schemas.shared import BuildTransactionResponse, SignedTransactionPayload, \
-    SignedTransactionResponse
+from facts_backend.src.schemas.shared import BuildTransactionResponse, SignedTransactionPayload
 
 
 class ArticleServiceError(FACTSError):

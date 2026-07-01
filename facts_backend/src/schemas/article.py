@@ -2,6 +2,7 @@ from datetime import datetime
 
 from sqlmodel import SQLModel
 
+
 class ArticleInfoPublic(SQLModel):
     url: str
     title: str

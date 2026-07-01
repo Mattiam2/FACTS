@@ -7,7 +7,8 @@ from facts_backend.src.core.config import settings
 from facts_backend.src.repositories.ebsi_tnt import TntClient
 from facts_backend.src.schemas.article import ArticleMetadataPublic
 from facts_backend.src.schemas.assessment import AssessmentMetadataPublic
-from facts_backend.src.schemas.shared import BuildTransactionResponse, SignedTransactionPayload, SignedTransactionResponse
+from facts_backend.src.schemas.shared import BuildTransactionResponse, SignedTransactionPayload, \
+    SignedTransactionResponse
 
 
 def split_url(url: str) -> tuple[str, str, str]:
