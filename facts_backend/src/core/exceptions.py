@@ -18,14 +18,14 @@ class FACTSDuplicateError(FACTSError):
 
 class FACTSAuthError(FACTSError):
     """
-    Represents an EBSI authentication error (Status Code: 401).
+    Represents an FACTS authentication error (Status Code: 401).
     """
     pass
 
 
 class FACTSRequestError(FACTSError):
     """
-    Represents an error that occurs during an EBSI request.
+    Represents a generic request error (Status Code: 400).
     """
     pass
 

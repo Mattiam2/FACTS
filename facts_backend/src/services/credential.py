@@ -15,16 +15,21 @@ class CredentialService:
         pass
 
     def request_credential(self, payload: CredentialCreate):
+        """
+        Handles the issuance of a Verifiable Credential (VC) simulating an Issuer.
+        This endpoint generates a credential containing information about the subject
+        with the required cryptographic signing to ensure
+        the credential's validity.
+
+        :param payload: The request payload containing the subject DID, credential type, and credential subject.
+        :type payload: CredentialCreate
+
+        :return: A signed Verifiable Credential (VC) as a string.
+        """
         subject_did = payload.subject_did
         credential_type = payload.credential_type
         credential_subject = payload.credential_subject
 
-        """
-        Handles the issuance of a Verifiable Credential (VC) simulating an Issuer.
-        This endpoint generates a credential containing information about the subject,
-        its issuance and expiration, with the required cryptographic signing to ensure
-        the credential's validity.
-        """
         if credential_type is None:
             credential_type = []
         if credential_subject is None:
@@ -36,21 +41,21 @@ class CredentialService:
         uuid_str = uuid4().urn
 
         credential = VerifiableCredentialPublic.model_validate({
-                "@context": ["https://www.w3.org/2018/credentials/v1"],
-                "id": uuid_str,
-                "type": credential_type,
-                "issuanceDate": issued,
-                "validFrom": issued,
-                "validUntil": expiration_date,
-                "expirationDate": expiration_date,
-                "issued": issued,
-                "issuer": settings.ISSUER_DID,
-                "credentialSubject": {'id': subject_did, **credential_subject},
-                "credentialSchema": {
-                    "id": "https://api-pilot.ebsi.eu/trusted-schemas-registry/v2/schemas/0x23039e6356ea6b703ce672e7cfac0b42765b150f63df78e2bd18ae785787f6a2",
-                    "type": "FullJsonSchemaValidator2021"
-                }
-            })
+            "@context": ["https://www.w3.org/2018/credentials/v1"],
+            "id": uuid_str,
+            "type": credential_type,
+            "issuanceDate": issued,
+            "validFrom": issued,
+            "validUntil": expiration_date,
+            "expirationDate": expiration_date,
+            "issued": issued,
+            "issuer": settings.ISSUER_DID,
+            "credentialSubject": {'id': subject_did, **credential_subject},
+            "credentialSchema": {
+                "id": "https://api-pilot.ebsi.eu/trusted-schemas-registry/v2/schemas/0x23039e6356ea6b703ce672e7cfac0b42765b150f63df78e2bd18ae785787f6a2",
+                "type": "FullJsonSchemaValidator2021"
+            }
+        })
 
         credential_payload = VerifiableCredentialPayload(
             iss=settings.ISSUER_DID,

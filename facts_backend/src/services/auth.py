@@ -55,6 +55,18 @@ class AuthService:
         self.auth_client = auth_client
 
     def request_token(self, vp_token: str, scope: TokenScopeEnum) -> TokenPublic:
+        """
+        Requests to EBSI and returns a token based on the specified Verifiable Presentation (VP) token and scope.
+
+        :param vp_token: The Verifiable Presentation token to be validated and processed.
+        :type vp_token: str
+        :param scope: The scope defining the context in which the generated token will be used.
+        :type scope: TokenScopeEnum
+        :return: A token object containing the access token and token type.
+        :rtype: TokenPublic
+        :raises FACTSAuthError: If the VP token is invalid or expired.
+        :raises AuthServiceRequestError: If the scope is invalid.
+        """
         try:
             vp_token_decoded = jwt.decode(vp_token, options={"verify_signature": False, "verify_exp": True})
             vp_token_object = VerifiablePresentationPayload.model_validate(vp_token_decoded)
@@ -114,6 +126,15 @@ class AuthService:
 
     @staticmethod
     def create_access_token(data: dict, expires_delta: timedelta | None = None):
+        """
+        Creates a JWT access token with an optional expiration delta. If no expiration
+        delta is provided, the token will be valid for 15 minutes by default.
+
+        :param data: A dictionary containing the data to encode within the JWT.
+        :param expires_delta: An optional timedelta object specifying the token's
+            expiration time. If omitted, the token will be valid for 15 minutes.
+        :return: A string representation of the encoded JWT access token.
+        """
         to_encode = data.copy()
         if expires_delta:
             expire = datetime.now(timezone.utc) + expires_delta
