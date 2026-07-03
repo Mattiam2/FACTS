@@ -23,9 +23,9 @@ class PresentationDescriptor(SQLModel):
     :type format: str
     :ivar path: The storage path of the presentation file.
     :type path: str
-    :ivar path_nested: (Optional) A nested PresentationDescriptor instance,
+    :ivar path_nested: A nested PresentationDescriptor instance,
         allowing hierarchical representation of presentations.
-    :type path_nested: Optional[PresentationDescriptor]
+    :type path_nested: PresentationDescriptor | None
     """
     id: str
     format: str

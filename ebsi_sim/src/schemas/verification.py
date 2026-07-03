@@ -29,11 +29,11 @@ class VerificationRelationshipNameEnum(str, Enum):
     """
     Enumeration of verification relationship names.
     """
-    authentication = "authentication"  # For authenticate the entity itself
-    assertionMethod = "assertionMethod"  # For sign and issue a VC
-    capabilityInvocation = "capabilityInvocation"
-    capabilityDelegation = "capabilityDelegation"
-    keyAgreement = "keyAgreement"
+    authentication = "authentication"  # For authenticate the entity itself (implemented)
+    assertionMethod = "assertionMethod"  # For signing and issue a VC (implemented)
+    capabilityInvocation = "capabilityInvocation" # For invoking a cryptographic capability (not implemented)
+    capabilityDelegation = "capabilityDelegation" # For delegating access as subject DID (implemented)
+    keyAgreement = "keyAgreement" # For establishing a shared key (not implemented)
 
 
 class VerificationRelationshipBase(SQLModel):

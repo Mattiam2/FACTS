@@ -20,6 +20,15 @@ from ebsi_sim.src.repositories import create_db_and_tables, create_default_data
 
 @asynccontextmanager
 async def lifespan(app):
+    """
+    Manages the lifespan of the FastAPI application ensuring that necessary resources, such as
+    database tables and default data, are initialized when the application starts.
+
+    :param app: The FastAPI application instance being managed.
+    :type app: any
+    :return: An asynchronous generator for the lifespan context.
+    :rtype: AsyncGenerator[None, None]
+    """
     create_db_and_tables()
     create_default_data()
     yield
@@ -34,6 +43,20 @@ app.include_router(walletapp)
 
 
 def handle_exception(exc: Exception):
+    """
+    Handles exceptions and returns an appropriate JSON response.
+
+    This function matches the type of the provided exception to determine a
+    specific HTTP status code and message. For known exceptions, custom status
+    codes and messages are used. Database errors and generic errors are logged
+    using traceback. The response is returned as a JSON with a specific format.
+
+    :param exc: An exception to handle.
+    :type exc: Exception
+    :return: A JSONResponse object containing an HTTP status code and an error
+        message describing the exception.
+    :rtype: JSONResponse
+    """
     status_code = 500
     message = "Internal Server Error"
     if isinstance(exc, EBSIError):

@@ -52,10 +52,10 @@ class DocumentPublic(SQLModel):
     metadata text, timestamp, and the creator
 
     :ivar metadata_json: The metadata of the document
-    :type metadata_json: Json
+    :type metadata_json: dict | str
     :ivar timestamp: The timestamp when the document was recorded.
     :type timestamp: TimestampPublic
-    :ivar creator: Denotes the creator of the document.
+    :ivar creator: Denotes the creator DID of the document.
     :type creator: str
     """
 

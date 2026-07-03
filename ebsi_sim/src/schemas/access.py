@@ -12,9 +12,7 @@ class AccessBase(SQLModel):
     :ivar granted_by: The identifier for the entity or person who granted the
                       permission.
     :type granted_by: str
-    :ivar permission: Defines the type of permission granted. This uses
-                      the ``PermissionEnum`` enumeration to standardize
-                      permission levels.
+    :ivar permission: Defines the type of permission granted.
     :type permission: PermissionEnum
     """
     subject: str = Field(description="Subject")
@@ -27,6 +25,12 @@ class AccessItemPublic(AccessBase):
     """
     Represents an EBSI Access list item
 
+    :ivar subject: Subject of the access grant.
+    :type subject: str
+    :ivar granted_by: DID that granted the access.
+    :type granted_by: str
+    :ivar permission: Type of permission granted.
+    :type permission: PermissionEnum
     :ivar document_id: Identifier for the associated document.
     :type document_id: str
     """

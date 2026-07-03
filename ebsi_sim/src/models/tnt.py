@@ -15,8 +15,16 @@ class Access(AccessItemPublic, table=True):
     :type id: int
     :ivar document_id: Identifier of the associated document.
     :type document_id: str
+    :ivar subject: Subject of the access grant.
+    :type subject: str
+    :ivar granted_by: DID that granted the access.
+    :type granted_by: str
     :ivar document: The associated document entity.
     :type document: Document
+    :ivar subject_identifier: The subject identifier entity.
+    :type subject_identifier: Identifier
+    :ivar granted_by_identifier: The granted_by identifier entity.
+    :type granted_by_identifier: Identifier
     """
 
     __tablename__ = "accesses"
@@ -40,7 +48,7 @@ class Document(SQLModel, table=True):
     :ivar id: The unique identifier for the document.
     :type id: str
     :ivar metadata_json: The metadata of the document.
-    :type metadata_json: Json
+    :type metadata_json: dict | str
     :ivar timestamp_datetime: The date and time when the document was
         created or recorded.
     :type timestamp_datetime: datetime
@@ -56,6 +64,8 @@ class Document(SQLModel, table=True):
     :type events: list[Event]
     :ivar accesses: A list of associated access entities with the document.
     :type accesses: list[Access]
+    :ivar creator_identifier: The entity of the creator of the document.
+    :type creator_identifier: Identifier
     """
 
     __tablename__ = "documents"
@@ -81,6 +91,8 @@ class Event(EventBase, table=True):
     :type id: str
     :ivar document_id: Identifier for the associated document.
     :type document_id: str
+    :ivar metadata_json: Metadata information for the event
+    :type metadata_json: dict | str
     :ivar timestamp_datetime: The datetime when the event occurred.
     :type timestamp_datetime: datetime
     :ivar timestamp_source: The source from which the timestamp was obtained.

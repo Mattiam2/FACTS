@@ -8,13 +8,38 @@ class IdentifierBase(SQLModel):
     """
     Represents an EBSI Identifier base schema for storing and managing grants data.
 
-    :ivar did: A unique record id = DID User
+    :ivar did: A unique identifier (DID) for the entity.
     :type did: str
     """
     did: str = Field(description="A unique record id = DID User")
 
 
 class IdentifierPublic(IdentifierBase):
+    """
+    Represents an EBSI Identifier complete public schema.
+
+    :ivar did: A unique identifier (DID) for the entity.
+    :type did: str | None
+    :ivar controller: A list of DID controllers for the identifier
+    :type controller: list[str] | None
+    :ivar verificationMethod: A list of verification methods associated with the identifier
+    :type verificationMethod: list[VerificationMethodBase] | None
+    :ivar authentication: A list of authentication verification methods associated with
+        the identifier.
+    :type authentication: list[str] | None
+    :ivar assertionMethod: A list of assertion verification methods associated with
+        the identifier.
+    :type assertionMethod: list[str] | None
+    :ivar capabilityInvocation: A list of capabilityInvocation verification methods that allow for invoking capabilities on
+        behalf of the identifier.
+    :type capabilityInvocation: list[str] | None
+    :ivar capabilityDelegation: A list of capabilityDelegation verification methods for delegating capabilities to other
+        identifiers or entities.
+    :type capabilityDelegation: list[str] | None
+    :ivar keyAgreement: A list of keyAgreement verification methods.
+    :type keyAgreement: list[str] | None
+    """
+
     did: str | None = Field(default=None, schema_extra={'serialization_alias': 'id'})
     controller: list[str] | None = None
     verificationMethod: list[VerificationMethodBase] | None = None

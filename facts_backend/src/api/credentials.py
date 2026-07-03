@@ -6,7 +6,8 @@ from facts_backend.src.services.credential import CredentialService
 router = APIRouter(prefix="/credentials", tags=["credentials"])
 
 
-@router.post("/publisher_vc")
+@router.post("/publisher_vc", summary="Request a Verifiable Credential for a Publisher",
+             description="Request a Verifiable Credential for a Publisher. Returns a Verifiable Credential JWT.")
 def request_vc_publisher(payload: PublisherSubject, credential_service: CredentialService = Depends()):
     subject_did = payload.subject_did
     credential_subject = payload.model_dump(mode="json")
@@ -19,7 +20,8 @@ def request_vc_publisher(payload: PublisherSubject, credential_service: Credenti
     return credential_service.request_credential(credential_payload)
 
 
-@router.post("/factchecker_vc")
+@router.post("/factchecker_vc", summary="Request a Verifiable Credential for a FactChecker",
+             description="Request a Verifiable Credential for a FactChecker. Returns a Verifiable Credential JWT.")
 def request_vc_factchecker(payload: FactCheckerSubject, credential_service: CredentialService = Depends()):
     subject_did = payload.subject_did
     credential_subject = payload.model_dump(mode="json")

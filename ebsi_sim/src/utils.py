@@ -150,6 +150,18 @@ def build_unsigned_transaction(eth_contract, register_address: str, method: str,
     return unsigned_transaction
 
 def get_public_key_from_transaction(decoded_transaction: Transaction, unsigned_transaction: dict):
+    """
+    Extracts the public key from a signed Ethereum transaction.
+
+    :param decoded_transaction: The decoded signed Ethereum transaction containing `r`, `s`,
+        and `v` (signature parameters).
+    :type decoded_transaction: Transaction
+    :param unsigned_transaction: The unsigned Ethereum transaction dictionary.
+    :type unsigned_transaction: dict
+    :return: The Ethereum public key recovered from the signed transaction in hexadecimal
+        format.
+    :rtype: str
+    """
     r, s, v = decoded_transaction['r'], decoded_transaction['s'], decoded_transaction['v']
     v_standard = v - 27 if v in (27, 28) else (v - 35) % 2
     sig = keys.Signature(vrs=(v_standard, r, s))
@@ -161,6 +173,18 @@ def get_public_key_from_transaction(decoded_transaction: Transaction, unsigned_t
 
 
 def public_key_matches_address(public_key_hex: str, eth_address: str) -> bool:
+    """
+    Verifies if a provided public key matches the given Ethereum address.
+
+    :param public_key_hex: Public key in hexadecimal format. Should optionally start with "0x"
+        and may include the uncompressed prefix "04".
+    :type public_key_hex: str
+    :param eth_address: Ethereum address to validate against, provided as a checksum address.
+    :type eth_address: str
+    :return: Boolean indicating whether the derived Ethereum address from the public key matches
+        the given Ethereum address.
+    :rtype: bool
+    """
     pub_key_hex = public_key_hex.replace("0x", "")
 
     # Strip the 0x04 uncompressed prefix if present (eth_keys expects 64 raw bytes)

@@ -11,7 +11,7 @@ class EventBase(SQLModel):
     Represents an EBSI event base model
 
     :ivar metadata_json: Metadata information for the event
-    :type metadata_json: Json
+    :type metadata_json: dict | str
     :ivar sender: Identifier of the sender of the event.
     :type sender: str
     :ivar origin: Origin or source of the event.
@@ -73,6 +73,16 @@ class EventPublic(EventBase):
     """
     Represents an EBSI event schema
 
+    :ivar metadata_json: Metadata information for the event
+    :type metadata_json: dict | str
+    :ivar sender: Identifier of the sender of the event.
+    :type sender: str
+    :ivar origin: Origin or source of the event.
+    :type origin: str
+    :ivar id: Unique hash value representing the event.
+    :type id: str
+    :ivar external_hash: External hash value associated with the event
+    :type external_hash: str | None
     :ivar timestamp: The timestamp when the event occurred
     :type timestamp: TimestampPublic
     """
