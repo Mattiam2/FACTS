@@ -9,7 +9,7 @@ class AuthClient(EBSIClient):
 
     def get_token(self, data: dict) -> EBSITokenPublic:
         """
-        Requesst a token to EBSI Authentication API
+        Requests a token to EBSI Authentication API
 
         :param data: The input data containing required fields for token generation.
         :type data: dict

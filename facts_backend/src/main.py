@@ -31,6 +31,20 @@ app.include_router(credentialapi)
 app.include_router(authapi)
 
 def handle_exception(exc: Exception):
+    """
+    Handles exceptions and returns an appropriate JSON response.
+
+    This function matches the type of the provided exception to determine a
+    specific HTTP status code and message. For known exceptions, custom status
+    codes and messages are used. Database errors and generic errors are logged
+    using traceback. The response is returned as a JSON with a specific format.
+
+    :param exc: An exception to handle.
+    :type exc: Exception
+    :return: A JSONResponse object containing an HTTP status code and an error
+        message describing the exception.
+    :rtype: JSONResponse
+    """
     status_code = 500
     message = "Internal Server Error"
     if isinstance(exc, FACTSError):

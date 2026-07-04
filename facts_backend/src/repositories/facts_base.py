@@ -13,6 +13,7 @@ T = TypeVar("T", bound=SQLModel)
 class Repository(ABC, Generic[T]):
     """
     Abstract base class for a repository pattern.
+    It's used to allow fetching and creation of data into the FACTS DB that simulates a Blockchain Indexer.
 
     This class defines the interface for a repository, designed to handle CRUD
     (Create, Read, Update, Delete) operations and enable data manipulation. It

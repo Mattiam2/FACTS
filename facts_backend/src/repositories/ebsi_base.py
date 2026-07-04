@@ -36,6 +36,17 @@ class EBSIDuplicateError(EBSIError, FACTSDuplicateError):
     pass
 
 class EBSIClient:
+    """
+    Represents a client for interacting with the EBSI (European Blockchain Services Infrastructure)
+    API. Provides methods for sending GET and POST requests to EBSI endpoints, equipped with error
+    handling and support for optional authentication.
+
+    This class is designed to handle the base URL configuration and common HTTP operations required
+    when working with EBSI services.
+
+    :ivar client: The HTTP client instance used for making requests to the EBSI API.
+    :type client: httpx.Client
+    """
     client: httpx.Client
 
     def __init__(self, root_path: str):
