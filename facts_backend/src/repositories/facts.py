@@ -75,7 +75,7 @@ class ArticleRepository(BaseRepository[Article]):
         self.delete_sources(id)
         super().delete(id=id)
 
-    def get_source_chain(self, article_hash: str):
+    def get_source_chain(self, article_hash: str, max_depth: int = 10):
         """
         Retrieve the source chain of an article based on its hash while calculating credibility and manipulation
         scores recursively for all related sources.
@@ -86,6 +86,8 @@ class ArticleRepository(BaseRepository[Article]):
 
         :param article_hash: The hash identifier of the article for which the source chain is to be retrieved.
         :type article_hash: str
+        :param max_depth: The maximum depth of the source chain to be retrieved. Defaults to 10.
+        :type max_depth: int
         :return: A list of tuples representing the source chain. Each tuple consists of the article hash,
                  source value, source hash, averaged credibility score, averaged manipulation score, and depth.
         :rtype: list
@@ -126,16 +128,18 @@ class ArticleRepository(BaseRepository[Article]):
             .subquery("average_articles_r")
         )
 
-        recursive = (select(
-            source_alias.article_hash,
-            source_alias.source_value,
-            source_alias.source_hash,
-            avg_scores_recursive.c.avg_credibility_score,
-            avg_scores_recursive.c.avg_manipulation_score,
-            (base.c.depth + 1).label("depth")
-        ).join(base, source_alias.article_hash == base.c.source_hash)
-                     .outerjoin(avg_scores_recursive, source_alias.source_hash == avg_scores_recursive.c.article_hash)
-                     )
+        recursive = (
+            select(
+                source_alias.article_hash,
+                source_alias.source_value,
+                source_alias.source_hash,
+                avg_scores_recursive.c.avg_credibility_score,
+                avg_scores_recursive.c.avg_manipulation_score,
+                (base.c.depth + 1).label("depth")
+            ).join(base, source_alias.article_hash == base.c.source_hash)
+            .outerjoin(avg_scores_recursive, source_alias.source_hash == avg_scores_recursive.c.article_hash)
+            .where(base.c.depth < max_depth)
+        )
 
         full_cte = base.union_all(recursive)
 
@@ -197,7 +201,7 @@ class AssessmentRepository(BaseRepository[Assessment]):
         for evidence in assessment.evidences:
             db.session.delete(evidence)
 
-    def delete(self, *, commit = False, id: str) -> None:
+    def delete(self, *, commit=False, id: str) -> None:
         """
         Deletes an assessment and its associated evidences from the database.
 

@@ -116,14 +116,15 @@ class ArticleService:
         :rtype: ArticleSourceChainPublic
         :raises ArticleServiceNotFoundError: If the article is not found or is not confirmed.
         """
+        max_depth = 10
         article = self.article_repository.get(article_hash)
         if not article or not article.confirmed:
             raise ArticleServiceNotFoundError(f"Article with hash {article_hash} not found")
-        sources_nodes = self.article_repository.get_source_chain(article_hash)
+        sources_nodes = self.article_repository.get_source_chain(article_hash, max_depth)
 
         response = ArticleSourceChainPublic.model_validate({
             'root_article_hash': article_hash,
-            'max_depth': 10,
+            'max_depth': max_depth,
             'nodes': sources_nodes
         })
         return response
