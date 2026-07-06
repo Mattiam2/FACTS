@@ -1,6 +1,11 @@
 const FACTS_API_URL = 'http://localhost:8001'
 const FACTS_WEB_URL = 'http://localhost:8080'
 
+/**
+ * Retrieves the currently active tab in the last focused browser window.
+ *
+ * @return A promise that resolves to the active tab object, which contains details about the tab such as its ID, URL, and title.
+ */
 async function getCurrentTab() {
     let queryOptions = {active: true, lastFocusedWindow: true};
 
@@ -8,6 +13,12 @@ async function getCurrentTab() {
     return tab;
 }
 
+/**
+ * Extracts the credential subject from a Verifiable Credential (VC) and determines its role in the context of specific credential types.
+ *
+ * @param vc - A JWT-encoded Verifiable Credential string.
+ * @return The credential subject object with an additional `role` property if the VC is valid and matches the expected types; otherwise, returns `undefined`.
+ */
 function extractSubjectCredential(vc) {
     const vcData = JSON.parse(atob(vc.split('.')[1].replace(/-/g, '+').replace(/_/g, '/'))).vc
 
@@ -25,6 +36,12 @@ function extractSubjectCredential(vc) {
     return credentialSubject
 }
 
+/**
+ * Returns a descriptive label based on the provided credibility average.
+ *
+ * @param average - The average credibility score, ranging from 1 to 5.
+ * @return A description corresponding to the given credibility average.
+ */
 function getCredibilityDescription(average) {
     switch (average) {
         case 1: {
@@ -46,6 +63,14 @@ function getCredibilityDescription(average) {
     return ''
 }
 
+/**
+ * Provides a description of the manipulation level based on the given average value.
+ *
+ * @param average - The average value representing the level of manipulation.
+ *                           Valid values are 1 through 5.
+ * @return A string describing the level of manipulation.
+ *                  Returns an empty string if the input is not within the valid range.
+ */
 function getManipulationDescription(average) {
     switch (average) {
         case 1: {
@@ -89,7 +114,9 @@ const manipulationDescriptionElement = document.getElementById('manipulation-des
 
 let articleHash = "";
 
-
+/**
+ * Retrieves the current tab's URL and fetches the article data and assessments from the FACTS API.
+ */
 getCurrentTab().then(async tab => {
     console.log("Current URL:", tab.url);
 
@@ -189,12 +216,18 @@ getCurrentTab().then(async tab => {
     }
 });
 
+/**
+ * Opens the article details page in a new tab.
+ */
 detailsButton.addEventListener('click', () => {
     if (articleHash) {
         window.open(`${FACTS_WEB_URL}/articles/${articleHash}`, '_blank');
     }
 })
 
+/**
+ * Opens the FACTS dashboard in a new tab.
+ */
 dashboardButton.addEventListener('click', () => {
     window.open(`${FACTS_WEB_URL}`, '_blank');
 })

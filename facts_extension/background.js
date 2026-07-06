@@ -1,5 +1,8 @@
 const FACTS_API_URL = 'http://localhost:8001'
 
+/**
+ * Listens for changes in the active tab and checks if the article is present in FACTS.
+ */
 chrome.tabs.onActivated.addListener((activeInfo) => {
     console.log("Tab switched! Active Tab ID:", activeInfo.tabId);
     console.log("Window ID:", activeInfo.windowId);
@@ -17,6 +20,9 @@ chrome.tabs.onActivated.addListener((activeInfo) => {
     });
 });
 
+/**
+ * Listens for changes in the URL of the active tab and checks if the article is present in FACTS.
+ */
 chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
     setNotFoundIcon(tabId)
     if (tab.url && tab.url.startsWith('http')) {
@@ -24,6 +30,13 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
     }
 });
 
+/**
+ * Checks the presence of an article and its assessments using the provided URL and updates the browser tab icon accordingly.
+ *
+ * @param {string} url - The URL of the article to be checked.
+ * @param {number} tabId - The ID of the browser tab where the icon needs to be updated.
+ * @return {Promise<void>} - A promise that resolves when the process of checking the article and setting the icon is complete.
+ */
 async function checkArticlePresence(url, tabId) {
     try {
         const articleUrl = encodeURIComponent(url)
@@ -80,6 +93,10 @@ async function checkArticlePresence(url, tabId) {
     }
 }
 
+/**
+ * Sets the icon of the browser tab to indicate that the article is not found.
+ * @param tabId - The ID of the browser tab.
+ */
 function setNotFoundIcon(tabId) {
     chrome.action.setIcon({
         tabId: tabId,
@@ -91,6 +108,10 @@ function setNotFoundIcon(tabId) {
     })
 }
 
+/**
+ * Sets the icon of the browser tab to indicate that the article has been found and has warning score
+ * @param tabId - The ID of the browser tab.
+ */
 function setWarningIcon(tabId) {
     chrome.action.setIcon({
         tabId: tabId,
@@ -102,6 +123,10 @@ function setWarningIcon(tabId) {
     })
 }
 
+/**
+ * Sets the icon of the browser tab to indicate that the article has been found and has dangerous score
+ * @param tabId - The ID of the browser tab.
+ */
 function setDangerousIcon(tabId) {
     chrome.action.setIcon({
         tabId: tabId,
@@ -113,6 +138,10 @@ function setDangerousIcon(tabId) {
     })
 }
 
+/**
+ * Sets the icon of the browser tab to indicate that the article has been found and has safe score
+ * @param tabId - The ID of the browser tab.
+ */
 function setSafeIcon(tabId) {
     chrome.action.setIcon({
         tabId: tabId,
