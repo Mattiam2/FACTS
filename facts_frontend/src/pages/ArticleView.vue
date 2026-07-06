@@ -22,11 +22,14 @@
                 <b>Title</b>: {{ articleStore.article.metadata.article_info.title }}<br>
                 <b>Author</b>: {{ articleStore.article.metadata.article_info.author }}<br>
                 <b>Description</b>: {{ articleStore.article.metadata.article_info.description }}<br>
-                <b>Publication Date</b>: {{ formatDate(articleStore.article.metadata.article_info.publication_date ?? '') }}<br>
+                <b>Publication Date</b>:
+                {{ formatDate(articleStore.article.metadata.article_info.publication_date ?? '') }}<br>
                 <b>Language</b>: {{ articleStore.article.metadata.article_info.language }}<br>
-                <div v-if="articleStore.article.metadata.article_info.sources && articleStore.article.metadata.article_info.sources.length > 0">
+                <div
+                    v-if="articleStore.article.metadata.article_info.sources && articleStore.article.metadata.article_info.sources.length > 0">
                   <b>Sources</b>:
-                  <div v-for="source in articleStore.article.metadata.article_info.sources" :key="source" class="d-flex ga-2">
+                  <div v-for="source in articleStore.article.metadata.article_info.sources" :key="source"
+                       class="d-flex ga-2">
                     <a :href="source" target="_blank" v-if="source.startsWith('http')" class="text-decoration-none">
                       <VIcon icon="mdi-link" color="primary" size="16"/>
                       <span class="text-decoration-underline ms-1">{{ source }}</span>
@@ -40,8 +43,10 @@
             </VCard>
             <VCard variant="tonal" v-else>
               <VCardText>
-                <div v-if="assessmentStore.assessments.length > 0 && assessmentStore.assessments[0].article_url" class="mb-3">
-                  <b>URL</b>: <a :href="assessmentStore.assessments[0].article_url" target="_blank">{{ assessmentStore.assessments[0].article_url }}</a>
+                <div v-if="assessmentStore.assessments.length > 0 && assessmentStore.assessments[0].article_url"
+                     class="mb-3">
+                  <b>URL</b>: <a :href="assessmentStore.assessments[0].article_url"
+                                 target="_blank">{{ assessmentStore.assessments[0].article_url }}</a>
                 </div>
                 <div v-if="assessmentStore.assessments.length > 0">
                   <VIcon class="me-1">mdi-alert</VIcon>
@@ -53,7 +58,8 @@
                 </div>
               </VCardText>
             </VCard>
-            <VCard v-if="assessmentStore.assessments && assessmentStore.assessments.length > 0" class="mt-5" title="Fact-checking assessments"
+            <VCard v-if="assessmentStore.assessments && assessmentStore.assessments.length > 0" class="mt-5"
+                   title="Fact-checking assessments"
                    variant="tonal">
               <VCardText>
                 <VContainer>
@@ -78,7 +84,8 @@
                 </VContainer>
 
 
-                <VDataTable :items="assessmentStore.assessments" :headers="assessmentHeaders" class="bg-transparent" show-expand
+                <VDataTable :items="assessmentStore.assessments" :headers="assessmentHeaders" class="bg-transparent"
+                            show-expand
                             hide-default-footer>
                   <template #item.data-table-expand="{ internalItem, isExpanded, toggleExpand, item }">
                     <VBtn
@@ -261,20 +268,18 @@
 </template>
 
 <script lang="ts" setup>
-import {storeToRefs} from "pinia";
+import type {
+  EbsiAssessmentDocument,
+  FactsSubjectCredential,
+  IndexedAssessment,
+  SourceNode
+} from "@/types";
 import {onMounted, type Ref, ref} from "vue";
 import {useRoute} from "vue-router";
 import Gauge from "@/components/Gauge.vue";
 import {useAppStore} from "@/stores/app.ts";
 import {useArticleStore} from "@/stores/article.ts";
 import {useAssessmentStore} from "@/stores/assessment.ts";
-import {
-  CredibilityScore,
-  type EbsiAssessmentDocument,
-  type FactsSubjectCredential,
-  type IndexedAssessment,
-  ManipulationScore
-} from "@/types";
 import {
   extractSubjectCredential,
   formatDate,
@@ -318,36 +323,41 @@ async function expandAssessment(item: IndexedAssessment, expand: any) {
   expand(item)
 }
 
-onMounted(async () => {
-  articleStore.$reset()
-  assessmentStore.$reset()
+async function loadArticle(hash: string) {
   try {
-    await articleStore.loadArticle(route.params.id as string)
+    await articleStore.loadArticle(hash)
+    if (articleStore.article)
+      claimedByPublisher.value = extractSubjectCredential(articleStore.article.metadata.publisher_vc)
   } catch (error: any) {
     console.error(error)
     appStore.addToastMessage(`Error loading article: ${error.message}`, 'error')
   }
+}
+
+async function loadAssessmentsByArticle(hash: string) {
   try {
-    await assessmentStore.loadAssessmentsByArticle(route.params.id as string)
-  }catch(error: any){
+    await assessmentStore.loadAssessmentsByArticle(hash)
+  } catch (error: any) {
     console.error(error)
     appStore.addToastMessage(`Error loading assessments: ${error.message}`, 'error')
   }
+}
+
+async function loadArticleSources(hash: string) {
   try {
-    await articleStore.loadArticleSources(route.params.id as string)
-  }catch(error: any){
+    await articleStore.loadArticleSources(hash)
+  } catch (error: any) {
     console.error(error)
     appStore.addToastMessage(`Error loading article sources: ${error.message}`, 'error')
   }
+}
 
-  if (articleStore.article)
-    claimedByPublisher.value = extractSubjectCredential(articleStore.article.metadata.publisher_vc)
-
+function calculateAveragesFromAssessments(assessments: IndexedAssessment[]) {
   let credibilityScoreSum = 0
   let credibilityScoreCount = 0
   let manipulationScoreSum = 0
   let manipulationScoreCount = 0
-  for (const assessment of assessmentStore.assessments) {
+  for (const assessment of assessments) {
     if (assessment.credibility_score !== undefined) {
       credibilityScoreSum += assessment.credibility_score
       credibilityScoreCount++
@@ -365,14 +375,15 @@ onMounted(async () => {
     averageManipulationScore.value = manipulationScoreSum / manipulationScoreCount
     manipulationDescription.value = getManipulationDescription(Math.floor(averageManipulationScore.value))
   }
+}
 
+function calculateAveragesFromSources(articleSources: SourceNode[]) {
   let sourcesCredibilityScoreSum = 0
   let sourcesCredibilityScoreCount = 0
   let sourcesManipulationScoreSum = 0
   let sourcesManipulationScoreCount = 0
 
-
-  for (const sourceNode of articleStore.article_sources) {
+  for (const sourceNode of articleSources) {
     if (sourceNode.avg_credibility_score) {
       sourcesCredibilityScoreSum += sourceNode.avg_credibility_score
       sourcesCredibilityScoreCount++
@@ -391,6 +402,15 @@ onMounted(async () => {
     sourcesAverageManipulationScore.value = sourcesManipulationScoreSum / sourcesManipulationScoreCount
     sourcesManipulationDescription.value = getManipulationDescription(Math.floor(sourcesAverageManipulationScore.value))
   }
+}
 
+onMounted(async () => {
+  articleStore.$reset()
+  assessmentStore.$reset()
+  await loadArticle(route.params.id as string)
+  await loadAssessmentsByArticle(route.params.id as string)
+  await loadArticleSources(route.params.id as string)
+  calculateAveragesFromAssessments(assessmentStore.assessments)
+  calculateAveragesFromSources(articleStore.article_sources)
 })
 </script>

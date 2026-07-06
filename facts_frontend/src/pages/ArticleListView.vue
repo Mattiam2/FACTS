@@ -69,12 +69,16 @@ function openArticleClaim(article: IndexedArticle) {
   router.push(`/articles/${article.hash}`)
 }
 
-onMounted(async () => {
+async function loadArticles() {
   try {
     await articleStore.loadArticles()
   } catch (error: any) {
     console.error(error)
     appStore.addToastMessage(`Error loading articles: ${error.message}`, 'error')
   }
+}
+
+onMounted(async () => {
+  await loadArticles()
 })
 </script>

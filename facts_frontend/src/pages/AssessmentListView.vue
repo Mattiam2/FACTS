@@ -78,12 +78,16 @@ function openArticleClaim(assessment: IndexedAssessment) {
   router.push(`/articles/${assessment.article_hash}`)
 }
 
-onMounted(async () => {
+async function loadAssessments() {
   try {
     await assessmentStore.loadAssessments()
-  }catch(error: any){
+  } catch (error: any) {
     console.error(error)
     appStore.addToastMessage(`Error loading assessments: ${error.message}`, 'error')
   }
+}
+
+onMounted(async () => {
+  await loadAssessments()
 })
 </script>
