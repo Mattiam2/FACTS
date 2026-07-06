@@ -85,7 +85,7 @@
 
 
                 <VDataTable :items="assessmentStore.assessments" :headers="assessmentHeaders" class="bg-transparent"
-                            show-expand
+                            single-expand show-expand item-value="hash"
                             hide-default-footer>
                   <template #item.data-table-expand="{ internalItem, isExpanded, toggleExpand, item }">
                     <VBtn
@@ -98,7 +98,7 @@
                         width="105"
                         border
                         slim
-                        @click="expandAssessment(item, toggleExpand)"
+                        @click="expandAssessment(item, internalItem, toggleExpand)"
                     />
                   </template>
                   <template #item.credibility_score="{ item }">
@@ -316,11 +316,11 @@ const assessmentHeaders = [
   {title: '', key: 'data-table-expand'},
 ]
 
-async function expandAssessment(item: IndexedAssessment, expand: any) {
+async function expandAssessment(item: IndexedAssessment, internalItem: any, expand: any) {
   const ebsi_document: EbsiAssessmentDocument = await assessmentStore.getAssessment(item.hash)
   item.assessmentInfo = ebsi_document.metadata.assessment_info
   item.subjectCredential = extractSubjectCredential(ebsi_document.metadata.fact_checker_vc)
-  expand(item)
+  expand(internalItem)
 }
 
 async function loadArticle(hash: string) {
