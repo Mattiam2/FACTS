@@ -36,6 +36,11 @@ const assessmentStore = useAssessmentStore()
 const appStore = useAppStore()
 const articleUrl = ref("")
 
+/**
+ * Searches for an article or related assessments by its URL
+ *
+ * @return {Promise<void>} A promise that resolves when the navigation or error handling is complete.
+ */
 async function searchArticle() {
   try {
     const foundArticle: EbsiArticleDocument | undefined = await articleStore.getArticleByUrl(articleUrl.value)

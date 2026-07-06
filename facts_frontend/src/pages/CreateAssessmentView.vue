@@ -255,6 +255,13 @@ const claimedByPublisher = ref(undefined) as Ref<FactsSubjectCredential | undefi
 
 const articleFoundOnEBSI = ref(undefined) as Ref<boolean | undefined>
 
+/**
+ * Initiates the creation of an assessment transaction and handles the necessary preconditions
+ * such as authentication and wallet linking. Displays appropriate messages for errors or missing
+ * prerequisites, and manages the state of the transaction and related UI components.
+ *
+ * @return {Promise<void>} A promise that resolves once the assessment creation process is completed.
+ */
 async function requestAssessmentCreation() {
   if (!authStore.factsAccessToken) {
     appStore.addToastMessage(`Please login to FACTS`, 'error')
@@ -281,6 +288,12 @@ async function requestAssessmentCreation() {
   transactionDocumentHash.value = response.document_hash
 }
 
+/**
+ * Checks and processes an article based on the provided URL.
+ * Loads the article data from a specified store.
+ *
+ * @return {Promise<void>} A promise that resolves when the article check and processing are complete.
+ */
 async function checkArticle() {
   try {
     await articleStore.loadArticleByUrl(articleUrl.value)
@@ -310,6 +323,11 @@ async function checkArticle() {
   }
 }
 
+/**
+ * Signs a transaction using the linked Ethereum wallet and confirms the assessment transaction creation.
+ *
+ * @return {Promise<void>} A promise that resolves when the transaction is successfully signed and confirmed.
+ */
 async function signTransaction() {
   if (!authStore.factsAccessToken) {
     appStore.addToastMessage(`Please login to FACTS`, 'error')

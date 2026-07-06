@@ -70,14 +70,32 @@ const assessmentHeaders = [
   {title: '', key: 'actions'},
 ]
 
+/**
+ * Opens the article website in a new browser tab based on the given assessment object.
+ *
+ * @param {IndexedAssessment} assessment - The assessment object containing the URL of the article to be opened.
+ * @return {void} Does not return a value.
+ */
 function openArticleWebsite(assessment: IndexedAssessment) {
   window.open(assessment.article_url, '_blank')
 }
 
+/**
+ * Navigates to the claim page of the specified article by utilizing its unique hash.
+ *
+ * @param {IndexedAssessment} assessment - An object containing information about the assessment, including the article's unique hash.
+ * @return {void} Does not return any value.
+ */
 function openArticleClaim(assessment: IndexedAssessment) {
   router.push(`/articles/${assessment.article_hash}`)
 }
 
+/**
+ * Loads assessments by retrieving them from the assessment store.
+ * If an error occurs during the process, logs the error.
+ *
+ * @return {Promise<void>} A promise that resolves when the assessments are successfully loaded.
+ */
 async function loadAssessments() {
   try {
     await assessmentStore.loadAssessments()

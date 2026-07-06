@@ -111,10 +111,24 @@ const subjectSpecialization = ref('') as Ref<string>
 const subjectAccreditedBy = ref('') as Ref<string>
 const subjectAuthorizedHosts = ref(['']) as Ref<string[]>
 
+/**
+ * Sets the specified role to the subjectRole.
+ *
+ * @param {string} role - The role to be assigned.
+ * @return {void} - Does not return a value.
+ */
 function setRole(role: string) {
   subjectRole.value = role
 }
 
+/**
+ * Handles the process of requesting a credential by validating input fields, constructing a credential subject,
+ * and communicating with the issuer store to complete the credential issuance.
+ *
+ * @return {Promise<boolean | void>} Returns `false` if any required input field is invalid, otherwise attempts
+ *                                   to request the credential and handles the response. No return value in case of
+ *                                   an error during the credential request process.
+ */
 async function requestCredential() {
   if (!subjectDid.value.trim()) {
     appStore.addToastMessage('Please enter your DID', 'error')

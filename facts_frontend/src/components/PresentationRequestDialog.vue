@@ -57,6 +57,12 @@ const isOpen = computed({
   }
 })
 
+/**
+ * Encodes the given input into a Base64URL-encoded string.
+ *
+ * @param {Uint8Array | string} input - The data to be encoded. Can be a Uint8Array or a string.
+ * @return {string} The Base64URL-encoded representation of the input.
+ */
 function base64url(input: Uint8Array | string): string {
   const bytes =
       typeof input === 'string'
@@ -69,6 +75,14 @@ function base64url(input: Uint8Array | string): string {
       .replace(/=+$/g, '')
 }
 
+/**
+ * Signs a JSON Web Token (JWT) using the provided header, payload, and private key.
+ *
+ * @param {object} header - The header object to include in the token, containing information such as the algorithm used.
+ * @param {object} payload - The payload object to include in the token, containing the claims.
+ * @param {string} privateKeyHex - The private key in hexadecimal format, used to sign the token.
+ * @return {Promise<string>} A promise that resolves to the signed JWT as a string.
+ */
 async function signJwt(
     header: object,
     payload: object,
@@ -114,6 +128,13 @@ async function signJwt(
   return `${signingInput}.${encodedSignature}`;
 }
 
+/**
+ * Creates a Verifiable Presentation (VP) token based on the input data.
+ * Validates the presence and validity of credential token, private key, and verification ID.
+ * If valid, it generates a VP payload and signs it as a JWT token.
+ *
+ * @return {Promise<boolean>} Returns `false` if any input is invalid. Otherwise, updates the `vpToken` field with the signed JWT token.
+ */
 async function createVP() {
   if (!credentialToken.value.trim()) {
     appStore.addToastMessage('Please enter the credential token', 'error')
@@ -173,6 +194,13 @@ async function createVP() {
 
 }
 
+/**
+ * Extracts and returns the issuer ("iss") and subject ("sub") claims from a given Verifiable Credential (VC) token.
+ *
+ * @param {string} vcToken - The Verifiable Credential token in JWT format.
+ * @return {{ iss: string, sub: string }} An object containing the "iss" (issuer) and "sub" (subject) claims from the token.
+ * @throws {Error} If the JWT does not contain an "iss" claim.
+ */
 function getDataFromVcToken(vcToken: string): { iss: string, sub: string } {
   const [, payloadB64] = vcToken.split('.');
   const payload = JSON.parse(atob(payloadB64.replace(/-/g, '+').replace(/_/g, '/')));

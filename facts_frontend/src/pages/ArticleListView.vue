@@ -61,14 +61,32 @@ const articleHeaders = [
   {title: '', key: 'actions'},
 ]
 
+/**
+ * Opens the article website in a new browser tab.
+ *
+ * @param {IndexedArticle} article - The article containing the URL to open.
+ * @return {void} This method does not return a value.
+ */
 function openArticleWebsite(article: IndexedArticle) {
   window.open(article.url, '_blank')
 }
 
+/**
+ * Navigates to the article claim page using the provided article's hash.
+ *
+ * @param {IndexedArticle} article - The article containing metadata, including the unique hash used for navigation.
+ * @return {void} This function does not return a value.
+ */
 function openArticleClaim(article: IndexedArticle) {
   router.push(`/articles/${article.hash}`)
 }
 
+/**
+ * Loads articles from the article store into the application.
+ *
+ * @return {Promise<void>} A promise that resolves when the articles are successfully loaded,
+ * or rejects if an error occurs during the loading process.
+ */
 async function loadArticles() {
   try {
     await articleStore.loadArticles()

@@ -42,6 +42,16 @@ const vpToken = ref('') as Ref<string>
 const vcToken = ref('') as Ref<string>
 const ethAddress = ref('') as Ref<string>
 
+/**
+ * Validates a Verifiable Presentation (VP) JWT provided by the user.
+ * This method ensures the integrity of the token, parses its payload,
+ * verifies the presence of required credentials, and processes user information
+ * based on their role (e.g., publisher or fact checker). If valid, the user's
+ * access token is requested based on a predefined scope.
+ *
+ * @return {boolean|void} Returns `false` if the VP JWT is invalid or if required
+ *                        credentials are missing. Returns nothing upon successful validation.
+ */
 async function validateVP() {
   if (!vpToken.value.trim()) {
     appStore.addToastMessage('Please paste your Verifiable Presentation JWT', 'error')
@@ -89,7 +99,14 @@ async function validateVP() {
   }
 }
 
-function completeLogin () {
+/**
+ * Completes the login process by validating the ETH address, Verifiable Presentation,
+ * and user's role, then redirects to the appropriate page based on the role.
+ * Redirects to "Articles" for publishers and "Assessments" for other roles.
+ *
+ * @return {boolean} Returns false if validation fails; otherwise, the function redirects and does not return a value.
+ */
+function completeLogin() {
   if (!walletStore.ethWallet.ethAddress?.trim()) {
     appStore.addToastMessage('Please enter your ETH address', 'error')
     ethAddress.value = ''

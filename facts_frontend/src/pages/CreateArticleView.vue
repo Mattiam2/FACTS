@@ -140,6 +140,14 @@ const article = ref({
   sources: ['']
 }) as Ref<ArticleInfo>
 
+/**
+ * Initiates the process of creating an article transaction.
+ * This method performs necessary validations, filters out empty sources,
+ * and interacts with the article store to generate a transaction for signing.
+ * Appropriate toast messages are displayed in case of errors or missing prerequisites.
+ *
+ * @return {Promise<void>} A promise that resolves when the article transaction request process completes.
+ */
 async function requestArticleCreation() {
   if (!authStore.factsAccessToken) {
     appStore.addToastMessage(`Please login to FACTS`, 'error')
@@ -166,6 +174,16 @@ async function requestArticleCreation() {
   transactionDocumentHash.value = response.document_hash
 }
 
+/**
+ * Signs a transaction using the user's wallet and sends it for confirmation.
+ *
+ * This method validates that the necessary prerequisites are met, such as proper authentication,
+ * a valid transaction to sign, and a linked wallet. If these conditions are satisfied, it signs
+ * the transaction with the wallet and sends it for confirmation. Upon success or failure,
+ * appropriate toast messages are added to notify the user.
+ *
+ * @return {Promise<void>} A promise that resolves when the transaction is successfully signed and confirmed.
+ */
 async function signTransaction() {
   if (!authStore.factsAccessToken) {
     appStore.addToastMessage(`Please login to FACTS`, 'error')

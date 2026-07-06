@@ -316,6 +316,14 @@ const assessmentHeaders = [
   {title: '', key: 'data-table-expand'},
 ]
 
+/**
+ * Expands an assessment by retrieving and populating additional assessment details.
+ *
+ * @param {IndexedAssessment} item - The assessment containing initial details and a hash for lookup.
+ * @param {any} internalItem - An VDataTable internal data structure used for further processing.
+ * @param {Function} expand - A callback function to process the expanded internal item.
+ * @return {Promise<void>} A promise that resolves when the assessment has been expanded and processed.
+ */
 async function expandAssessment(item: IndexedAssessment, internalItem: any, expand: any) {
   const ebsi_document: EbsiAssessmentDocument = await assessmentStore.getAssessment(item.hash)
   item.assessmentInfo = ebsi_document.metadata.assessment_info
@@ -323,6 +331,12 @@ async function expandAssessment(item: IndexedAssessment, internalItem: any, expa
   expand(internalItem)
 }
 
+/**
+ * Loads an article using the provided hash and updates the relevant state.
+ *
+ * @param {string} hash - The unique identifier (hash) of the article to be loaded.
+ * @return {Promise<void>} A promise that resolves when the article is successfully loaded
+ */
 async function loadArticle(hash: string) {
   try {
     await articleStore.loadArticle(hash)
@@ -334,6 +348,12 @@ async function loadArticle(hash: string) {
   }
 }
 
+/**
+ * Loads assessments related to a specific article identified by its hash.
+ *
+ * @param {string} hash - The unique identifier (hash) of the article for which assessments will be loaded.
+ * @return {Promise<void>} A promise that resolves when the assessments are successfully loaded
+ */
 async function loadAssessmentsByArticle(hash: string) {
   try {
     await assessmentStore.loadAssessmentsByArticle(hash)
@@ -343,6 +363,12 @@ async function loadAssessmentsByArticle(hash: string) {
   }
 }
 
+/**
+ * Loads the article sources from the article store using the provided hash.
+ *
+ * @param {string} hash - The unique identifier used to load the specific article sources.
+ * @return {Promise<void>} A promise that resolves when the article sources are successfully loaded
+ */
 async function loadArticleSources(hash: string) {
   try {
     await articleStore.loadArticleSources(hash)
@@ -352,6 +378,13 @@ async function loadArticleSources(hash: string) {
   }
 }
 
+/**
+ * Calculates average scores for credibility and manipulation based on the provided assessments.
+ *
+ * @param {IndexedAssessment[]} assessments - An array of assessment objects. Each object may contain
+ * `credibility_score` and `manipulation_score` properties.
+ * @return {void} Does not return a value
+ */
 function calculateAveragesFromAssessments(assessments: IndexedAssessment[]) {
   let credibilityScoreSum = 0
   let credibilityScoreCount = 0
@@ -377,6 +410,12 @@ function calculateAveragesFromAssessments(assessments: IndexedAssessment[]) {
   }
 }
 
+/**
+ * Calculates average credibility and manipulation scores from a collection of source nodes and updates related descriptors.
+ *
+ * @param {SourceNode[]} articleSources - An array of source nodes representing data sources. Each source node should contain properties `avg_credibility_score` and `avg_manipulation_score`.
+ * @return {void} Does not return any value.
+ */
 function calculateAveragesFromSources(articleSources: SourceNode[]) {
   let sourcesCredibilityScoreSum = 0
   let sourcesCredibilityScoreCount = 0

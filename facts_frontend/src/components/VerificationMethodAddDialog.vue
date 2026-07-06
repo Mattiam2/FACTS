@@ -159,6 +159,12 @@ const isOpen = computed({
   }
 })
 
+/**
+ * Handles the next step in the onboarding process based on the current step.
+ *
+ * @param {Function} next - A callback function to proceed to the next step of the onboarding process.
+ * @return {Promise<boolean|void>} Resolves to `false` if validation or a step fails, or proceeds to the next step otherwise.
+ */
 async function addVMethodCustomNext(next: () => void) {
   if (addVMethodStep.value == 1) {
     if (!vpToken.value.trim()) {

@@ -68,6 +68,11 @@ const ethAddress = ref('')
 const ethPrivateKey = ref('')
 const openedDialog = ref(undefined) as Ref<'presentationRequest' | 'didCreation' | 'verificationMethodAdd' | 'tntAuthorise' | undefined>
 
+/**
+ * Links a wallet using the provided Ethereum address and private key.
+ *
+ * @return {boolean} Returns false if required fields are missing. Otherwise, no return value.
+ */
 function linkWallet() {
   if (!ethAddress.value.trim()) {
     appStore.addToastMessage('Please enter your ETH address', 'error')
@@ -80,21 +85,41 @@ function linkWallet() {
   walletStore.linkWallet(ethAddress.value, ethPrivateKey.value)
 }
 
+/**
+ * Opens the encapsulation process
+ *
+ * @return {void} This method does not return a value.
+ */
 function openEncapsulation() {
   walletStore.ebsiAccessToken = undefined
   openedDialog.value = 'presentationRequest'
 }
 
+/**
+ * Initiates the EBSI (European Blockchain Services Infrastructure) onboarding process.
+ *
+ * @return {void} This function does not return a value.
+ */
 function openOnboardingEbsi() {
   walletStore.ebsiAccessToken = undefined
   openedDialog.value = 'didCreation'
 }
 
+/**
+ * Opens the dialog for creating a new verification method.
+ *
+ * @return {void} This method does not return a value.
+ */
 function openVerificationMethodCreation() {
   walletStore.ebsiAccessToken = undefined
   openedDialog.value = 'verificationMethodAdd'
 }
 
+/**
+ * Opens the "tntAuthorise" dialog.
+ *
+ * @return {void} Does not return a value.
+ */
 function openAuthoriseDid() {
   walletStore.ebsiAccessToken = undefined
   openedDialog.value = 'tntAuthorise'
