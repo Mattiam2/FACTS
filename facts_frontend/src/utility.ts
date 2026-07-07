@@ -12,6 +12,12 @@ const rules = {
   },
 }
 
+/**
+ * Extracts the subject credential from a verifiable credential (VC) token.
+ *
+ * @param {string} vc - The base64url-encoded JSON Web Token (JWT) representing the verifiable credential.
+ * @return {FactsSubjectCredential | undefined} Returns the subject credential object with additional role information if available; otherwise, returns undefined.
+ */
 function extractSubjectCredential(vc: string) {
     const vcData = JSON.parse(atob(vc.split('.')[1].replace(/-/g, '+').replace(/_/g, '/'))).vc
 
@@ -29,11 +35,22 @@ function extractSubjectCredential(vc: string) {
     return credentialSubject
 }
 
+/**
+ * Pauses the execution of code for a specified duration.
+ *
+ * @param {number} ms - The number of milliseconds to sleep.
+ * @return {Promise<void>} A promise that resolves after the specified duration.
+ */
 function sleep(ms: number) {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-// The formatting function
+/**
+ * Formats a given date string into the format dd/mm/yyyy.
+ *
+ * @param {string} dateString - The date string to be formatted.
+ * @return {string} The formatted date string in dd/mm/yyyy format. Returns an empty string if no dateString is provided.
+ */
 function formatDate(dateString: string) {
     if (!dateString) {return ''}
 
@@ -50,6 +67,12 @@ function formatDate(dateString: string) {
     }).format(date).replace(',', '')
 }
 
+/**
+ * Provides a descriptive label for a given credibility score.
+ *
+ * @param {number} average - The numerical credibility score to evaluate.
+ * @return {string} A descriptive string corresponding to the credibility score.
+ */
 function getCredibilityDescription(average: number) {
   switch (average) {
     case CredibilityScore.FALSE: {
@@ -71,6 +94,12 @@ function getCredibilityDescription(average: number) {
   return ''
 }
 
+/**
+ * Returns a descriptive label for a given manipulation score.
+ *
+ * @param {number} average - The numerical manipulation score to evaluate.
+ * @return {string} A descriptive string corresponding to the manipulation score.
+ */
 function getManipulationDescription(average: number) {
   switch (average) {
     case ManipulationScore.TOTALLY_MANIPULATED: {
