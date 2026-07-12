@@ -73,7 +73,7 @@ const openedDialog = ref(undefined) as Ref<'presentationRequest' | 'didCreation'
  *
  * @return {boolean} Returns false if required fields are missing. Otherwise, no return value.
  */
-function linkWallet() {
+async function linkWallet() {
   if (!ethAddress.value.trim()) {
     appStore.addToastMessage('Please enter your ETH address', 'error')
     return false
@@ -82,7 +82,13 @@ function linkWallet() {
     appStore.addToastMessage('Please enter your ETH private key', 'error')
     return false
   }
-  walletStore.linkWallet(ethAddress.value, ethPrivateKey.value)
+  try {
+    await walletStore.linkWallet(ethAddress.value, ethPrivateKey.value)
+  }catch(error: any){
+    console.error(error)
+    appStore.addToastMessage(`Error linking wallet: ${error.message}`, 'error')
+    return false
+  }
 }
 
 /**

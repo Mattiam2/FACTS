@@ -209,6 +209,10 @@ async function addVMethodCustomNext(next: () => void) {
       appStore.addToastMessage('Please enter the verification method public key', 'error')
       return false
     }
+    if (!publicKey.value.startsWith('0x')) {
+      appStore.addToastMessage('Please enter a valid public key (needs to start with 0x)', 'error')
+      return false
+    }
     if (vMethodRels.value.length === 0) {
       appStore.addToastMessage('Please select at least one relationship', 'error')
       return false
